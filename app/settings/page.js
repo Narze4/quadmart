@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
-import { auth } from '@/lib/firebase'
+import { auth, db } from '@/lib/firebase'
 import {
   deleteUser,
   EmailAuthProvider,
@@ -11,6 +12,7 @@ import {
   updatePassword,
   updateProfile,
 } from 'firebase/auth'
+import { doc, setDoc } from 'firebase/firestore'
 import Navbar from '@/components/Navbar'
 
 function Section({ title, children }) {
@@ -54,7 +56,9 @@ export default function SettingsPage() {
     setNameSuccess('')
     setNameSaving(true)
     try {
-      await updateProfile(auth.currentUser, { displayName: currentDisplayName.trim() })
+      const trimmed = currentDisplayName.trim()
+      await updateProfile(auth.currentUser, { displayName: trimmed })
+      await setDoc(doc(db, 'users', user.uid), { displayName: trimmed }, { merge: true })
       setNameSuccess('Display name updated.')
     } catch {
       setNameError('Failed to update name. Please try again.')
@@ -122,7 +126,15 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <main className="max-w-xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-5">
-        <h1 className="text-xl font-semibold text-gray-900">Settings</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold text-gray-900">Settings</h1>
+          <Link
+            href={`/profile/${user.uid}`}
+            className="text-sm font-medium text-green-600 hover:text-green-700 transition-colors"
+          >
+            View my profile →
+          </Link>
+        </div>
 
         {/* Account info */}
         <Section title="Account">

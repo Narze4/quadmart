@@ -65,6 +65,9 @@ export default function SignUpPage() {
         uid: user.uid,
         email: user.email,
         university: selectedUniversity.name,
+        sellerScore: 100,
+        buyerScore: 100,
+        transactions: 0,
         createdAt: serverTimestamp(),
       })
       router.push('/dashboard')

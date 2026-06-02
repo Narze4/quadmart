@@ -79,10 +79,25 @@ function ListingCard({ listing, user, onMessage }) {
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">
-              {sellerUsername[0]?.toUpperCase()}
-            </div>
-            <span className="text-xs text-gray-500 truncate max-w-[100px]">{sellerUsername}</span>
+            {listing.sellerUid ? (
+              <Link
+                href={`/profile/${listing.sellerUid}`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-2 hover:opacity-75 transition-opacity"
+              >
+                <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">
+                  {sellerUsername[0]?.toUpperCase()}
+                </div>
+                <span className="text-xs text-gray-500 truncate max-w-[100px]">{sellerUsername}</span>
+              </Link>
+            ) : (
+              <>
+                <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">
+                  {sellerUsername[0]?.toUpperCase()}
+                </div>
+                <span className="text-xs text-gray-500 truncate max-w-[100px]">{sellerUsername}</span>
+              </>
+            )}
           </div>
           {listing.sellerEmail !== user?.email && (
             <button

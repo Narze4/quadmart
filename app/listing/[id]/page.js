@@ -32,6 +32,7 @@ export default function ListingDetailPage() {
   const [selectedImage, setSelectedImage] = useState(0)
   const [messaging, setMessaging] = useState(false)
   const [addedToCart, setAddedToCart] = useState(false)
+  const [sellerUid, setSellerUid] = useState(null)
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
@@ -39,9 +40,18 @@ export default function ListingDetailPage() {
 
   useEffect(() => {
     if (!id) return
-    getDoc(doc(db, 'listings', id)).then(snap => {
-      if (snap.exists()) setListing({ id: snap.id, ...snap.data() })
-      else router.replace('/marketplace')
+    getDoc(doc(db, 'listings', id)).then(async snap => {
+      if (!snap.exists()) { router.replace('/marketplace'); setFetchLoading(false); return }
+      const data = { id: snap.id, ...snap.data() }
+      setListing(data)
+      // Resolve seller UID: use stored sellerUid or look up by email
+      if (data.sellerUid) {
+        setSellerUid(data.sellerUid)
+      } else {
+        const q = query(collection(db, 'users'), where('email', '==', data.sellerEmail))
+        const uSnap = await getDocs(q).catch(() => null)
+        if (uSnap && !uSnap.empty) setSellerUid(uSnap.docs[0].id)
+      }
       setFetchLoading(false)
     })
   }, [id, router])
@@ -191,15 +201,30 @@ export default function ListingDetailPage() {
             )}
 
             {/* Seller card */}
-            <div className="flex items-center gap-3 border border-gray-200 rounded-xl p-4 bg-white">
-              <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
-                {sellerUsername[0]?.toUpperCase()}
+            {sellerUid ? (
+              <Link href={`/profile/${sellerUid}`} className="flex items-center gap-3 border border-gray-200 rounded-xl p-4 bg-white hover:border-green-300 hover:bg-green-50 transition-all">
+                <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                  {sellerUsername[0]?.toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900">{sellerUsername}</p>
+                  <p className="text-xs text-gray-500">{getUniversity(listing.sellerEmail)}</p>
+                </div>
+                <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </Link>
+            ) : (
+              <div className="flex items-center gap-3 border border-gray-200 rounded-xl p-4 bg-white">
+                <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                  {sellerUsername[0]?.toUpperCase()}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{sellerUsername}</p>
+                  <p className="text-xs text-gray-500">{getUniversity(listing.sellerEmail)}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">{sellerUsername}</p>
-                <p className="text-xs text-gray-500">{getUniversity(listing.sellerEmail)}</p>
-              </div>
-            </div>
+            )}
 
             {/* Actions */}
             {!isOwnListing && (
