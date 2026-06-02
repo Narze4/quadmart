@@ -31,7 +31,7 @@ export default function SignUpPage() {
     setLoading(true)
     try {
       await createUserWithEmailAndPassword(auth, email, password)
-      router.push('/marketplace')
+      router.push('/dashboard')
     } catch (err) {
       setError(FIREBASE_ERRORS[err.code] ?? 'Something went wrong. Please try again.')
     } finally {

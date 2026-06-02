@@ -5,45 +5,78 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
-import Link from 'next/link'
+import Navbar from '@/components/Navbar'
 
-const CATEGORIES = ['Product', 'Service', 'Sublease']
 const CONDITIONS = ['New', 'Like New', 'Good', 'Fair']
+
+const CATEGORIES = [
+  {
+    value: 'Product',
+    desc: 'Physical items to buy and sell',
+    icon: (
+      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>
+    ),
+  },
+  {
+    value: 'Service',
+    desc: 'Skills and services to offer',
+    icon: (
+      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+      </svg>
+    ),
+  },
+  {
+    value: 'Sublease',
+    desc: 'Rooms and apartments to sublease',
+    icon: (
+      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    ),
+  },
+]
 
 export default function SellPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const [step, setStep] = useState(1)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [photoPreviews, setPhotoPreviews] = useState([])
   const [form, setForm] = useState({
+    category: '',
     title: '',
     description: '',
     price: '',
-    category: 'Product',
     condition: 'New',
   })
-  const [error, setError] = useState('')
-  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login')
-    }
+    if (!loading && !user) router.replace('/login')
   }, [user, loading, router])
 
-  const handleChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
+  const set = (key, val) => setForm(f => ({ ...f, [key]: val }))
+
+  const canNext = () => {
+    if (step === 1) return !!form.category
+    if (step === 2) return form.title.trim().length > 0
+    if (step === 4) return form.price !== '' && Number(form.price) >= 0
+    return true
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleBack = () => {
+    if (step === 1) router.back()
+    else setStep(s => s - 1)
+  }
+
+  const handleNext = async () => {
+    if (step < 6) { setStep(s => s + 1); return }
     setError('')
-    if (!form.title.trim()) {
-      setError('Title is required.')
-      return
-    }
-    if (Number(form.price) < 0) {
-      setError('Price cannot be negative.')
-      return
-    }
     setSubmitting(true)
     try {
       await addDoc(collection(db, 'listings'), {
@@ -55,7 +88,7 @@ export default function SellPage() {
         sellerEmail: user.email,
         createdAt: serverTimestamp(),
       })
-      router.push('/marketplace')
+      router.push('/my-listings')
     } catch {
       setError('Failed to post listing. Please try again.')
     } finally {
@@ -63,147 +96,186 @@ export default function SellPage() {
     }
   }
 
+  const handlePhotos = (e) => {
+    const files = Array.from(e.target.files ?? [])
+    const previews = files.map(f => URL.createObjectURL(f))
+    setPhotoPreviews(previews)
+  }
+
   if (loading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="w-8 h-8 border-4 border-[#1a472a] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-[#1a472a] px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/marketplace" className="text-white text-xl font-bold tracking-tight">
-            QuadMart
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/messages" className="px-3 py-1.5 text-sm text-green-100 hover:text-white transition-colors">
-              Messages
-            </Link>
-            <Link href="/settings" className="px-3 py-1.5 text-sm text-green-100 hover:text-white transition-colors">
-              Settings
-            </Link>
-            <Link href="/marketplace" className="text-sm text-green-100 hover:text-white transition-colors">
-              ← Marketplace
-            </Link>
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
+        {/* Step header */}
+        <div className="flex items-center gap-4 mb-8">
+          <button onClick={handleBack} className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-600">
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Sell an item</h1>
+            <p className="text-sm text-gray-500">Step {step} of 6</p>
           </div>
         </div>
-      </nav>
 
-      <div className="flex-1 flex items-start justify-center px-4 py-12">
-        <div className="w-full max-w-lg bg-white rounded-xl border border-gray-200 shadow-sm p-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Post a listing</h1>
-          <p className="text-sm text-gray-500 mb-8">
-            Fill in the details below to list your item or service.
-          </p>
+        {/* Progress bar */}
+        <div className="w-full bg-gray-200 rounded-full h-1.5 mb-8">
+          <div
+            className="bg-green-500 h-1.5 rounded-full transition-all duration-300"
+            style={{ width: `${(step / 6) * 100}%` }}
+          />
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Title */}
+        {/* Step content */}
+        <div className="mb-8">
+          {step === 1 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Title <span className="text-red-500">*</span>
-              </label>
+              <h2 className="text-lg font-semibold text-gray-900 mb-6">What are you listing?</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {CATEGORIES.map(cat => (
+                  <button
+                    key={cat.value}
+                    onClick={() => set('category', cat.value)}
+                    className={`p-6 rounded-xl border-2 text-left transition-all ${
+                      form.category === cat.value
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <div className={`mb-3 ${form.category === cat.value ? 'text-green-500' : 'text-gray-400'}`}>
+                      {cat.icon}
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-1">{cat.value}</h3>
+                    <p className="text-xs text-gray-500">{cat.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">What&apos;s the title?</h2>
+              <p className="text-sm text-gray-500 mb-6">Give your listing a clear, descriptive name.</p>
               <input
                 type="text"
-                name="title"
                 value={form.title}
-                onChange={handleChange}
-                placeholder="e.g. Calculus textbook, Guitar lessons, 1BR sublease"
-                required
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1a472a] focus:border-transparent"
+                onChange={e => set('title', e.target.value)}
+                placeholder="e.g. Calculus Textbook, Guitar Lessons, 1BR Sublease"
+                autoFocus
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
             </div>
+          )}
 
-            {/* Description */}
+          {step === 3 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Add a description</h2>
+              <p className="text-sm text-gray-500 mb-6">Tell buyers more about what you&apos;re offering.</p>
               <textarea
-                name="description"
                 value={form.description}
-                onChange={handleChange}
-                placeholder="Describe what you're selling, condition, any details…"
-                rows={4}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1a472a] focus:border-transparent resize-none"
+                onChange={e => set('description', e.target.value)}
+                placeholder="Describe your item, its condition, what's included..."
+                rows={6}
+                autoFocus
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
               />
             </div>
+          )}
 
-            {/* Price */}
+          {step === 4 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Price ($)
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Set your price</h2>
+              <p className="text-sm text-gray-500 mb-6">Enter 0 for free items.</p>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+                <input
+                  type="number"
+                  value={form.price}
+                  onChange={e => set('price', e.target.value)}
+                  placeholder="0.00"
+                  min="0"
+                  step="0.01"
+                  autoFocus
+                  className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          )}
+
+          {step === 5 && (
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">What&apos;s the condition?</h2>
+              <p className="text-sm text-gray-500 mb-6">Be honest — buyers appreciate accurate descriptions.</p>
+              <div className="grid grid-cols-2 gap-3">
+                {CONDITIONS.map(cond => (
+                  <button
+                    key={cond}
+                    onClick={() => set('condition', cond)}
+                    className={`p-4 rounded-xl border-2 text-left font-medium text-sm transition-all ${
+                      form.condition === cond
+                        ? 'border-green-500 bg-green-50 text-green-700'
+                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    {cond}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {step === 6 && (
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Add photos</h2>
+              <p className="text-sm text-gray-500 mb-6">Listings with photos get more attention. (Optional)</p>
+              <label
+                htmlFor="photos"
+                className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-green-400 hover:bg-green-50 transition-colors"
+              >
+                <svg className="w-10 h-10 text-gray-300 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                <p className="text-sm font-medium text-gray-500">Click to upload photos</p>
+                <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 10MB each</p>
+                <input id="photos" type="file" accept="image/*" multiple className="hidden" onChange={handlePhotos} />
               </label>
-              <input
-                type="number"
-                name="price"
-                value={form.price}
-                onChange={handleChange}
-                placeholder="0.00"
-                min="0"
-                step="0.01"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1a472a] focus:border-transparent"
-              />
-            </div>
 
-            {/* Category + Condition side by side */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category
-                </label>
-                <select
-                  name="category"
-                  value={form.category}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1a472a] focus:border-transparent bg-white"
-                >
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
+              {photoPreviews.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mt-4">
+                  {photoPreviews.map((url, i) => (
+                    <img key={i} src={url} alt="" className="w-full h-24 object-cover rounded-lg border border-gray-200" />
                   ))}
-                </select>
-              </div>
+                </div>
+              )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Condition
-                </label>
-                <select
-                  name="condition"
-                  value={form.condition}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1a472a] focus:border-transparent bg-white"
-                >
-                  {CONDITIONS.map((cond) => (
-                    <option key={cond} value={cond}>
-                      {cond}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {error && <p className="text-sm text-red-600 mt-4">{error}</p>}
             </div>
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-3 bg-[#1a472a] text-white font-medium rounded-lg hover:bg-[#145222] transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-sm"
-            >
-              {submitting ? 'Posting…' : 'Post Listing'}
-            </button>
-          </form>
+          )}
         </div>
-      </div>
+
+        {/* Next / Post button */}
+        <div className="flex justify-end">
+          <button
+            onClick={handleNext}
+            disabled={!canNext() || submitting}
+            className="px-8 py-3 bg-green-500 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {step === 6 ? (submitting ? 'Posting…' : 'Post Listing') : 'Next →'}
+          </button>
+        </div>
+      </main>
     </div>
   )
 }

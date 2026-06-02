@@ -11,7 +11,7 @@ import {
   updatePassword,
   updateProfile,
 } from 'firebase/auth'
-import Link from 'next/link'
+import Navbar from '@/components/Navbar'
 
 function Section({ title, children }) {
   return (
@@ -23,7 +23,7 @@ function Section({ title, children }) {
 }
 
 export default function SettingsPage() {
-  const { user, loading, logout } = useAuth()
+  const { user, loading } = useAuth()
   const router = useRouter()
 
   const [displayName, setDisplayName] = useState(undefined)
@@ -110,45 +110,18 @@ export default function SettingsPage() {
     }
   }
 
-  const handleLogout = async () => {
-    await logout()
-    router.push('/')
-  }
-
   if (loading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="w-8 h-8 border-4 border-[#1a472a] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-[#1a472a] px-6 py-4 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/marketplace" className="text-white text-xl font-bold tracking-tight">
-            QuadMart
-          </Link>
-          <div className="flex items-center gap-1 sm:gap-4">
-            <Link href="/messages" className="px-3 py-1.5 text-sm text-green-100 hover:text-white transition-colors">
-              Messages
-            </Link>
-            <Link href="/sell" className="px-3 py-1.5 text-sm font-medium bg-white text-[#1a472a] rounded-lg hover:bg-gray-100 transition-colors">
-              Sell
-            </Link>
-            <Link href="/settings" className="px-3 py-1.5 text-sm text-white font-medium underline underline-offset-2">
-              Settings
-            </Link>
-            <button onClick={handleLogout} className="px-3 py-1.5 text-sm text-green-100 hover:text-white transition-colors">
-              Log out
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      <main className="flex-1 max-w-xl mx-auto w-full px-4 sm:px-6 py-8 flex flex-col gap-5">
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <main className="max-w-xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-5">
         <h1 className="text-xl font-semibold text-gray-900">Settings</h1>
 
         {/* Account info */}
@@ -165,7 +138,7 @@ export default function SettingsPage() {
                 value={currentDisplayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Your name"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1a472a] focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
             </div>
             {nameError && <p className="text-sm text-red-600">{nameError}</p>}
@@ -173,7 +146,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={nameSaving}
-              className="self-start px-5 py-2 bg-[#1a472a] text-white text-sm font-medium rounded-lg hover:bg-[#145222] transition-colors disabled:opacity-60"
+              className="self-start px-5 py-2 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-60"
             >
               {nameSaving ? 'Saving…' : 'Save Name'}
             </button>
@@ -190,7 +163,7 @@ export default function SettingsPage() {
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 required
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1a472a] focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
             </div>
             <div>
@@ -201,7 +174,7 @@ export default function SettingsPage() {
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="At least 6 characters"
                 required
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1a472a] focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
             </div>
             {pwError && <p className="text-sm text-red-600">{pwError}</p>}
@@ -209,7 +182,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={pwSaving}
-              className="self-start px-5 py-2 bg-[#1a472a] text-white text-sm font-medium rounded-lg hover:bg-[#145222] transition-colors disabled:opacity-60"
+              className="self-start px-5 py-2 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-60"
             >
               {pwSaving ? 'Updating…' : 'Update Password'}
             </button>
@@ -268,3 +241,4 @@ export default function SettingsPage() {
     </div>
   )
 }
+

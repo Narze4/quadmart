@@ -19,7 +19,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await signInWithEmailAndPassword(auth, email, password)
-      router.push('/marketplace')
+      router.push('/dashboard')
     } catch (err) {
       setError('Invalid email or password. Please try again.')
     } finally {
