@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, where } from 'firebase/firestore'
-import { getUniversity } from '@/lib/utils'
+import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, where } from 'firebase/firestore'
+import { getUniversity, getDomain } from '@/lib/utils'
 import Navbar from '@/components/Navbar'
 
 const TABS = [
@@ -97,6 +97,7 @@ export default function MarketplacePage() {
   const router = useRouter()
   const [listings, setListings] = useState([])
   const [fetchLoading, setFetchLoading] = useState(true)
+  const [userUniversity, setUserUniversity] = useState(null)
   const [activeTab, setActiveTab] = useState('All')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('newest')
@@ -110,15 +111,19 @@ export default function MarketplacePage() {
 
   useEffect(() => {
     if (!user) return
-    const fetch = async () => {
+    const fetchAll = async () => {
       try {
+        // Fetch user profile for university
+        const profileSnap = await getDoc(doc(db, 'users', user.uid))
+        if (profileSnap.exists()) setUserUniversity(profileSnap.data().university)
+
         const q = query(collection(db, 'listings'), orderBy('createdAt', 'desc'))
         const snap = await getDocs(q)
         setListings(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       } catch { /* empty or index building */ }
       finally { setFetchLoading(false) }
     }
-    fetch()
+    fetchAll()
   }, [user])
 
   const handleMessage = async (listing) => {
@@ -140,7 +145,9 @@ export default function MarketplacePage() {
     router.push(`/messages/${ref.id}`)
   }
 
+  const userDomain = getDomain(user?.email)
   let filtered = listings.filter(l => {
+    if (getDomain(l.sellerEmail) !== userDomain) return false
     if (activeTab !== 'All' && l.category !== activeTab) return false
     if (search && !l.title?.toLowerCase().includes(search.toLowerCase())) return false
     if (condition && l.condition !== condition) return false
@@ -160,7 +167,7 @@ export default function MarketplacePage() {
     )
   }
 
-  const university = getUniversity(user.email)
+  const university = userUniversity ?? getUniversity(user.email)
 
   return (
     <div className="min-h-screen bg-gray-50">

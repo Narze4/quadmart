@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { collection, getDocs, orderBy, query } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore'
 import { getUniversity, getUsername, getDomain } from '@/lib/utils'
 import Navbar from '@/components/Navbar'
 
@@ -82,6 +82,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const [listings, setListings] = useState([])
   const [fetchLoading, setFetchLoading] = useState(true)
+  const [userUniversity, setUserUniversity] = useState(null)
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
@@ -89,15 +90,19 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return
-    const fetch = async () => {
+    const fetchAll = async () => {
       try {
+        // Fetch user profile for university
+        const profileSnap = await getDoc(doc(db, 'users', user.uid))
+        if (profileSnap.exists()) setUserUniversity(profileSnap.data().university)
+
         const q = query(collection(db, 'listings'), orderBy('createdAt', 'desc'))
         const snap = await getDocs(q)
         setListings(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       } catch { /* empty collection or index building */ }
       finally { setFetchLoading(false) }
     }
-    fetch()
+    fetchAll()
   }, [user])
 
   if (loading || !user) {
@@ -108,7 +113,7 @@ export default function DashboardPage() {
     )
   }
 
-  const university = getUniversity(user.email)
+  const university = userUniversity ?? getUniversity(user.email)
   const username = getUsername(user)
   const userDomain = getDomain(user.email)
   const featured = listings.filter(l => getDomain(l.sellerEmail) === userDomain).slice(0, 6)
