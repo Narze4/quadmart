@@ -19,14 +19,26 @@ There is no test suite configured.
 
 ## Architecture
 
-This is a Next.js App Router project using JavaScript (not TypeScript). The `app/` directory is the entire application:
+Next.js App Router project in JavaScript (not TypeScript). All pages are Client Components (`'use client'`) because they depend on Firebase Auth state. The `app/` directory:
 
-- `app/layout.js` — root layout; sets up Geist font variables and the `<html>`/`<body>` shell
-- `app/page.js` — home route (`/`)
-- `app/globals.css` — Tailwind v4 import and CSS custom properties for `--background`/`--foreground` theming
+- `app/layout.js` — root layout; wraps the entire app in `<AuthProvider>`
+- `app/page.js` — public landing page (server component — no auth needed)
+- `app/login/page.js` — login form; redirects to `/marketplace` on success
+- `app/signup/page.js` — signup form; enforces `.edu` email; redirects to `/marketplace`
+- `app/marketplace/page.js` — protected listing grid with filter tabs, search, and price range; "Message Seller" button on each card creates/finds a conversation and navigates to the thread
+- `app/sell/page.js` — protected form that writes to Firestore `listings` collection
+- `app/messages/page.js` — protected inbox; real-time list of conversations via `onSnapshot`
+- `app/messages/[id]/page.js` — protected chat thread; real-time messages via `onSnapshot` on the `messages` subcollection; use `useParams()` from `next/navigation` to read the conversation ID
 
-**Styling:** Tailwind CSS v4 (configured via `postcss.config.mjs` with `@tailwindcss/postcss`). Tailwind v4 differs significantly from v3 — theme tokens are defined with `@theme inline` in CSS, not `tailwind.config.js`.
+**Auth:** `lib/auth-context.js` exports `AuthProvider` and `useAuth`. All protected pages redirect to `/login` via a `useEffect` guard on `{ user, loading }` from `useAuth`. Show a spinner while `loading` is true.
 
-**Backend/data:** Firebase 12 is installed as a dependency but not yet wired up. Check `node_modules/next/dist/docs/` for the current patterns for Firebase integration with this Next.js version before adding data access code.
+**Firebase:** `lib/firebase.js` exports `db` (Firestore) and `auth` (Auth), initialized with a `getApps()` guard to prevent duplicate initialization on hot reload. Credentials come from `NEXT_PUBLIC_FIREBASE_*` env vars (`.env.local` locally, Vercel environment variables in production).
 
-**Fonts:** Geist Sans and Geist Mono loaded via `next/font/google` and exposed as CSS variables (`--font-geist-sans`, `--font-geist-mono`).
+**Firestore schema:**
+- `listings` — `{ title, description, price, category, condition, sellerEmail, createdAt }`
+- `conversations` — `{ participants: [email, email], listingId, listingTitle, lastMessage, lastMessageAt, createdAt }`
+- `conversations/{id}/messages` — `{ text, senderEmail, createdAt }`
+
+**Styling:** Tailwind CSS v4 (`@tailwindcss/postcss`). Brand color is `#1a472a` (dark green) used via Tailwind arbitrary values `bg-[#1a472a]`. Tailwind v4 differs from v3 — theme tokens use `@theme inline` in CSS, not `tailwind.config.js`.
+
+**Deployment:** Vercel (auto-deploys on push to `main`). Firebase authorized domains must include the Vercel deployment URL for Auth to work.
