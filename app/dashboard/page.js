@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore'
@@ -22,7 +23,7 @@ function ListingCard({ listing, user }) {
   const sellerUsername = listing.sellerEmail?.split('@')[0] ?? 'unknown'
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+    <Link href={`/listing/${listing.id}`} className="block bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
       {/* Image */}
       <div className="relative h-48">
         {listing.images?.[0] ? (
@@ -43,7 +44,7 @@ function ListingCard({ listing, user }) {
           </div>
         )}
         <button
-          onClick={() => setLiked(l => !l)}
+          onClick={(e) => { e.preventDefault(); setLiked(l => !l) }}
           className="absolute top-3 left-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow hover:scale-110 transition-transform"
         >
           <svg className={`w-4 h-4 ${liked ? 'fill-red-500 text-red-500' : 'fill-none text-gray-400'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -72,7 +73,10 @@ function ListingCard({ listing, user }) {
             <span className="text-xs text-gray-500 truncate max-w-[100px]">{sellerUsername}</span>
           </div>
           {listing.sellerEmail !== user?.email && (
-            <button className="flex items-center gap-1 text-xs font-medium text-white bg-green-500 hover:bg-green-700 px-3 py-1.5 rounded-lg transition-colors">
+            <button
+              onClick={(e) => e.preventDefault()}
+              className="flex items-center gap-1 text-xs font-medium text-white bg-green-500 hover:bg-green-700 px-3 py-1.5 rounded-lg transition-colors"
+            >
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
                 <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
@@ -82,7 +86,7 @@ function ListingCard({ listing, user }) {
           )}
         </div>
       </div>
-    </div>
+    </Link>
   )
 }
 

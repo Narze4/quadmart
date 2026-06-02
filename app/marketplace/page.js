@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, where } from 'firebase/firestore'
@@ -36,7 +37,7 @@ function ListingCard({ listing, user, onMessage }) {
   const sellerUsername = listing.sellerEmail?.split('@')[0] ?? 'unknown'
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+    <Link href={`/listing/${listing.id}`} className="block bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
       <div className="relative h-52">
         {listing.images?.[0] ? (
           <Image
@@ -56,7 +57,7 @@ function ListingCard({ listing, user, onMessage }) {
           </div>
         )}
         <button
-          onClick={() => setLiked(l => !l)}
+          onClick={(e) => { e.preventDefault(); setLiked(l => !l) }}
           className="absolute top-3 left-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow hover:scale-110 transition-transform"
         >
           <svg className={`w-4 h-4 ${liked ? 'fill-red-500 text-red-500' : 'fill-none text-gray-400'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -85,7 +86,7 @@ function ListingCard({ listing, user, onMessage }) {
           </div>
           {listing.sellerEmail !== user?.email && (
             <button
-              onClick={() => onMessage(listing)}
+              onClick={(e) => { e.preventDefault(); onMessage(listing) }}
               className="flex items-center gap-1 text-xs font-medium text-white bg-green-500 hover:bg-green-700 px-3 py-1.5 rounded-lg transition-colors"
             >
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -97,7 +98,7 @@ function ListingCard({ listing, user, onMessage }) {
           )}
         </div>
       </div>
-    </div>
+    </Link>
   )
 }
 
