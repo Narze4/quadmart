@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { collection, getDocs, query, where } from 'firebase/firestore'
@@ -110,8 +111,14 @@ export default function MyListingsPage() {
           <div className="flex flex-col gap-3">
             {activeListings.map(listing => (
               <div key={listing.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4 shadow-sm">
-                <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center text-2xl shrink-0">
-                  {listing.category === 'Product' ? '📦' : listing.category === 'Service' ? '🔧' : '🏠'}
+                <div className="relative w-16 h-16 rounded-lg bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
+                  {listing.images?.[0] ? (
+                    <Image src={listing.images[0]} alt={listing.title} fill unoptimized className="object-cover" />
+                  ) : (
+                    <svg className="w-7 h-7 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-gray-900 truncate">{listing.title}</h3>
