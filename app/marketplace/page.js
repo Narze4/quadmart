@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { collection, getDocs, orderBy, query } from 'firebase/firestore'
+import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, where } from 'firebase/firestore'
 import Link from 'next/link'
 
 const TABS = ['All', 'Product', 'Service', 'Sublease']
@@ -59,6 +59,28 @@ export default function MarketplacePage() {
     router.push('/')
   }
 
+  const handleMessage = async (listing) => {
+    const q = query(
+      collection(db, 'conversations'),
+      where('participants', 'array-contains', user.email),
+      where('listingId', '==', listing.id)
+    )
+    const snapshot = await getDocs(q)
+    if (!snapshot.empty) {
+      router.push(`/messages/${snapshot.docs[0].id}`)
+      return
+    }
+    const docRef = await addDoc(collection(db, 'conversations'), {
+      participants: [user.email, listing.sellerEmail],
+      listingId: listing.id,
+      listingTitle: listing.title,
+      lastMessage: '',
+      lastMessageAt: serverTimestamp(),
+      createdAt: serverTimestamp(),
+    })
+    router.push(`/messages/${docRef.id}`)
+  }
+
   const filtered = listings.filter((listing) => {
     if (activeTab !== 'All' && listing.category !== activeTab) return false
     if (search && !listing.title?.toLowerCase().includes(search.toLowerCase())) return false
@@ -85,7 +107,7 @@ export default function MarketplacePage() {
           </Link>
           <div className="flex items-center gap-1 sm:gap-4">
             <Link
-              href="#"
+              href="/messages"
               className="px-3 py-1.5 text-sm text-green-100 hover:text-white transition-colors"
             >
               Messages
@@ -223,6 +245,15 @@ export default function MarketplacePage() {
                 </div>
 
                 <p className="text-xs text-gray-400 truncate">{listing.sellerEmail}</p>
+
+                {listing.sellerEmail !== user.email && (
+                  <button
+                    onClick={() => handleMessage(listing)}
+                    className="mt-1 w-full py-1.5 text-sm border border-[#1a472a] text-[#1a472a] rounded-lg hover:bg-[#1a472a] hover:text-white transition-colors"
+                  >
+                    Message Seller
+                  </button>
+                )}
               </div>
             ))}
           </div>
