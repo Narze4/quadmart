@@ -1,65 +1,131 @@
-import Image from "next/image";
+import Link from "next/link";
 
-export default function Home() {
+const UNIVERSITIES = [
+  { name: "Emory University", abbr: "EU", color: "#012169" },
+  { name: "University of Georgia", abbr: "UGA", color: "#BA0C2F" },
+  { name: "Georgia Tech", abbr: "GT", color: "#B3A369" },
+  { name: "SCAD", abbr: "SCAD", color: "#000000" },
+  { name: "Georgia State University", abbr: "GSU", color: "#0039A6" },
+  { name: "Kennesaw State University", abbr: "KSU", color: "#FDBB30" },
+];
+
+export default function LandingPage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.js file.
+    <div className="min-h-full flex flex-col bg-white">
+      {/* Navbar */}
+      <nav className="bg-[#1a472a] px-6 py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <span className="text-white text-2xl font-bold tracking-tight">
+            QuadMart
+          </span>
+          <div className="flex gap-3">
+            <Link
+              href="/login"
+              className="px-4 py-2 text-sm font-medium text-white border border-white rounded-lg hover:bg-white hover:text-[#1a472a] transition-colors"
+            >
+              Login
+            </Link>
+            <Link
+              href="/signup"
+              className="px-4 py-2 text-sm font-medium bg-white text-[#1a472a] rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              Sign Up
+            </Link>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <section className="bg-[#1a472a] text-white px-6 py-24">
+        <div className="max-w-6xl mx-auto text-center">
+          <h1 className="text-4xl sm:text-5xl font-bold leading-tight mb-6">
+            Buy &amp; sell on your campus.
+            <br />
+            <span className="text-green-300">Fast. Safe. Student-only.</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-lg text-green-100 max-w-xl mx-auto mb-10">
+            Verify your student status with your .edu email and connect with
+            buyers and sellers right on campus.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href="/signup"
+            className="inline-block px-8 py-3 bg-white text-[#1a472a] font-semibold rounded-full hover:bg-gray-100 transition-colors text-base"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Get Started
+          </Link>
         </div>
-      </main>
+      </section>
+
+      {/* University Cards */}
+      <section className="px-6 py-16 bg-gray-50">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl font-bold text-gray-900 text-center mb-10">
+            Available at your school
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {UNIVERSITIES.map((uni) => (
+              <div
+                key={uni.name}
+                className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center gap-3 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                  style={{ backgroundColor: uni.color }}
+                >
+                  {uni.abbr}
+                </div>
+                <span className="text-sm font-medium text-gray-800 text-center">
+                  {uni.name}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* What is QuadMart? */}
+      <section className="px-6 py-16 bg-white">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
+            What is QuadMart?
+          </h2>
+          <div className="grid sm:grid-cols-3 gap-8 text-center">
+            <div>
+              <div className="text-3xl mb-3">🎓</div>
+              <h3 className="font-semibold text-gray-900 mb-2">Student-Only</h3>
+              <p className="text-sm text-gray-600">
+                Every account is verified with a .edu email, so you only trade
+                with fellow students.
+              </p>
+            </div>
+            <div>
+              <div className="text-3xl mb-3">🛍️</div>
+              <h3 className="font-semibold text-gray-900 mb-2">
+                Buy, Sell &amp; Sublease
+              </h3>
+              <p className="text-sm text-gray-600">
+                Post products, offer services, or find a sublease — all in one
+                place.
+              </p>
+            </div>
+            <div>
+              <div className="text-3xl mb-3">🔒</div>
+              <h3 className="font-semibold text-gray-900 mb-2">
+                Safe &amp; Local
+              </h3>
+              <p className="text-sm text-gray-600">
+                Meet up on campus with people you already share a community
+                with.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="mt-auto bg-[#1a472a] text-green-200 text-center text-sm py-6">
+        © {new Date().getFullYear()} QuadMart · Student Marketplace
+      </footer>
     </div>
   );
 }
