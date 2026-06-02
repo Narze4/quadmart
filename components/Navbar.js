@@ -1,8 +1,11 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
+import { db } from '@/lib/firebase'
+import { collection, onSnapshot, query, where } from 'firebase/firestore'
 
 const CubeIcon = () => (
   <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -26,18 +29,22 @@ const BellIcon = () => (
   </svg>
 )
 
-const NAV_LINKS = [
-  { href: '/sell', label: 'Sell' },
-  { href: '/my-listings', label: 'My Listings' },
-  { href: '/my-purchases', label: 'My Purchases' },
-  { href: '/messages', label: 'Messages' },
-  { href: '/settings', label: 'Settings' },
-]
-
 export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
-  const { logout } = useAuth()
+  const { user, logout } = useAuth()
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    if (!user) return
+    const q = query(
+      collection(db, 'notifications'),
+      where('userId', '==', user.uid),
+      where('read', '==', false)
+    )
+    const unsub = onSnapshot(q, snap => setUnreadCount(snap.size))
+    return unsub
+  }, [user])
 
   const isActive = (href) =>
     pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
@@ -81,9 +88,14 @@ export default function Navbar() {
             <Link href="/cart" className={iconClass('/cart')} aria-label="Cart">
               <CartIcon />
             </Link>
-            <button className="p-2 rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors" aria-label="Notifications">
+            <Link href="/notifications" className={`relative ${iconClass('/notifications')}`} aria-label="Notifications">
               <BellIcon />
-            </button>
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </Link>
             <Link href="/my-purchases" className={linkClass('/my-purchases')}>
               <span className="hidden sm:inline">My Purchases</span>
               <span className="sm:hidden">Purchases</span>

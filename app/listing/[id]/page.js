@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, where } from 'firebase/firestore'
 import { getUniversity } from '@/lib/utils'
+import { createNotification } from '@/lib/notifications'
 import Navbar from '@/components/Navbar'
 
 const CONDITION_BADGE = {
@@ -30,6 +31,7 @@ export default function ListingDetailPage() {
   const [fetchLoading, setFetchLoading] = useState(true)
   const [selectedImage, setSelectedImage] = useState(0)
   const [messaging, setMessaging] = useState(false)
+  const [addedToCart, setAddedToCart] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
@@ -66,6 +68,23 @@ export default function ListingDetailPage() {
       router.push(`/messages/${ref.id}`)
     } finally {
       setMessaging(false)
+    }
+  }
+
+  const handleAddToCart = async () => {
+    if (!listing || addedToCart) return
+    setAddedToCart(true)
+    // Notify the seller
+    const sellerSnap = await getDocs(query(collection(db, 'users'), where('email', '==', listing.sellerEmail)))
+    if (!sellerSnap.empty) {
+      const sellerUid = sellerSnap.docs[0].id
+      await createNotification(
+        sellerUid,
+        'cart',
+        `${user.email.split('@')[0]} is interested in ${listing.title}`,
+        'They added your item to their cart',
+        `/listing/${listing.id}`
+      )
     }
   }
 
@@ -195,12 +214,16 @@ export default function ListingDetailPage() {
                   </svg>
                   {messaging ? 'Opening…' : 'Message Seller'}
                 </button>
-                <button className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border-2 border-green-500 text-green-600 font-semibold rounded-xl hover:bg-green-50 transition-colors">
+                <button
+                  onClick={handleAddToCart}
+                  disabled={addedToCart}
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border-2 border-green-500 text-green-600 font-semibold rounded-xl hover:bg-green-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
                     <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
                   </svg>
-                  Add to Cart
+                  {addedToCart ? 'Added ✓' : 'Add to Cart'}
                 </button>
               </div>
             )}

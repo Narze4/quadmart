@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { addDoc, collection, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore'
+import { createNotification } from '@/lib/notifications'
 import Navbar from '@/components/Navbar'
 
 export default function ConversationPage() {
@@ -59,6 +60,21 @@ export default function ConversationPage() {
         lastMessageAt: serverTimestamp(),
       })
       setText('')
+
+      // Notify the recipient
+      if (otherParticipant) {
+        const recipientSnap = await getDocs(query(collection(db, 'users'), where('email', '==', otherParticipant)))
+        if (!recipientSnap.empty) {
+          const recipientUid = recipientSnap.docs[0].id
+          await createNotification(
+            recipientUid,
+            'message',
+            `New message from ${user.email.split('@')[0]}`,
+            trimmed.slice(0, 50),
+            `/messages/${id}`
+          )
+        }
+      }
     } finally {
       setSending(false)
     }
