@@ -7,6 +7,16 @@ const UNIVERSITIES = [
   { name: "SCAD", abbr: "SCAD", color: "#000000" },
   { name: "Georgia State University", abbr: "GSU", color: "#0039A6" },
   { name: "Kennesaw State University", abbr: "KSU", color: "#FDBB30" },
+  { name: "Spelman College", abbr: "SC", color: "#00356B" },
+  { name: "Morehouse College", abbr: "MC", color: "#8B0000" },
+  { name: "Georgia Southern University", abbr: "GSou", color: "#011E41" },
+  { name: "Mercer University", abbr: "MU", color: "#F26522" },
+  { name: "Agnes Scott College", abbr: "ASC", color: "#002868" },
+  { name: "University of West Georgia", abbr: "UWG", color: "#8B0000" },
+  { name: "Augusta University", abbr: "AU", color: "#003087" },
+  { name: "Valdosta State University", abbr: "VSU", color: "#1F3C88" },
+  { name: "Clayton State University", abbr: "CSU", color: "#003366" },
+  { name: "Columbus State University", abbr: "ColSU", color: "#002855" },
 ];
 
 export default function LandingPage() {
@@ -62,7 +72,7 @@ export default function LandingPage() {
           <h2 className="text-2xl font-bold text-gray-900 text-center mb-10">
             Available at your school
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {UNIVERSITIES.map((uni) => (
               <div
                 key={uni.name}
