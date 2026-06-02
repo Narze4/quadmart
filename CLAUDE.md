@@ -29,6 +29,7 @@ Next.js App Router project in JavaScript (not TypeScript). All pages are Client 
 - `app/sell/page.js` — protected form that writes to Firestore `listings` collection
 - `app/messages/page.js` — protected inbox; real-time list of conversations via `onSnapshot`
 - `app/messages/[id]/page.js` — protected chat thread; real-time messages via `onSnapshot` on the `messages` subcollection; use `useParams()` from `next/navigation` to read the conversation ID
+- `app/settings/page.js` — protected settings: update display name (`updateProfile`), change password with re-auth (`reauthenticateWithCredential` + `updatePassword`), delete account with password confirmation (`deleteUser`)
 
 **Auth:** `lib/auth-context.js` exports `AuthProvider` and `useAuth`. All protected pages redirect to `/login` via a `useEffect` guard on `{ user, loading }` from `useAuth`. Show a spinner while `loading` is true.
 
