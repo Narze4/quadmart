@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import Navbar from '@/components/Navbar'
 
+const TOTAL_STEPS = 6
 const CONDITIONS = ['New', 'Like New', 'Good', 'Fair']
 
 const CATEGORIES = [
@@ -46,8 +47,9 @@ export default function SellPage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [submitting, setSubmitting] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState('')
   const [error, setError] = useState('')
-  const [photoPreviews, setPhotoPreviews] = useState([])
+  const [photos, setPhotos] = useState([]) // [{ file: File, preview: string }]
   const [form, setForm] = useState({
     category: '',
     title: '',
@@ -64,8 +66,9 @@ export default function SellPage() {
 
   const canNext = () => {
     if (step === 1) return !!form.category
-    if (step === 2) return form.title.trim().length > 0
-    if (step === 4) return form.price !== '' && Number(form.price) >= 0
+    if (step === 2) return true // photos optional
+    if (step === 3) return form.title.trim().length > 0
+    if (step === 5) return form.price !== '' && Number(form.price) >= 0
     return true
   }
 
@@ -74,17 +77,47 @@ export default function SellPage() {
     else setStep(s => s - 1)
   }
 
+  const handlePhotoSelect = (e) => {
+    const newFiles = Array.from(e.target.files ?? [])
+    setPhotos(prev => {
+      const combined = [
+        ...prev,
+        ...newFiles.map(f => ({ file: f, preview: URL.createObjectURL(f) })),
+      ]
+      return combined.slice(0, 5)
+    })
+    e.target.value = ''
+  }
+
+  const removePhoto = (index) => {
+    setPhotos(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const uploadImages = async () => {
+    if (photos.length === 0) return []
+    setUploadProgress(`Uploading ${photos.length} photo${photos.length > 1 ? 's' : ''}…`)
+    const formData = new FormData()
+    photos.forEach(({ file }) => formData.append('images', file))
+    const res = await fetch('/api/upload', { method: 'POST', body: formData })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error ?? 'Upload failed')
+    setUploadProgress('')
+    return data.urls
+  }
+
   const handleNext = async () => {
-    if (step < 6) { setStep(s => s + 1); return }
+    if (step < TOTAL_STEPS) { setStep(s => s + 1); return }
     setError('')
     setSubmitting(true)
     try {
+      const images = await uploadImages()
       await addDoc(collection(db, 'listings'), {
         title: form.title.trim(),
         description: form.description.trim(),
         price: Number(form.price),
         category: form.category,
         condition: form.condition,
+        images,
         sellerEmail: user.email,
         createdAt: serverTimestamp(),
       })
@@ -93,13 +126,8 @@ export default function SellPage() {
       setError('Failed to post listing. Please try again.')
     } finally {
       setSubmitting(false)
+      setUploadProgress('')
     }
-  }
-
-  const handlePhotos = (e) => {
-    const files = Array.from(e.target.files ?? [])
-    const previews = files.map(f => URL.createObjectURL(f))
-    setPhotoPreviews(previews)
   }
 
   if (loading || !user) {
@@ -124,7 +152,7 @@ export default function SellPage() {
           </button>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Sell an item</h1>
-            <p className="text-sm text-gray-500">Step {step} of 6</p>
+            <p className="text-sm text-gray-500">Step {step} of {TOTAL_STEPS}</p>
           </div>
         </div>
 
@@ -132,12 +160,14 @@ export default function SellPage() {
         <div className="w-full bg-gray-200 rounded-full h-1.5 mb-8">
           <div
             className="bg-green-500 h-1.5 rounded-full transition-all duration-300"
-            style={{ width: `${(step / 6) * 100}%` }}
+            style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
           />
         </div>
 
         {/* Step content */}
         <div className="mb-8">
+
+          {/* Step 1: Category */}
           {step === 1 && (
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-6">What are you listing?</h2>
@@ -163,7 +193,76 @@ export default function SellPage() {
             </div>
           )}
 
+          {/* Step 2: Photos */}
           {step === 2 && (
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Add photos</h2>
+              <p className="text-sm text-gray-500 mb-6">
+                Listings with photos get more attention. Up to 5 images. (Optional)
+              </p>
+
+              {photos.length < 5 && (
+                <label
+                  htmlFor="photo-upload"
+                  className="flex flex-col items-center justify-center w-full h-52 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-green-400 hover:bg-green-50 transition-colors"
+                >
+                  <svg className="w-12 h-12 text-gray-300 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                  <p className="text-sm font-medium text-gray-500">Upload photos</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {photos.length === 0 ? 'PNG, JPG up to 10MB each' : `${photos.length}/5 added — click to add more`}
+                  </p>
+                  <input
+                    id="photo-upload"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handlePhotoSelect}
+                  />
+                </label>
+              )}
+
+              {photos.length > 0 && (
+                <div className={`grid grid-cols-2 sm:grid-cols-3 gap-3 ${photos.length < 5 ? 'mt-4' : ''}`}>
+                  {photos.map((photo, i) => (
+                    <div key={i} className="relative group">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photo.preview}
+                        alt=""
+                        className="w-full h-32 object-cover rounded-xl border border-gray-200"
+                      />
+                      <button
+                        onClick={() => removePhoto(i)}
+                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gray-900/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-900"
+                      >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                  {/* Add more slot when grid has room */}
+                  {photos.length < 5 && (
+                    <label
+                      htmlFor="photo-upload"
+                      className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-green-400 hover:bg-green-50 transition-colors"
+                    >
+                      <svg className="w-6 h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                    </label>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 3: Title */}
+          {step === 3 && (
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-2">What&apos;s the title?</h2>
               <p className="text-sm text-gray-500 mb-6">Give your listing a clear, descriptive name.</p>
@@ -178,7 +277,8 @@ export default function SellPage() {
             </div>
           )}
 
-          {step === 3 && (
+          {/* Step 4: Description */}
+          {step === 4 && (
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-2">Add a description</h2>
               <p className="text-sm text-gray-500 mb-6">Tell buyers more about what you&apos;re offering.</p>
@@ -193,7 +293,8 @@ export default function SellPage() {
             </div>
           )}
 
-          {step === 4 && (
+          {/* Step 5: Price */}
+          {step === 5 && (
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-2">Set your price</h2>
               <p className="text-sm text-gray-500 mb-6">Enter 0 for free items.</p>
@@ -213,7 +314,8 @@ export default function SellPage() {
             </div>
           )}
 
-          {step === 5 && (
+          {/* Step 6: Condition */}
+          {step === 6 && (
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-2">What&apos;s the condition?</h2>
               <p className="text-sm text-gray-500 mb-6">Be honest — buyers appreciate accurate descriptions.</p>
@@ -232,35 +334,8 @@ export default function SellPage() {
                   </button>
                 ))}
               </div>
-            </div>
-          )}
 
-          {step === 6 && (
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Add photos</h2>
-              <p className="text-sm text-gray-500 mb-6">Listings with photos get more attention. (Optional)</p>
-              <label
-                htmlFor="photos"
-                className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-green-400 hover:bg-green-50 transition-colors"
-              >
-                <svg className="w-10 h-10 text-gray-300 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
-                  <polyline points="21 15 16 10 5 21"/>
-                </svg>
-                <p className="text-sm font-medium text-gray-500">Click to upload photos</p>
-                <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 10MB each</p>
-                <input id="photos" type="file" accept="image/*" multiple className="hidden" onChange={handlePhotos} />
-              </label>
-
-              {photoPreviews.length > 0 && (
-                <div className="grid grid-cols-3 gap-2 mt-4">
-                  {photoPreviews.map((url, i) => (
-                    <img key={i} src={url} alt="" className="w-full h-24 object-cover rounded-lg border border-gray-200" />
-                  ))}
-                </div>
-              )}
-
-              {error && <p className="text-sm text-red-600 mt-4">{error}</p>}
+              {error && <p className="text-sm text-red-600 mt-6">{error}</p>}
             </div>
           )}
         </div>
@@ -270,9 +345,13 @@ export default function SellPage() {
           <button
             onClick={handleNext}
             disabled={!canNext() || submitting}
-            className="px-8 py-3 bg-green-500 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-8 py-3 bg-green-500 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed min-w-[140px]"
           >
-            {step === 6 ? (submitting ? 'Posting…' : 'Post Listing') : 'Next →'}
+            {step === TOTAL_STEPS
+              ? submitting
+                ? (uploadProgress || 'Posting…')
+                : 'Post Listing'
+              : 'Next →'}
           </button>
         </div>
       </main>

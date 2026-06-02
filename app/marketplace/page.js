@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, where } from 'firebase/firestore'
@@ -30,22 +31,30 @@ const CONDITION_BADGE = {
   Fair: 'bg-orange-100 text-orange-700',
 }
 
-const CATEGORY_BG = {
-  Product: 'from-slate-100 to-slate-200',
-  Service: 'from-sky-100 to-sky-200',
-  Sublease: 'from-emerald-100 to-emerald-200',
-}
-
 function ListingCard({ listing, user, onMessage }) {
   const [liked, setLiked] = useState(false)
   const sellerUsername = listing.sellerEmail?.split('@')[0] ?? 'unknown'
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-      <div className={`relative h-52 bg-gradient-to-br ${CATEGORY_BG[listing.category] ?? 'from-gray-100 to-gray-200'} flex items-center justify-center`}>
-        <span className="text-5xl text-gray-300">
-          {listing.category === 'Product' ? '📦' : listing.category === 'Service' ? '🔧' : '🏠'}
-        </span>
+      <div className="relative h-52">
+        {listing.images?.[0] ? (
+          <Image
+            src={listing.images[0]}
+            alt={listing.title}
+            fill
+            unoptimized
+            className="object-cover"
+          />
+        ) : (
+          <div className="w-full h-52 bg-gray-100 flex items-center justify-center">
+            <svg className="w-10 h-10 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+          </div>
+        )}
         <button
           onClick={() => setLiked(l => !l)}
           className="absolute top-3 left-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow hover:scale-110 transition-transform"
