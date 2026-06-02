@@ -79,12 +79,17 @@ export default function SellPage() {
           <Link href="/marketplace" className="text-white text-xl font-bold tracking-tight">
             QuadMart
           </Link>
-          <Link
-            href="/marketplace"
-            className="text-sm text-green-100 hover:text-white transition-colors"
-          >
-            ← Back to marketplace
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/messages" className="px-3 py-1.5 text-sm text-green-100 hover:text-white transition-colors">
+              Messages
+            </Link>
+            <Link href="/settings" className="px-3 py-1.5 text-sm text-green-100 hover:text-white transition-colors">
+              Settings
+            </Link>
+            <Link href="/marketplace" className="text-sm text-green-100 hover:text-white transition-colors">
+              ← Marketplace
+            </Link>
+          </div>
         </div>
       </nav>
 

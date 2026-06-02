@@ -118,6 +118,12 @@ export default function MarketplacePage() {
             >
               Sell
             </Link>
+            <Link
+              href="/settings"
+              className="px-3 py-1.5 text-sm text-green-100 hover:text-white transition-colors"
+            >
+              Settings
+            </Link>
             <button
               onClick={handleLogout}
               className="px-3 py-1.5 text-sm text-green-100 hover:text-white transition-colors"
