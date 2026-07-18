@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import Navbar from '@/components/Navbar'
+import Skeleton from '@/components/Skeleton'
 
 const TABS = ['Active', 'Reserved', 'Sold']
 
@@ -57,7 +58,7 @@ export default function MyListingsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -67,14 +68,14 @@ export default function MyListingsPage() {
             <h1 className="text-xl font-bold text-gray-900">My Listings</h1>
           </div>
           <div className="flex items-center gap-3">
-            <select className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white text-gray-600 focus:outline-none">
+            <select className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white text-gray-600 focus:outline-none">
               <option>Last 7 days</option>
               <option>Last 30 days</option>
               <option>All time</option>
             </select>
             <Link
               href="/sell"
-              className="flex items-center gap-1.5 px-4 py-2 bg-green-500 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-4 py-2 bg-green-500 hover:bg-green-700 text-white text-sm font-semibold rounded-xl transition-all duration-200 active:scale-95"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               New Listing
@@ -104,14 +105,22 @@ export default function MyListingsPage() {
 
         {/* Content */}
         {fetchLoading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+          <div className="flex flex-col gap-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4 shadow-sm">
+                <Skeleton className="w-16 h-16 shrink-0" />
+                <div className="flex-1 flex flex-col gap-2">
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-1/4" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : activeTab === 'Active' && activeListings.length > 0 ? (
           <div className="flex flex-col gap-3">
             {activeListings.map(listing => (
-              <div key={listing.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4 shadow-sm">
-                <div className="relative w-16 h-16 rounded-lg bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
+              <div key={listing.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-all duration-200">
+                <div className="relative w-16 h-16 rounded-xl bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
                   {listing.images?.[0] ? (
                     <Image src={listing.images[0]} alt={listing.title} fill unoptimized className="object-cover" />
                   ) : (
@@ -134,14 +143,16 @@ export default function MyListingsPage() {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <svg className="w-12 h-12 text-gray-300 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-            </svg>
+            <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mb-4">
+              <svg className="w-9 h-9 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+            </div>
             <p className="text-base font-semibold text-gray-700 mb-1">No listings yet</p>
             <p className="text-sm text-gray-400 mb-5">Create your first listing to start selling</p>
             <Link
               href="/sell"
-              className="px-5 py-2.5 bg-green-500 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
+              className="px-5 py-2.5 bg-green-500 hover:bg-green-700 text-white text-sm font-semibold rounded-xl transition-all duration-200 active:scale-95"
             >
               Create Listing
             </Link>

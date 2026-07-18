@@ -17,7 +17,7 @@ import Navbar from '@/components/Navbar'
 
 function Section({ title, children }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 p-6">
       <h2 className="text-base font-semibold text-gray-900 mb-5">{title}</h2>
       {children}
     </div>
@@ -125,7 +125,7 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-5">
+      <main className="max-w-xl mx-auto px-4 sm:px-6 py-12 flex flex-col gap-5">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">Settings</h1>
           <Link
@@ -158,7 +158,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={nameSaving}
-              className="self-start px-5 py-2 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-60"
+              className="self-start px-5 py-2 bg-green-500 text-white text-sm font-medium rounded-xl hover:bg-green-700 transition-all duration-200 active:scale-95 disabled:opacity-60"
             >
               {nameSaving ? 'Saving…' : 'Save Name'}
             </button>
@@ -194,7 +194,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={pwSaving}
-              className="self-start px-5 py-2 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-60"
+              className="self-start px-5 py-2 bg-green-500 text-white text-sm font-medium rounded-xl hover:bg-green-700 transition-all duration-200 active:scale-95 disabled:opacity-60"
             >
               {pwSaving ? 'Updating…' : 'Update Password'}
             </button>
@@ -211,7 +211,7 @@ export default function SettingsPage() {
               </div>
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="px-4 py-2 text-sm font-medium text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-red-600 border border-red-300 rounded-xl hover:bg-red-50 transition-all duration-200 active:scale-95"
               >
                 Delete
               </button>
@@ -234,14 +234,14 @@ export default function SettingsPage() {
                 <button
                   type="submit"
                   disabled={deleting}
-                  className="px-5 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-60"
+                  className="px-5 py-2 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 transition-all duration-200 active:scale-95 disabled:opacity-60"
                 >
                   {deleting ? 'Deleting…' : 'Confirm Delete'}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowDeleteConfirm(false); setDeletePassword(''); setDeleteError('') }}
-                  className="px-5 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-5 py-2 text-sm text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 active:scale-95"
                 >
                   Cancel
                 </button>

@@ -94,7 +94,7 @@ export default function ConversationPage() {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar />
 
-      <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full px-4 sm:px-6 py-6 gap-4">
+      <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full px-4 sm:px-6 py-8 gap-4">
         <div className="flex items-center gap-3">
           <Link href="/messages" className="text-sm text-green-600 hover:underline">← Back</Link>
           <div>
@@ -105,7 +105,7 @@ export default function ConversationPage() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-[400px] max-h-[60vh] bg-white rounded-xl border border-gray-200 p-4">
+        <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-[400px] max-h-[60vh] bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
           {messages.length === 0 && (
             <p className="text-center text-sm text-gray-400 my-auto">No messages yet. Say hello!</p>
           )}
@@ -135,7 +135,7 @@ export default function ConversationPage() {
           <button
             type="submit"
             disabled={!text.trim() || sending}
-            className="px-5 py-2.5 bg-green-500 text-white text-sm font-medium rounded-full hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-5 py-2.5 bg-green-500 text-white text-sm font-medium rounded-full hover:bg-green-700 transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Send
           </button>

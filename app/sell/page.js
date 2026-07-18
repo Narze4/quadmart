@@ -143,7 +143,7 @@ export default function SellPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-12">
         {/* Step header */}
         <div className="flex items-center gap-4 mb-8">
           <button onClick={handleBack} className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-600">
@@ -158,15 +158,16 @@ export default function SellPage() {
         </div>
 
         {/* Progress bar */}
-        <div className="w-full bg-gray-200 rounded-full h-1.5 mb-8">
+        <div className="w-full bg-gray-200 rounded-full h-2 mb-8">
           <div
-            className="bg-green-500 h-1.5 rounded-full transition-all duration-300"
+            className="bg-green-500 h-2 rounded-full transition-all duration-300"
             style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
           />
         </div>
 
         {/* Step content */}
-        <div className="mb-8">
+        <div className="mb-8" key={step}>
+          <div className="animate-fade-in">
 
           {/* Step 1: Category */}
           {step === 1 && (
@@ -177,9 +178,9 @@ export default function SellPage() {
                   <button
                     key={cat.value}
                     onClick={() => set('category', cat.value)}
-                    className={`p-6 rounded-xl border-2 text-left transition-all ${
+                    className={`p-6 rounded-2xl border-2 text-left transition-all duration-200 ${
                       form.category === cat.value
-                        ? 'border-green-500 bg-green-50'
+                        ? 'ring-2 ring-green-500 ring-offset-2 border-transparent bg-green-50'
                         : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}
                   >
@@ -325,9 +326,9 @@ export default function SellPage() {
                   <button
                     key={cond}
                     onClick={() => set('condition', cond)}
-                    className={`p-4 rounded-xl border-2 text-left font-medium text-sm transition-all ${
+                    className={`p-4 rounded-xl border-2 text-left font-medium text-sm transition-all duration-200 ${
                       form.condition === cond
-                        ? 'border-green-500 bg-green-50 text-green-700'
+                        ? 'ring-2 ring-green-500 ring-offset-2 border-transparent bg-green-50 text-green-700'
                         : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                     }`}
                   >
@@ -339,6 +340,7 @@ export default function SellPage() {
               {error && <p className="text-sm text-red-600 mt-6">{error}</p>}
             </div>
           )}
+          </div>
         </div>
 
         {/* Next / Post button */}
@@ -346,7 +348,7 @@ export default function SellPage() {
           <button
             onClick={handleNext}
             disabled={!canNext() || submitting}
-            className="px-8 py-3 bg-green-500 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed min-w-[140px]"
+            className="px-8 py-3 bg-green-500 hover:bg-green-700 text-white font-semibold rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed min-w-[140px]"
           >
             {step === TOTAL_STEPS
               ? submitting

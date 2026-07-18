@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { collection, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore'
 import Navbar from '@/components/Navbar'
+import Skeleton from '@/components/Skeleton'
 
 const CONDITION_BADGE = {
   New: 'bg-green-100 text-green-700',
@@ -55,7 +56,7 @@ export default function ProfilePage() {
     load()
   }, [uid, router])
 
-  if (loading || !user || fetchLoading) {
+  if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
@@ -63,7 +64,13 @@ export default function ProfilePage() {
     )
   }
 
-  if (!profile) return null
+  if (!profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   const username = profile.displayName || profile.email?.split('@')[0] || 'Unknown'
   const initial = username[0]?.toUpperCase()
@@ -72,10 +79,10 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
         {/* Profile header */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 mb-6">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8 mb-6">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
             {/* Avatar */}
             <div className="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center text-white text-3xl font-bold shrink-0">
@@ -99,7 +106,7 @@ export default function ProfilePage() {
               {isOwnProfile && (
                 <Link
                   href="/settings"
-                  className="inline-block mt-3 px-4 py-1.5 text-sm font-medium border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="inline-block mt-3 px-4 py-1.5 text-sm font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 transition-all duration-200 active:scale-95"
                 >
                   Edit Profile
                 </Link>
@@ -143,9 +150,26 @@ export default function ProfilePage() {
 
         {/* Listings tab */}
         {activeTab === 'Listings' && (
-          listings.length === 0 ? (
-            <div className="text-center py-20 text-gray-400">
-              <p className="text-base font-medium">No listings yet</p>
+          fetchLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+                  <Skeleton className="h-44 rounded-none" />
+                  <div className="p-3 flex flex-col gap-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-1/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : listings.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mb-4">
+                <svg className="w-9 h-9 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                </svg>
+              </div>
+              <p className="text-base font-semibold text-gray-700">No listings yet</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -153,11 +177,11 @@ export default function ProfilePage() {
                 <Link
                   key={listing.id}
                   href={`/listing/${listing.id}`}
-                  className="block bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                  className="group block bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-all duration-200"
                 >
-                  <div className="relative h-44">
+                  <div className="relative h-44 overflow-hidden">
                     {listing.images?.[0] ? (
-                      <Image src={listing.images[0]} alt={listing.title} fill unoptimized className="object-cover" />
+                      <Image src={listing.images[0]} alt={listing.title} fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-300" />
                     ) : (
                       <div className="w-full h-full bg-gray-100 flex items-center justify-center">
                         <svg className="w-8 h-8 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

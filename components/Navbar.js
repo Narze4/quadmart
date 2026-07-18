@@ -34,6 +34,7 @@ export default function Navbar() {
   const router = useRouter()
   const { user, logout } = useAuth()
   const [unreadCount, setUnreadCount] = useState(0)
+  const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -46,6 +47,13 @@ export default function Navbar() {
     return unsub
   }, [user])
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   const isActive = (href) =>
     pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
 
@@ -55,23 +63,29 @@ export default function Navbar() {
   }
 
   const linkClass = (href) =>
-    `px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+    `relative px-3 py-1.5 text-sm font-medium transition-colors duration-200 ${
       isActive(href)
-        ? 'bg-gray-100 text-gray-900'
-        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+        ? 'text-green-600 font-semibold'
+        : 'text-gray-600 hover:text-gray-900'
     }`
 
   const iconClass = (href) =>
-    `p-2 rounded-full transition-colors ${
+    `relative p-2 rounded-full transition-colors duration-200 ${
       isActive(href)
-        ? 'bg-gray-100 text-gray-900'
-        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+        ? 'bg-green-50 text-green-600'
+        : 'text-gray-500 hover:text-green-600 hover:bg-green-50'
     }`
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <nav
+      className={`sticky top-0 z-50 border-b transition-all duration-200 ${
+        scrolled
+          ? 'bg-white/80 backdrop-blur-md border-gray-200/80 shadow-sm'
+          : 'bg-white border-gray-200'
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center gap-2 text-green-500 hover:text-green-600 transition-colors">
             <CubeIcon />
@@ -80,15 +94,19 @@ export default function Navbar() {
 
           {/* Nav */}
           <div className="flex items-center gap-0.5 sm:gap-1">
-            <Link href="/sell" className={linkClass('/sell')}>Sell</Link>
+            <Link href="/sell" className={linkClass('/sell')}>
+              Sell
+              {isActive('/sell') && <span className="absolute -bottom-1 left-3 right-3 h-0.5 bg-green-500 rounded-full" />}
+            </Link>
             <Link href="/my-listings" className={linkClass('/my-listings')}>
               <span className="hidden sm:inline">My Listings</span>
               <span className="sm:hidden">Listings</span>
+              {isActive('/my-listings') && <span className="absolute -bottom-1 left-3 right-3 h-0.5 bg-green-500 rounded-full" />}
             </Link>
             <Link href="/cart" className={iconClass('/cart')} aria-label="Cart">
               <CartIcon />
             </Link>
-            <Link href="/notifications" className={`relative ${iconClass('/notifications')}`} aria-label="Notifications">
+            <Link href="/notifications" className={iconClass('/notifications')} aria-label="Notifications">
               <BellIcon />
               {unreadCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
@@ -99,9 +117,16 @@ export default function Navbar() {
             <Link href="/my-purchases" className={linkClass('/my-purchases')}>
               <span className="hidden sm:inline">My Purchases</span>
               <span className="sm:hidden">Purchases</span>
+              {isActive('/my-purchases') && <span className="absolute -bottom-1 left-3 right-3 h-0.5 bg-green-500 rounded-full" />}
             </Link>
-            <Link href="/messages" className={linkClass('/messages')}>Messages</Link>
-            <Link href="/settings" className={linkClass('/settings')}>Settings</Link>
+            <Link href="/messages" className={linkClass('/messages')}>
+              Messages
+              {isActive('/messages') && <span className="absolute -bottom-1 left-3 right-3 h-0.5 bg-green-500 rounded-full" />}
+            </Link>
+            <Link href="/settings" className={linkClass('/settings')}>
+              Settings
+              {isActive('/settings') && <span className="absolute -bottom-1 left-3 right-3 h-0.5 bg-green-500 rounded-full" />}
+            </Link>
           </div>
         </div>
       </div>

@@ -109,9 +109,9 @@ export default function SignUpPage() {
                   <button
                     key={uni.name}
                     onClick={() => setSelectedUniversity(uni)}
-                    className={`relative text-left p-5 rounded-xl border-2 transition-all ${
+                    className={`relative text-left p-5 rounded-2xl border-2 transition-all duration-200 ${
                       selected
-                        ? 'border-green-500 bg-green-50'
+                        ? 'ring-2 ring-green-500 ring-offset-2 border-transparent bg-green-50'
                         : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}
                   >
@@ -134,7 +134,7 @@ export default function SignUpPage() {
               <button
                 onClick={handleNext}
                 disabled={!selectedUniversity}
-                className="px-8 py-3 bg-green-500 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-8 py-3 bg-green-500 hover:bg-green-700 text-white font-semibold rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Next →
               </button>
@@ -192,7 +192,7 @@ export default function SignUpPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-700 transition-all duration-200 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? 'Creating account…' : 'Create Account'}
               </button>

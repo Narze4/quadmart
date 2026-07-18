@@ -10,6 +10,7 @@ import { db } from '@/lib/firebase'
 import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore'
 import { getUniversity, getUsername, getDomain } from '@/lib/utils'
 import Navbar from '@/components/Navbar'
+import Skeleton from '@/components/Skeleton'
 
 const CONDITION_BADGE = {
   New: 'bg-green-100 text-green-700',
@@ -23,16 +24,16 @@ function ListingCard({ listing, user }) {
   const sellerUsername = listing.sellerEmail?.split('@')[0] ?? 'unknown'
 
   return (
-    <Link href={`/listing/${listing.id}`} className="block bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+    <Link href={`/listing/${listing.id}`} className="group block bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
       {/* Image */}
-      <div className="relative h-48">
+      <div className="relative h-48 overflow-hidden">
         {listing.images?.[0] ? (
           <Image
             src={listing.images[0]}
             alt={listing.title}
             fill
             unoptimized
-            className="object-cover"
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
           <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
@@ -75,7 +76,7 @@ function ListingCard({ listing, user }) {
           {listing.sellerEmail !== user?.email && (
             <button
               onClick={(e) => e.preventDefault()}
-              className="flex items-center gap-1 text-xs font-medium text-white bg-green-500 hover:bg-green-700 px-3 py-1.5 rounded-lg transition-colors"
+              className="flex items-center gap-1 text-xs font-medium text-white bg-green-500 hover:bg-green-700 px-3 py-1.5 rounded-xl transition-all duration-200 active:scale-95"
             >
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
@@ -139,36 +140,48 @@ export default function DashboardPage() {
       {/* Hero */}
       <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-0 max-w-7xl mx-auto">
         <div
-          className="rounded-2xl p-8 sm:p-12 text-white"
+          className="relative overflow-hidden rounded-2xl p-8 sm:p-12 text-white"
           style={{ background: 'linear-gradient(135deg, #2d8a5e 0%, #1a5c3a 100%)' }}
         >
-          <h1 className="text-2xl sm:text-4xl font-bold mb-2">Welcome back, {username} 👋</h1>
-          <p className="text-green-100 text-sm sm:text-base mb-6">
-            Here&apos;s what&apos;s trending at {university}
-          </p>
-          <Link
-            href="/marketplace"
-            className="inline-block px-6 py-2.5 border-2 border-white text-white text-sm font-semibold rounded-full hover:bg-white hover:text-green-700 transition-colors"
-          >
-            Go to Marketplace
-          </Link>
+          <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/10" aria-hidden="true" />
+          <div className="absolute -bottom-16 right-24 w-32 h-32 rounded-full bg-white/10" aria-hidden="true" />
+          <div className="relative">
+            <h1 className="text-2xl sm:text-4xl font-bold mb-2">Welcome back, {username} 👋</h1>
+            <p className="text-green-100 text-sm sm:text-base mb-6">
+              Here&apos;s what&apos;s trending at {university}
+            </p>
+            <Link
+              href="/marketplace"
+              className="inline-block px-6 py-2.5 border-2 border-white text-white text-sm font-semibold rounded-xl hover:bg-white hover:text-green-700 transition-all duration-200 active:scale-95"
+            >
+              Go to Marketplace
+            </Link>
+          </div>
         </div>
       </div>
 
       {/* Featured listings */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
           {showAll ? 'Recent Listings' : `Featured for ${university}`}
         </h2>
 
         {fetchLoading ? (
-          <div className="flex justify-center py-16">
-            <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+                <Skeleton className="h-48 rounded-none" />
+                <div className="p-4 flex flex-col gap-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/3" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : (showAll ? listings : featured).length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <p className="text-lg font-medium">No listings yet</p>
-            <Link href="/sell" className="inline-block mt-4 px-5 py-2 bg-green-500 text-white text-sm rounded-lg hover:bg-green-700 transition-colors">
+            <Link href="/sell" className="inline-block mt-4 px-5 py-2 bg-green-500 text-white text-sm rounded-xl hover:bg-green-700 transition-all duration-200 active:scale-95">
               Post the first one
             </Link>
           </div>

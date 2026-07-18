@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import Image from 'next/image'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
@@ -115,7 +116,7 @@ export default function ListingDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
         {/* Back */}
         <button
@@ -128,7 +129,7 @@ export default function ListingDetailPage() {
           Back
         </button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-start">
 
           {/* Image gallery */}
           <div>
@@ -158,8 +159,8 @@ export default function ListingDetailPage() {
                   <button
                     key={i}
                     onClick={() => setSelectedImage(i)}
-                    className={`relative w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${
-                      selectedImage === i ? 'border-green-500' : 'border-gray-200 hover:border-gray-300'
+                    className={`relative w-16 h-16 rounded-xl overflow-hidden transition-all duration-200 shrink-0 ${
+                      selectedImage === i ? 'ring-2 ring-green-500 ring-offset-2' : 'ring-1 ring-gray-200 hover:ring-gray-300'
                     }`}
                   >
                     <Image src={img} alt="" fill unoptimized className="object-cover" />
@@ -170,7 +171,7 @@ export default function ListingDetailPage() {
           </div>
 
           {/* Details */}
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-5 lg:sticky lg:top-24">
 
             {/* Badges */}
             <div className="flex gap-2 flex-wrap">
@@ -202,7 +203,7 @@ export default function ListingDetailPage() {
 
             {/* Seller card */}
             {sellerUid ? (
-              <Link href={`/profile/${sellerUid}`} className="flex items-center gap-3 border border-gray-200 rounded-xl p-4 bg-white hover:border-green-300 hover:bg-green-50 transition-all">
+              <Link href={`/profile/${sellerUid}`} className="flex items-center gap-3 border border-gray-100 rounded-2xl p-4 bg-white shadow-sm hover:shadow-md hover:border-green-300 hover:bg-green-50 transition-all duration-200">
                 <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
                   {sellerUsername[0]?.toUpperCase()}
                 </div>
@@ -215,7 +216,7 @@ export default function ListingDetailPage() {
                 </svg>
               </Link>
             ) : (
-              <div className="flex items-center gap-3 border border-gray-200 rounded-xl p-4 bg-white">
+              <div className="flex items-center gap-3 border border-gray-100 rounded-2xl p-4 bg-white shadow-sm">
                 <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
                   {sellerUsername[0]?.toUpperCase()}
                 </div>
@@ -228,13 +229,13 @@ export default function ListingDetailPage() {
 
             {/* Actions */}
             {!isOwnListing && (
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col gap-3">
                 <button
                   onClick={handleMessage}
                   disabled={messaging}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-green-500 hover:bg-green-700 text-white font-semibold text-base rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                   </svg>
                   {messaging ? 'Opening…' : 'Message Seller'}
@@ -242,7 +243,7 @@ export default function ListingDetailPage() {
                 <button
                   onClick={handleAddToCart}
                   disabled={addedToCart}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border-2 border-green-500 text-green-600 font-semibold rounded-xl hover:bg-green-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3 border-2 border-green-500 text-green-600 font-semibold rounded-xl hover:bg-green-50 transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>

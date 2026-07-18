@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { collection, doc, onSnapshot, orderBy, query, updateDoc, where, writeBatch } from 'firebase/firestore'
 import Navbar from '@/components/Navbar'
+import Skeleton from '@/components/Skeleton'
 
 function timeAgo(ts) {
   if (!ts) return ''
@@ -86,7 +87,7 @@ export default function NotificationsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-12">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Notifications</h1>
@@ -105,15 +106,25 @@ export default function NotificationsPage() {
         </div>
 
         {fetchLoading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-2xl border border-gray-100 px-4 py-4 flex items-start gap-4 bg-white">
+                <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+                <div className="flex-1 flex flex-col gap-2">
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <svg className="w-12 h-12 text-gray-300 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-            </svg>
+            <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mb-4">
+              <svg className="w-9 h-9 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+            </div>
             <p className="text-base font-semibold text-gray-700 mb-1">No notifications yet</p>
             <p className="text-sm text-gray-400">You&apos;ll see updates about your listings and messages here</p>
           </div>
@@ -123,9 +134,9 @@ export default function NotificationsPage() {
               <button
                 key={notif.id}
                 onClick={() => markRead(notif)}
-                className={`w-full text-left rounded-xl border px-4 py-4 flex items-start gap-4 transition-all hover:shadow-sm ${
+                className={`w-full text-left rounded-2xl border px-4 py-4 flex items-start gap-4 transition-all duration-200 hover:shadow-sm ${
                   notif.read
-                    ? 'bg-white border-gray-200'
+                    ? 'bg-white border-gray-100'
                     : 'bg-green-50 border-green-200 border-l-4 border-l-green-500'
                 }`}
               >
