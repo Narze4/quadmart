@@ -7,14 +7,16 @@ import Image from 'next/image'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { collection, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore'
-import Navbar from '@/components/Navbar'
+import AuthenticatedHeader from '@/components/AuthenticatedHeader'
+import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
+import Badge from '@/components/ui/Badge'
 
-const CONDITION_BADGE = {
-  New: 'bg-green-100 text-green-700',
-  'Like New': 'bg-blue-100 text-blue-700',
-  Good: 'bg-yellow-100 text-yellow-700',
-  Fair: 'bg-orange-100 text-orange-700',
+const CONDITION_TONE = {
+  New: 'green',
+  'Like New': 'blue',
+  Good: 'yellow',
+  Fair: 'orange',
 }
 
 function memberSince(ts) {
@@ -77,23 +79,23 @@ export default function ProfilePage() {
   const isOwnProfile = user.uid === uid
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="min-h-screen flex flex-col bg-bg">
+      <AuthenticatedHeader />
+      <main className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
 
         {/* Profile header */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8 mb-6">
+        <div className="bg-surface rounded-2xl border border-border shadow-sm p-6 sm:p-8 mb-6">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
             {/* Avatar */}
-            <div className="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center text-white text-3xl font-bold shrink-0">
+            <div className="w-20 h-20 rounded-full bg-primary-dark flex items-center justify-center text-white text-3xl font-bold shrink-0">
               {initial}
             </div>
 
             {/* Info */}
             <div className="flex-1 text-center sm:text-left">
-              <h1 className="text-2xl font-bold text-gray-900">{username}</h1>
+              <h1 className="text-2xl font-bold text-text-primary">{username}</h1>
               {profile.university && (
-                <div className="flex items-center justify-center sm:justify-start gap-1.5 mt-1 text-gray-500">
+                <div className="flex items-center justify-center sm:justify-start gap-1.5 mt-1 text-text-secondary">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
                     <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
@@ -101,12 +103,12 @@ export default function ProfilePage() {
                   <span className="text-sm">{profile.university}</span>
                 </div>
               )}
-              <p className="text-xs text-gray-400 mt-1">Member since {memberSince(profile.createdAt)}</p>
+              <p className="text-xs text-text-secondary mt-1">Member since {memberSince(profile.createdAt)}</p>
 
               {isOwnProfile && (
                 <Link
                   href="/settings"
-                  className="inline-block mt-3 px-4 py-1.5 text-sm font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 transition-all duration-200 active:scale-95"
+                  className="inline-block mt-3 px-4 py-1.5 text-sm font-medium border border-border text-text-secondary rounded-xl hover:bg-bg transition-all duration-200 active:scale-95"
                 >
                   Edit Profile
                 </Link>
@@ -116,31 +118,31 @@ export default function ProfilePage() {
             {/* Stats */}
             <div className="flex gap-6 sm:gap-8 shrink-0">
               <div className="text-center">
-                <p className="text-2xl font-bold text-green-500">{profile.sellerScore ?? 100}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Seller Score</p>
+                <p className="text-2xl font-bold text-primary-dark">{profile.sellerScore ?? 100}</p>
+                <p className="text-xs text-text-secondary mt-0.5">Seller Score</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold text-blue-500">{profile.buyerScore ?? 100}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Buyer Score</p>
+                <p className="text-xs text-text-secondary mt-0.5">Buyer Score</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-gray-700">{profile.transactions ?? 0}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Transactions</p>
+                <p className="text-2xl font-bold text-text-primary">{profile.transactions ?? 0}</p>
+                <p className="text-xs text-text-secondary mt-0.5">Transactions</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-0 border-b border-gray-200 mb-6">
+        <div className="flex gap-0 border-b border-border mb-6">
           {['Listings', 'Reviews'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab
-                  ? 'border-green-500 text-green-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-primary text-primary-dark'
+                  : 'border-transparent text-text-secondary hover:text-text-primary'
               }`}
             >
               {tab} {tab === 'Listings' && `(${listings.length})`}
@@ -153,7 +155,7 @@ export default function ProfilePage() {
           fetchLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+                <div key={i} className="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm">
                   <Skeleton className="h-44 rounded-none" />
                   <div className="p-3 flex flex-col gap-2">
                     <Skeleton className="h-4 w-3/4" />
@@ -164,12 +166,12 @@ export default function ProfilePage() {
             </div>
           ) : listings.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mb-4">
-                <svg className="w-9 h-9 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <svg className="w-9 h-9 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
                 </svg>
               </div>
-              <p className="text-base font-semibold text-gray-700">No listings yet</p>
+              <p className="text-base font-semibold text-text-primary">No listings yet</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -177,7 +179,7 @@ export default function ProfilePage() {
                 <Link
                   key={listing.id}
                   href={`/listing/${listing.id}`}
-                  className="group block bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-all duration-200"
+                  className="group block bg-surface rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-md transition-all duration-200"
                 >
                   <div className="relative h-44 overflow-hidden">
                     {listing.images?.[0] ? (
@@ -194,14 +196,12 @@ export default function ProfilePage() {
                   </div>
                   <div className="p-3">
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className="font-medium text-gray-900 text-sm leading-snug line-clamp-2">{listing.title}</h3>
+                      <h3 className="font-medium text-text-primary text-sm leading-snug line-clamp-2">{listing.title}</h3>
                       {listing.condition && (
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${CONDITION_BADGE[listing.condition] ?? 'bg-gray-100 text-gray-600'}`}>
-                          {listing.condition}
-                        </span>
+                        <Badge tone={CONDITION_TONE[listing.condition] ?? 'neutral'}>{listing.condition}</Badge>
                       )}
                     </div>
-                    <p className="text-sm font-bold text-green-500">${Number(listing.price).toFixed(2)}</p>
+                    <p className="text-sm font-bold text-primary-dark">${Number(listing.price).toFixed(2)}</p>
                   </div>
                 </Link>
               ))}
@@ -211,14 +211,15 @@ export default function ProfilePage() {
 
         {/* Reviews tab */}
         {activeTab === 'Reviews' && (
-          <div className="flex flex-col items-center justify-center py-20 text-center text-gray-400">
+          <div className="flex flex-col items-center justify-center py-20 text-center text-text-secondary">
             <svg className="w-10 h-10 mb-3 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
             </svg>
-            <p className="text-base font-medium text-gray-600">No reviews yet</p>
+            <p className="text-base font-medium text-text-secondary">No reviews yet</p>
           </div>
         )}
       </main>
+      <Footer />
     </div>
   )
 }

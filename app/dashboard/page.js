@@ -9,14 +9,16 @@ import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore'
 import { getUniversity, getUsername, getDomain } from '@/lib/utils'
-import Navbar from '@/components/Navbar'
+import AuthenticatedHeader from '@/components/AuthenticatedHeader'
+import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
+import Badge from '@/components/ui/Badge'
 
-const CONDITION_BADGE = {
-  New: 'bg-green-100 text-green-700',
-  'Like New': 'bg-blue-100 text-blue-700',
-  Good: 'bg-yellow-100 text-yellow-700',
-  Fair: 'bg-orange-100 text-orange-700',
+const CONDITION_TONE = {
+  New: 'green',
+  'Like New': 'blue',
+  Good: 'yellow',
+  Fair: 'orange',
 }
 
 function ListingCard({ listing, user }) {
@@ -24,7 +26,7 @@ function ListingCard({ listing, user }) {
   const sellerUsername = listing.sellerEmail?.split('@')[0] ?? 'unknown'
 
   return (
-    <Link href={`/listing/${listing.id}`} className="group block bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
+    <Link href={`/listing/${listing.id}`} className="group block bg-surface rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
       {/* Image */}
       <div className="relative h-48 overflow-hidden">
         {listing.images?.[0] ? (
@@ -57,26 +59,24 @@ function ListingCard({ listing, user }) {
       {/* Content */}
       <div className="p-4">
         <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="font-medium text-gray-900 text-sm leading-snug line-clamp-2">{listing.title}</h3>
+          <h3 className="font-medium text-text-primary text-sm leading-snug line-clamp-2">{listing.title}</h3>
           {listing.condition && (
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${CONDITION_BADGE[listing.condition] ?? 'bg-gray-100 text-gray-600'}`}>
-              {listing.condition}
-            </span>
+            <Badge tone={CONDITION_TONE[listing.condition] ?? 'neutral'}>{listing.condition}</Badge>
           )}
         </div>
-        <p className="text-base font-bold text-green-500 mb-3">${Number(listing.price).toFixed(2)}</p>
+        <p className="text-base font-bold text-primary-dark mb-3">${Number(listing.price).toFixed(2)}</p>
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">
+            <div className="w-6 h-6 rounded-full bg-primary-dark flex items-center justify-center text-white text-xs font-bold">
               {sellerUsername[0]?.toUpperCase()}
             </div>
-            <span className="text-xs text-gray-500 truncate max-w-[100px]">{sellerUsername}</span>
+            <span className="text-xs text-text-secondary truncate max-w-[100px]">{sellerUsername}</span>
           </div>
           {listing.sellerEmail !== user?.email && (
             <button
               onClick={(e) => e.preventDefault()}
-              className="flex items-center gap-1 text-xs font-medium text-white bg-green-500 hover:bg-green-700 px-3 py-1.5 rounded-xl transition-all duration-200 active:scale-95"
+              className="flex items-center gap-1 text-xs font-medium text-white bg-primary-dark hover:bg-primary-dark-hover px-3 py-1.5 rounded-xl transition-all duration-200 active:scale-95"
             >
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
@@ -134,11 +134,11 @@ export default function DashboardPage() {
   const showAll = featured.length === 0
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
+    <div className="min-h-screen flex flex-col bg-bg">
+      <AuthenticatedHeader />
 
       {/* Hero */}
-      <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-0 max-w-7xl mx-auto">
+      <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-0 max-w-7xl mx-auto w-full">
         <div
           className="relative overflow-hidden rounded-2xl p-8 sm:p-12 text-white"
           style={{ background: 'linear-gradient(135deg, #2d8a5e 0%, #1a5c3a 100%)' }}
@@ -152,7 +152,7 @@ export default function DashboardPage() {
             </p>
             <Link
               href="/marketplace"
-              className="inline-block px-6 py-2.5 border-2 border-white text-white text-sm font-semibold rounded-xl hover:bg-white hover:text-green-700 transition-all duration-200 active:scale-95"
+              className="inline-block px-6 py-2.5 border-2 border-white text-white text-sm font-semibold rounded-xl hover:bg-white hover:text-primary-dark transition-all duration-200 active:scale-95"
             >
               Go to Marketplace
             </Link>
@@ -161,15 +161,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Featured listings */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
+        <h2 className="text-xl font-semibold text-text-primary mb-4">
           {showAll ? 'Recent Listings' : `Featured for ${university}`}
         </h2>
 
         {fetchLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+              <div key={i} className="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm">
                 <Skeleton className="h-48 rounded-none" />
                 <div className="p-4 flex flex-col gap-2">
                   <Skeleton className="h-4 w-3/4" />
@@ -179,9 +179,9 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : (showAll ? listings : featured).length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
+          <div className="text-center py-16 text-text-secondary">
             <p className="text-lg font-medium">No listings yet</p>
-            <Link href="/sell" className="inline-block mt-4 px-5 py-2 bg-green-500 text-white text-sm rounded-xl hover:bg-green-700 transition-all duration-200 active:scale-95">
+            <Link href="/sell" className="inline-block mt-4 px-5 py-2 bg-primary-dark text-white text-sm rounded-xl hover:bg-primary-dark-hover transition-all duration-200 active:scale-95">
               Post the first one
             </Link>
           </div>
@@ -193,6 +193,8 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+
+      <Footer />
     </div>
   )
 }

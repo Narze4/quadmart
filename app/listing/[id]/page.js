@@ -9,19 +9,21 @@ import { db } from '@/lib/firebase'
 import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, where } from 'firebase/firestore'
 import { getUniversity } from '@/lib/utils'
 import { createNotification } from '@/lib/notifications'
-import Navbar from '@/components/Navbar'
+import AuthenticatedHeader from '@/components/AuthenticatedHeader'
+import Footer from '@/components/Footer'
+import Badge from '@/components/ui/Badge'
 
-const CONDITION_BADGE = {
-  New: 'bg-green-100 text-green-700',
-  'Like New': 'bg-blue-100 text-blue-700',
-  Good: 'bg-yellow-100 text-yellow-700',
-  Fair: 'bg-orange-100 text-orange-700',
+const CONDITION_TONE = {
+  New: 'green',
+  'Like New': 'blue',
+  Good: 'yellow',
+  Fair: 'orange',
 }
 
-const CATEGORY_BADGE = {
-  Product: 'bg-purple-100 text-purple-700',
-  Service: 'bg-cyan-100 text-cyan-700',
-  Sublease: 'bg-amber-100 text-amber-700',
+const CATEGORY_TONE = {
+  Product: 'purple',
+  Service: 'cyan',
+  Sublease: 'amber',
 }
 
 export default function ListingDetailPage() {
@@ -114,14 +116,14 @@ export default function ListingDetailPage() {
   const isOwnListing = listing.sellerEmail === user.email
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="min-h-screen flex flex-col bg-bg">
+      <AuthenticatedHeader />
+      <main className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
 
         {/* Back */}
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-6 transition-colors"
+          className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary mb-6 transition-colors"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="15 18 9 12 15 6" />
@@ -160,7 +162,7 @@ export default function ListingDetailPage() {
                     key={i}
                     onClick={() => setSelectedImage(i)}
                     className={`relative w-16 h-16 rounded-xl overflow-hidden transition-all duration-200 shrink-0 ${
-                      selectedImage === i ? 'ring-2 ring-green-500 ring-offset-2' : 'ring-1 ring-gray-200 hover:ring-gray-300'
+                      selectedImage === i ? 'ring-2 ring-primary ring-offset-2' : 'ring-1 ring-gray-200 hover:ring-gray-300'
                     }`}
                   >
                     <Image src={img} alt="" fill unoptimized className="object-cover" />
@@ -176,53 +178,49 @@ export default function ListingDetailPage() {
             {/* Badges */}
             <div className="flex gap-2 flex-wrap">
               {listing.condition && (
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${CONDITION_BADGE[listing.condition] ?? 'bg-gray-100 text-gray-600'}`}>
-                  {listing.condition}
-                </span>
+                <Badge tone={CONDITION_TONE[listing.condition] ?? 'neutral'}>{listing.condition}</Badge>
               )}
               {listing.category && (
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${CATEGORY_BADGE[listing.category] ?? 'bg-gray-100 text-gray-600'}`}>
-                  {listing.category}
-                </span>
+                <Badge tone={CATEGORY_TONE[listing.category] ?? 'neutral'}>{listing.category}</Badge>
               )}
             </div>
 
             {/* Title & price */}
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">{listing.title}</h1>
-              <p className="text-3xl font-bold text-green-500">${Number(listing.price).toFixed(2)}</p>
+              <h1 className="text-3xl font-bold text-text-primary mb-2">{listing.title}</h1>
+              <p className="text-3xl font-bold text-primary-dark">${Number(listing.price).toFixed(2)}</p>
             </div>
 
             {/* Description */}
             {listing.description && (
               <div>
-                <h2 className="text-sm font-semibold text-gray-700 mb-1.5">Description</h2>
-                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{listing.description}</p>
+                <h2 className="text-sm font-semibold text-text-primary mb-1.5">Description</h2>
+                <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line">{listing.description}</p>
               </div>
             )}
 
             {/* Seller card */}
             {sellerUid ? (
-              <Link href={`/profile/${sellerUid}`} className="flex items-center gap-3 border border-gray-100 rounded-2xl p-4 bg-white shadow-sm hover:shadow-md hover:border-green-300 hover:bg-green-50 transition-all duration-200">
-                <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
+              <Link href={`/profile/${sellerUid}`} className="flex items-center gap-3 border border-border rounded-2xl p-4 bg-surface shadow-sm hover:shadow-md hover:border-primary/40 hover:bg-primary/5 transition-all duration-200">
+                <div className="w-10 h-10 rounded-full bg-primary-dark flex items-center justify-center text-white font-bold text-sm shrink-0">
                   {sellerUsername[0]?.toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900">{sellerUsername}</p>
-                  <p className="text-xs text-gray-500">{getUniversity(listing.sellerEmail)}</p>
+                  <p className="text-sm font-semibold text-text-primary">{sellerUsername}</p>
+                  <p className="text-xs text-text-secondary">{getUniversity(listing.sellerEmail)}</p>
                 </div>
                 <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="9 18 15 12 9 6"/>
                 </svg>
               </Link>
             ) : (
-              <div className="flex items-center gap-3 border border-gray-100 rounded-2xl p-4 bg-white shadow-sm">
-                <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
+              <div className="flex items-center gap-3 border border-border rounded-2xl p-4 bg-surface shadow-sm">
+                <div className="w-10 h-10 rounded-full bg-primary-dark flex items-center justify-center text-white font-bold text-sm shrink-0">
                   {sellerUsername[0]?.toUpperCase()}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{sellerUsername}</p>
-                  <p className="text-xs text-gray-500">{getUniversity(listing.sellerEmail)}</p>
+                  <p className="text-sm font-semibold text-text-primary">{sellerUsername}</p>
+                  <p className="text-xs text-text-secondary">{getUniversity(listing.sellerEmail)}</p>
                 </div>
               </div>
             )}
@@ -233,7 +231,7 @@ export default function ListingDetailPage() {
                 <button
                   onClick={handleMessage}
                   disabled={messaging}
-                  className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-green-500 hover:bg-green-700 text-white font-semibold text-base rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-primary-dark hover:bg-primary-dark-hover text-white font-semibold text-base rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -243,7 +241,7 @@ export default function ListingDetailPage() {
                 <button
                   onClick={handleAddToCart}
                   disabled={addedToCart}
-                  className="w-full flex items-center justify-center gap-2 px-6 py-3 border-2 border-green-500 text-green-600 font-semibold rounded-xl hover:bg-green-50 transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3 border-2 border-primary text-primary-dark font-semibold rounded-xl hover:bg-primary/10 transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
@@ -256,6 +254,7 @@ export default function ListingDetailPage() {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   )
 }

@@ -13,14 +13,16 @@ import {
   updateProfile,
 } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
-import Navbar from '@/components/Navbar'
+import AuthenticatedHeader from '@/components/AuthenticatedHeader'
+import Footer from '@/components/Footer'
+import Card from '@/components/ui/Card'
 
 function Section({ title, children }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 p-6">
-      <h2 className="text-base font-semibold text-gray-900 mb-5">{title}</h2>
+    <Card interactive className="p-6">
+      <h2 className="text-base font-semibold text-text-primary mb-5">{title}</h2>
       {children}
-    </div>
+    </Card>
   )
 }
 
@@ -123,14 +125,14 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <main className="max-w-xl mx-auto px-4 sm:px-6 py-12 flex flex-col gap-5">
+    <div className="min-h-screen flex flex-col bg-bg">
+      <AuthenticatedHeader />
+      <main className="flex-1 max-w-xl mx-auto px-4 sm:px-6 py-12 flex flex-col gap-5 w-full">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-gray-900">Settings</h1>
+          <h1 className="text-2xl font-semibold text-text-primary">Settings</h1>
           <Link
             href={`/profile/${user.uid}`}
-            className="text-sm font-medium text-green-600 hover:text-green-700 transition-colors"
+            className="text-sm font-medium text-primary-dark hover:opacity-80 transition-opacity"
           >
             View my profile →
           </Link>
@@ -139,26 +141,26 @@ export default function SettingsPage() {
         {/* Account info */}
         <Section title="Account">
           <div className="mb-4">
-            <p className="text-sm text-gray-500 mb-1">Email</p>
-            <p className="text-sm font-medium text-gray-900">{user.email}</p>
+            <p className="text-sm text-text-secondary mb-1">Email</p>
+            <p className="text-sm font-medium text-text-primary">{user.email}</p>
           </div>
           <form onSubmit={handleUpdateName} className="flex flex-col gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">Display Name</label>
               <input
                 type="text"
                 value={currentDisplayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Your name"
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="input-field"
               />
             </div>
             {nameError && <p className="text-sm text-red-600">{nameError}</p>}
-            {nameSuccess && <p className="text-sm text-green-700">{nameSuccess}</p>}
+            {nameSuccess && <p className="text-sm text-primary-dark">{nameSuccess}</p>}
             <button
               type="submit"
               disabled={nameSaving}
-              className="self-start px-5 py-2 bg-green-500 text-white text-sm font-medium rounded-xl hover:bg-green-700 transition-all duration-200 active:scale-95 disabled:opacity-60"
+              className="self-start px-5 py-2 bg-primary-dark text-white text-sm font-medium rounded-xl hover:bg-primary-dark-hover transition-all duration-200 active:scale-95 disabled:opacity-60"
             >
               {nameSaving ? 'Saving…' : 'Save Name'}
             </button>
@@ -169,32 +171,32 @@ export default function SettingsPage() {
         <Section title="Change Password">
           <form onSubmit={handleUpdatePassword} className="flex flex-col gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">Current Password</label>
               <input
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 required
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="input-field"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">New Password</label>
               <input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="At least 6 characters"
                 required
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="input-field"
               />
             </div>
             {pwError && <p className="text-sm text-red-600">{pwError}</p>}
-            {pwSuccess && <p className="text-sm text-green-700">{pwSuccess}</p>}
+            {pwSuccess && <p className="text-sm text-primary-dark">{pwSuccess}</p>}
             <button
               type="submit"
               disabled={pwSaving}
-              className="self-start px-5 py-2 bg-green-500 text-white text-sm font-medium rounded-xl hover:bg-green-700 transition-all duration-200 active:scale-95 disabled:opacity-60"
+              className="self-start px-5 py-2 bg-primary-dark text-white text-sm font-medium rounded-xl hover:bg-primary-dark-hover transition-all duration-200 active:scale-95 disabled:opacity-60"
             >
               {pwSaving ? 'Updating…' : 'Update Password'}
             </button>
@@ -206,8 +208,8 @@ export default function SettingsPage() {
           {!showDeleteConfirm ? (
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-900">Delete account</p>
-                <p className="text-xs text-gray-500 mt-0.5">Permanently remove your account. This cannot be undone.</p>
+                <p className="text-sm font-medium text-text-primary">Delete account</p>
+                <p className="text-xs text-text-secondary mt-0.5">Permanently remove your account. This cannot be undone.</p>
               </div>
               <button
                 onClick={() => setShowDeleteConfirm(true)}
@@ -218,7 +220,7 @@ export default function SettingsPage() {
             </div>
           ) : (
             <form onSubmit={handleDeleteAccount} className="flex flex-col gap-3">
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-text-primary">
                 Enter your password to confirm deletion. <strong>This cannot be undone.</strong>
               </p>
               <input
@@ -227,7 +229,7 @@ export default function SettingsPage() {
                 onChange={(e) => setDeletePassword(e.target.value)}
                 placeholder="Your password"
                 required
-                className="w-full px-4 py-2.5 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-red-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
               />
               {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
               <div className="flex gap-3">
@@ -241,7 +243,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => { setShowDeleteConfirm(false); setDeletePassword(''); setDeleteError('') }}
-                  className="px-5 py-2 text-sm text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 active:scale-95"
+                  className="px-5 py-2 text-sm text-text-secondary border border-border rounded-xl hover:bg-bg transition-all duration-200 active:scale-95"
                 >
                   Cancel
                 </button>
@@ -250,6 +252,7 @@ export default function SettingsPage() {
           )}
         </Section>
       </main>
+      <Footer />
     </div>
   )
 }

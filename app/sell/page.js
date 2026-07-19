@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
-import Navbar from '@/components/Navbar'
+import AuthenticatedHeader from '@/components/AuthenticatedHeader'
+import Footer from '@/components/Footer'
 
 const TOTAL_STEPS = 6
 const CONDITIONS = ['New', 'Like New', 'Good', 'Fair']
@@ -140,27 +141,27 @@ export default function SellPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
+    <div className="min-h-screen flex flex-col bg-bg">
+      <AuthenticatedHeader />
 
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-12">
+      <main className="flex-1 max-w-2xl mx-auto px-4 sm:px-6 py-12 w-full">
         {/* Step header */}
         <div className="flex items-center gap-4 mb-8">
-          <button onClick={handleBack} className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-600">
+          <button onClick={handleBack} className="p-2 rounded-full hover:bg-gray-100 transition-colors text-text-secondary">
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Sell an item</h1>
-            <p className="text-sm text-gray-500">Step {step} of {TOTAL_STEPS}</p>
+            <h1 className="text-2xl font-bold text-text-primary">Sell an item</h1>
+            <p className="text-sm text-text-secondary">Step {step} of {TOTAL_STEPS}</p>
           </div>
         </div>
 
         {/* Progress bar */}
         <div className="w-full bg-gray-200 rounded-full h-2 mb-8">
           <div
-            className="bg-green-500 h-2 rounded-full transition-all duration-300"
+            className="bg-primary h-2 rounded-full transition-all duration-300"
             style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
           />
         </div>
@@ -172,7 +173,7 @@ export default function SellPage() {
           {/* Step 1: Category */}
           {step === 1 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-6">What are you listing?</h2>
+              <h2 className="text-xl font-semibold text-text-primary mb-6">What are you listing?</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {CATEGORIES.map(cat => (
                   <button
@@ -180,15 +181,15 @@ export default function SellPage() {
                     onClick={() => set('category', cat.value)}
                     className={`p-6 rounded-2xl border-2 text-left transition-all duration-200 ${
                       form.category === cat.value
-                        ? 'ring-2 ring-green-500 ring-offset-2 border-transparent bg-green-50'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
+                        ? 'ring-2 ring-primary ring-offset-2 border-transparent bg-primary/10'
+                        : 'border-border bg-surface hover:border-gray-300'
                     }`}
                   >
-                    <div className={`mb-3 ${form.category === cat.value ? 'text-green-500' : 'text-gray-400'}`}>
+                    <div className={`mb-3 ${form.category === cat.value ? 'text-primary-dark' : 'text-gray-400'}`}>
                       {cat.icon}
                     </div>
-                    <h3 className="font-semibold text-gray-900 mb-1">{cat.value}</h3>
-                    <p className="text-xs text-gray-500">{cat.desc}</p>
+                    <h3 className="font-semibold text-text-primary mb-1">{cat.value}</h3>
+                    <p className="text-xs text-text-secondary">{cat.desc}</p>
                   </button>
                 ))}
               </div>
@@ -198,21 +199,21 @@ export default function SellPage() {
           {/* Step 2: Photos */}
           {step === 2 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Add photos</h2>
-              <p className="text-sm text-gray-500 mb-6">
+              <h2 className="text-xl font-semibold text-text-primary mb-2">Add photos</h2>
+              <p className="text-sm text-text-secondary mb-6">
                 Listings with photos get more attention. Up to 5 images. (Optional)
               </p>
 
               {photos.length < 5 && (
                 <label
                   htmlFor="photo-upload"
-                  className="flex flex-col items-center justify-center w-full h-52 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-green-400 hover:bg-green-50 transition-colors"
+                  className="flex flex-col items-center justify-center w-full h-52 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
                 >
                   <svg className="w-12 h-12 text-gray-300 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                     <circle cx="12" cy="13" r="4"/>
                   </svg>
-                  <p className="text-sm font-medium text-gray-500">Upload photos</p>
+                  <p className="text-sm font-medium text-text-secondary">Upload photos</p>
                   <p className="text-xs text-gray-400 mt-1">
                     {photos.length === 0 ? 'PNG, JPG up to 10MB each' : `${photos.length}/5 added — click to add more`}
                   </p>
@@ -235,7 +236,7 @@ export default function SellPage() {
                       <img
                         src={photo.preview}
                         alt=""
-                        className="w-full h-32 object-cover rounded-xl border border-gray-200"
+                        className="w-full h-32 object-cover rounded-xl border border-border"
                       />
                       <button
                         onClick={() => removePhoto(i)}
@@ -251,7 +252,7 @@ export default function SellPage() {
                   {photos.length < 5 && (
                     <label
                       htmlFor="photo-upload"
-                      className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-green-400 hover:bg-green-50 transition-colors"
+                      className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
                     >
                       <svg className="w-6 h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -266,15 +267,15 @@ export default function SellPage() {
           {/* Step 3: Title */}
           {step === 3 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">What&apos;s the title?</h2>
-              <p className="text-sm text-gray-500 mb-6">Give your listing a clear, descriptive name.</p>
+              <h2 className="text-xl font-semibold text-text-primary mb-2">What&apos;s the title?</h2>
+              <p className="text-sm text-text-secondary mb-6">Give your listing a clear, descriptive name.</p>
               <input
                 type="text"
                 value={form.title}
                 onChange={e => set('title', e.target.value)}
                 placeholder="e.g. Calculus Textbook, Guitar Lessons, 1BR Sublease"
                 autoFocus
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="input-field"
               />
             </div>
           )}
@@ -282,15 +283,15 @@ export default function SellPage() {
           {/* Step 4: Description */}
           {step === 4 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Add a description</h2>
-              <p className="text-sm text-gray-500 mb-6">Tell buyers more about what you&apos;re offering.</p>
+              <h2 className="text-xl font-semibold text-text-primary mb-2">Add a description</h2>
+              <p className="text-sm text-text-secondary mb-6">Tell buyers more about what you&apos;re offering.</p>
               <textarea
                 value={form.description}
                 onChange={e => set('description', e.target.value)}
                 placeholder="Describe your item, its condition, what's included..."
                 rows={6}
                 autoFocus
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                className="input-field resize-none"
               />
             </div>
           )}
@@ -298,10 +299,10 @@ export default function SellPage() {
           {/* Step 5: Price */}
           {step === 5 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Set your price</h2>
-              <p className="text-sm text-gray-500 mb-6">Enter 0 for free items.</p>
+              <h2 className="text-xl font-semibold text-text-primary mb-2">Set your price</h2>
+              <p className="text-sm text-text-secondary mb-6">Enter 0 for free items.</p>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary font-medium">$</span>
                 <input
                   type="number"
                   value={form.price}
@@ -310,7 +311,7 @@ export default function SellPage() {
                   min="0"
                   step="0.01"
                   autoFocus
-                  className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="input-field pl-8"
                 />
               </div>
             </div>
@@ -319,8 +320,8 @@ export default function SellPage() {
           {/* Step 6: Condition */}
           {step === 6 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">What&apos;s the condition?</h2>
-              <p className="text-sm text-gray-500 mb-6">Be honest — buyers appreciate accurate descriptions.</p>
+              <h2 className="text-xl font-semibold text-text-primary mb-2">What&apos;s the condition?</h2>
+              <p className="text-sm text-text-secondary mb-6">Be honest — buyers appreciate accurate descriptions.</p>
               <div className="grid grid-cols-2 gap-3">
                 {CONDITIONS.map(cond => (
                   <button
@@ -328,8 +329,8 @@ export default function SellPage() {
                     onClick={() => set('condition', cond)}
                     className={`p-4 rounded-xl border-2 text-left font-medium text-sm transition-all duration-200 ${
                       form.condition === cond
-                        ? 'ring-2 ring-green-500 ring-offset-2 border-transparent bg-green-50 text-green-700'
-                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                        ? 'ring-2 ring-primary ring-offset-2 border-transparent bg-primary/10 text-primary-dark'
+                        : 'border-border bg-surface text-text-primary hover:border-gray-300'
                     }`}
                   >
                     {cond}
@@ -348,7 +349,7 @@ export default function SellPage() {
           <button
             onClick={handleNext}
             disabled={!canNext() || submitting}
-            className="px-8 py-3 bg-green-500 hover:bg-green-700 text-white font-semibold rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed min-w-[140px]"
+            className="px-8 py-3 bg-primary-dark hover:bg-primary-dark-hover text-white font-semibold rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed min-w-[140px]"
           >
             {step === TOTAL_STEPS
               ? submitting
@@ -358,6 +359,8 @@ export default function SellPage() {
           </button>
         </div>
       </main>
+
+      <Footer />
     </div>
   )
 }

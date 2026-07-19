@@ -6,6 +6,9 @@ import { auth, db } from '@/lib/firebase'
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import PublicHeader from '@/components/PublicHeader'
+import Footer from '@/components/Footer'
+import Button from '@/components/ui/Button'
 
 const UNIVERSITIES = [
   { name: 'Emory University', city: 'Atlanta, GA', domain: 'emory.edu' },
@@ -79,27 +82,17 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      {/* Navbar */}
-      <nav className="border-b border-gray-200 px-6 py-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-green-500 font-bold text-xl">
-            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
-            </svg>
-            QuadMart
-          </Link>
-          <p className="text-sm text-gray-500">Step {step} of 2</p>
-        </div>
-      </nav>
+    <div className="min-h-screen flex flex-col bg-surface">
+      <PublicHeader />
 
-      <div className="flex-1 px-4 py-10 max-w-4xl mx-auto w-full">
+      <div className="flex-1 px-4 py-12 max-w-4xl mx-auto w-full">
+        <p className="text-sm text-text-secondary text-center mb-6">Step {step} of 2</p>
+
         {step === 1 ? (
           <>
-            <div className="mb-8">
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">Select your university</h1>
-              <p className="text-sm text-gray-500">You&apos;ll only see listings from students at your school.</p>
+            <div className="mb-8 text-center">
+              <h1 className="text-3xl font-bold text-text-primary mb-1">Select your university</h1>
+              <p className="text-sm text-text-secondary">You&apos;ll only see listings from students at your school.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
@@ -111,40 +104,36 @@ export default function SignUpPage() {
                     onClick={() => setSelectedUniversity(uni)}
                     className={`relative text-left p-5 rounded-2xl border-2 transition-all duration-200 ${
                       selected
-                        ? 'ring-2 ring-green-500 ring-offset-2 border-transparent bg-green-50'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
+                        ? 'ring-2 ring-primary ring-offset-2 border-transparent bg-primary/10'
+                        : 'border-border bg-surface hover:border-gray-300'
                     }`}
                   >
                     {selected && (
-                      <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white">
+                      <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-primary-dark flex items-center justify-center text-white">
                         <CheckIcon />
                       </span>
                     )}
-                    <div className={`mb-3 ${selected ? 'text-green-500' : 'text-gray-400'}`}>
+                    <div className={`mb-3 ${selected ? 'text-primary-dark' : 'text-gray-400'}`}>
                       <GradCapIcon />
                     </div>
-                    <h3 className="font-semibold text-gray-900 text-sm leading-snug mb-0.5">{uni.name}</h3>
-                    <p className="text-xs text-gray-500">{uni.city}</p>
+                    <h3 className="font-semibold text-text-primary text-sm leading-snug mb-0.5">{uni.name}</h3>
+                    <p className="text-xs text-text-secondary">{uni.city}</p>
                   </button>
                 )
               })}
             </div>
 
             <div className="flex justify-end">
-              <button
-                onClick={handleNext}
-                disabled={!selectedUniversity}
-                className="px-8 py-3 bg-green-500 hover:bg-green-700 text-white font-semibold rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
+              <Button onClick={handleNext} disabled={!selectedUniversity} size="lg">
                 Next →
-              </button>
+              </Button>
             </div>
           </>
         ) : (
           <div className="max-w-md mx-auto">
             <button
               onClick={() => setStep(1)}
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors"
+              className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary mb-6 transition-colors"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="15 18 9 12 15 6"/>
@@ -152,14 +141,14 @@ export default function SignUpPage() {
               {selectedUniversity?.name}
             </button>
 
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">Create your account</h1>
-            <p className="text-sm text-gray-500 mb-8">
-              Use your <span className="font-medium text-gray-700">{selectedUniversity?.domain}</span> email to verify your student status.
+            <h1 className="text-3xl font-bold text-text-primary mb-1">Create your account</h1>
+            <p className="text-sm text-text-secondary mb-8">
+              Use your <span className="font-medium text-text-primary">{selectedUniversity?.domain}</span> email to verify your student status.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">University Email</label>
+                <label className="block text-sm font-medium text-text-primary mb-1">University Email</label>
                 <input
                   type="email"
                   value={email}
@@ -167,19 +156,19 @@ export default function SignUpPage() {
                   placeholder={`you@${selectedUniversity?.domain}`}
                   required
                   autoFocus
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="input-field"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <label className="block text-sm font-medium text-text-primary mb-1">Password</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="At least 6 characters"
                   required
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="input-field"
                 />
               </div>
 
@@ -189,24 +178,22 @@ export default function SignUpPage() {
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-700 transition-all duration-200 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
+              <Button type="submit" variant="primary" loading={loading} className="w-full">
                 {loading ? 'Creating account…' : 'Create Account'}
-              </button>
+              </Button>
             </form>
 
-            <p className="text-sm text-center text-gray-500 mt-6">
+            <p className="text-sm text-center text-text-secondary mt-6">
               Already have an account?{' '}
-              <Link href="/login" className="text-green-600 font-medium hover:underline">
+              <Link href="/login" className="text-primary-dark font-medium hover:underline">
                 Log in
               </Link>
             </p>
           </div>
         )}
       </div>
+
+      <Footer />
     </div>
   )
 }

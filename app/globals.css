@@ -9,6 +9,19 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
+
+  /* Design tokens */
+  --color-bg: #F7F8F5;
+  --color-surface: #FFFFFF;
+  --color-text-primary: #152033;
+  --color-text-secondary: #667085;
+  --color-border: #E4E7EC;
+  /* Accent green: links, prices, focus rings, progress fill. NOT for
+     white-on-green buttons — ~2.2:1 contrast with white, fails AA. */
+  --color-primary: #16C766;
+  /* Solid button fill / header surfaces — ~11.8:1 with white text. */
+  --color-primary-dark: #123F2D;
+  --color-primary-dark-hover: #1B4F36;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,6 +35,27 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+@layer components {
+  .input-field {
+    width: 100%;
+    padding: 0.625rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    font-size: 0.875rem;
+    color: var(--color-text-primary);
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  .input-field::placeholder {
+    color: var(--color-text-secondary);
+  }
+  .input-field:focus {
+    outline: none;
+    border-color: transparent;
+    box-shadow: 0 0 0 2px var(--color-primary);
+  }
 }
 
 @keyframes fade-in-up {

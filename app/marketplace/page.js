@@ -8,8 +8,10 @@ import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, where } from 'firebase/firestore'
 import { getUniversity, getDomain } from '@/lib/utils'
-import Navbar from '@/components/Navbar'
+import AuthenticatedHeader from '@/components/AuthenticatedHeader'
+import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
+import Badge from '@/components/ui/Badge'
 
 const TABS = [
   { label: 'All', value: 'All', icon: (
@@ -26,11 +28,11 @@ const TABS = [
   )},
 ]
 
-const CONDITION_BADGE = {
-  New: 'bg-green-100 text-green-700',
-  'Like New': 'bg-blue-100 text-blue-700',
-  Good: 'bg-yellow-100 text-yellow-700',
-  Fair: 'bg-orange-100 text-orange-700',
+const CONDITION_TONE = {
+  New: 'green',
+  'Like New': 'blue',
+  Good: 'yellow',
+  Fair: 'orange',
 }
 
 function ListingCard({ listing, user, onMessage }) {
@@ -38,7 +40,7 @@ function ListingCard({ listing, user, onMessage }) {
   const sellerUsername = listing.sellerEmail?.split('@')[0] ?? 'unknown'
 
   return (
-    <Link href={`/listing/${listing.id}`} className="group block bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
+    <Link href={`/listing/${listing.id}`} className="group block bg-surface rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
       <div className="relative h-52 overflow-hidden">
         {listing.images?.[0] ? (
           <Image
@@ -69,14 +71,12 @@ function ListingCard({ listing, user, onMessage }) {
 
       <div className="p-4">
         <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="font-medium text-gray-900 text-sm leading-snug line-clamp-2">{listing.title}</h3>
+          <h3 className="font-medium text-text-primary text-sm leading-snug line-clamp-2">{listing.title}</h3>
           {listing.condition && (
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${CONDITION_BADGE[listing.condition] ?? 'bg-gray-100 text-gray-600'}`}>
-              {listing.condition}
-            </span>
+            <Badge tone={CONDITION_TONE[listing.condition] ?? 'neutral'}>{listing.condition}</Badge>
           )}
         </div>
-        <p className="text-lg font-bold text-green-500 mb-3">${Number(listing.price).toFixed(2)}</p>
+        <p className="text-lg font-bold text-primary-dark mb-3">${Number(listing.price).toFixed(2)}</p>
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -86,24 +86,24 @@ function ListingCard({ listing, user, onMessage }) {
                 onClick={(e) => e.stopPropagation()}
                 className="flex items-center gap-2 hover:opacity-75 transition-opacity"
               >
-                <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">
+                <div className="w-6 h-6 rounded-full bg-primary-dark flex items-center justify-center text-white text-xs font-bold">
                   {sellerUsername[0]?.toUpperCase()}
                 </div>
-                <span className="text-xs text-gray-500 truncate max-w-[100px]">{sellerUsername}</span>
+                <span className="text-xs text-text-secondary truncate max-w-[100px]">{sellerUsername}</span>
               </Link>
             ) : (
               <>
-                <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">
+                <div className="w-6 h-6 rounded-full bg-primary-dark flex items-center justify-center text-white text-xs font-bold">
                   {sellerUsername[0]?.toUpperCase()}
                 </div>
-                <span className="text-xs text-gray-500 truncate max-w-[100px]">{sellerUsername}</span>
+                <span className="text-xs text-text-secondary truncate max-w-[100px]">{sellerUsername}</span>
               </>
             )}
           </div>
           {listing.sellerEmail !== user?.email && (
             <button
               onClick={(e) => { e.preventDefault(); onMessage(listing) }}
-              className="flex items-center gap-1 text-xs font-medium text-white bg-green-500 hover:bg-green-700 px-3 py-1.5 rounded-xl transition-all duration-200 active:scale-95"
+              className="flex items-center gap-1 text-xs font-medium text-white bg-primary-dark hover:bg-primary-dark-hover px-3 py-1.5 rounded-xl transition-all duration-200 active:scale-95"
             >
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
@@ -196,10 +196,10 @@ export default function MarketplacePage() {
   const university = userUniversity ?? getUniversity(user.email)
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">{university} Marketplace</h1>
+    <div className="min-h-screen flex flex-col bg-bg">
+      <AuthenticatedHeader />
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
+        <h1 className="text-3xl font-bold text-text-primary mb-6">{university} Marketplace</h1>
 
         {/* Filter tabs */}
         <div className="flex gap-2 mb-5 flex-wrap">
@@ -209,8 +209,8 @@ export default function MarketplacePage() {
               onClick={() => setActiveTab(tab.value)}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200 ${
                 activeTab === tab.value
-                  ? 'bg-green-500 text-white border-green-500'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                  ? 'bg-primary-dark text-white border-primary-dark'
+                  : 'bg-surface text-text-secondary border-border hover:border-gray-300'
               }`}
             >
               {tab.icon}
@@ -223,7 +223,7 @@ export default function MarketplacePage() {
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           {/* Search */}
           <div className="relative flex-1">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
             <input
@@ -231,7 +231,7 @@ export default function MarketplacePage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search listings"
-              className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="input-field pl-9"
             />
           </div>
 
@@ -239,7 +239,7 @@ export default function MarketplacePage() {
           <select
             value={sort}
             onChange={e => setSort(e.target.value)}
-            className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-700"
+            className="input-field sm:w-auto text-text-primary"
           >
             <option value="newest">Newest</option>
             <option value="price-asc">Price: Low to High</option>
@@ -250,7 +250,7 @@ export default function MarketplacePage() {
           <select
             value={condition}
             onChange={e => setCondition(e.target.value)}
-            className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-700"
+            className="input-field sm:w-auto text-text-primary"
           >
             <option value="">Any condition</option>
             <option value="New">New</option>
@@ -267,7 +267,7 @@ export default function MarketplacePage() {
               onChange={e => setMinPrice(e.target.value)}
               placeholder="Min $"
               min="0"
-              className="w-24 px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="input-field w-24"
             />
             <input
               type="number"
@@ -275,7 +275,7 @@ export default function MarketplacePage() {
               onChange={e => setMaxPrice(e.target.value)}
               placeholder="Max $"
               min="0"
-              className="w-24 px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="input-field w-24"
             />
           </div>
         </div>
@@ -284,7 +284,7 @@ export default function MarketplacePage() {
         {fetchLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+              <div key={i} className="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm">
                 <Skeleton className="h-52 rounded-none" />
                 <div className="p-4 flex flex-col gap-2">
                   <Skeleton className="h-4 w-3/4" />
@@ -295,13 +295,13 @@ export default function MarketplacePage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mb-5">
-              <svg className="w-9 h-9 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-5">
+              <svg className="w-9 h-9 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
             </div>
-            <p className="text-lg font-semibold text-gray-700 mb-1">No listings found</p>
-            <p className="text-sm text-gray-400">{listings.length === 0 ? 'Be the first to post something!' : 'Try adjusting your filters.'}</p>
+            <p className="text-lg font-semibold text-text-primary mb-1">No listings found</p>
+            <p className="text-sm text-text-secondary">{listings.length === 0 ? 'Be the first to post something!' : 'Try adjusting your filters.'}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -311,6 +311,8 @@ export default function MarketplacePage() {
           </div>
         )}
       </main>
+
+      <Footer />
     </div>
   )
 }

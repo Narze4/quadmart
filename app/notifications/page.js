@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { collection, doc, onSnapshot, orderBy, query, updateDoc, where, writeBatch } from 'firebase/firestore'
-import Navbar from '@/components/Navbar'
+import AuthenticatedHeader from '@/components/AuthenticatedHeader'
+import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
 
 function timeAgo(ts) {
@@ -85,20 +86,20 @@ export default function NotificationsPage() {
   const unreadCount = notifications.filter(n => !n.read).length
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-12">
+    <div className="min-h-screen flex flex-col bg-bg">
+      <AuthenticatedHeader />
+      <main className="flex-1 max-w-2xl mx-auto px-4 sm:px-6 py-12 w-full">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Notifications</h1>
+            <h1 className="text-2xl font-bold text-text-primary">Notifications</h1>
             {unreadCount > 0 && (
-              <p className="text-sm text-gray-500 mt-0.5">{unreadCount} unread</p>
+              <p className="text-sm text-text-secondary mt-0.5">{unreadCount} unread</p>
             )}
           </div>
           {unreadCount > 0 && (
             <button
               onClick={markAllRead}
-              className="text-sm text-green-600 hover:text-green-700 font-medium transition-colors"
+              className="text-sm text-primary-dark hover:opacity-80 font-medium transition-opacity"
             >
               Mark all as read
             </button>
@@ -108,7 +109,7 @@ export default function NotificationsPage() {
         {fetchLoading ? (
           <div className="flex flex-col gap-2">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-2xl border border-gray-100 px-4 py-4 flex items-start gap-4 bg-white">
+              <div key={i} className="rounded-2xl border border-border px-4 py-4 flex items-start gap-4 bg-surface">
                 <Skeleton className="w-8 h-8 rounded-full shrink-0" />
                 <div className="flex-1 flex flex-col gap-2">
                   <Skeleton className="h-4 w-2/3" />
@@ -119,14 +120,14 @@ export default function NotificationsPage() {
           </div>
         ) : notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mb-4">
-              <svg className="w-9 h-9 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <svg className="w-9 h-9 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
               </svg>
             </div>
-            <p className="text-base font-semibold text-gray-700 mb-1">No notifications yet</p>
-            <p className="text-sm text-gray-400">You&apos;ll see updates about your listings and messages here</p>
+            <p className="text-base font-semibold text-text-primary mb-1">No notifications yet</p>
+            <p className="text-sm text-text-secondary">You&apos;ll see updates about your listings and messages here</p>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
@@ -136,19 +137,19 @@ export default function NotificationsPage() {
                 onClick={() => markRead(notif)}
                 className={`w-full text-left rounded-2xl border px-4 py-4 flex items-start gap-4 transition-all duration-200 hover:shadow-sm ${
                   notif.read
-                    ? 'bg-white border-gray-100'
-                    : 'bg-green-50 border-green-200 border-l-4 border-l-green-500'
+                    ? 'bg-surface border-border'
+                    : 'bg-primary/5 border-primary/30 border-l-4 border-l-primary'
                 }`}
               >
-                <div className={`mt-0.5 shrink-0 ${notif.read ? 'text-gray-400' : 'text-green-500'}`}>
+                <div className={`mt-0.5 shrink-0 ${notif.read ? 'text-gray-400' : 'text-primary-dark'}`}>
                   <NotifIcon type={notif.type} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-semibold ${notif.read ? 'text-gray-700' : 'text-gray-900'}`}>
+                  <p className={`text-sm font-semibold ${notif.read ? 'text-text-secondary' : 'text-text-primary'}`}>
                     {notif.title}
                   </p>
                   {notif.description && (
-                    <p className="text-sm text-gray-500 mt-0.5 truncate">{notif.description}</p>
+                    <p className="text-sm text-text-secondary mt-0.5 truncate">{notif.description}</p>
                   )}
                 </div>
                 <span className="text-xs text-gray-400 shrink-0 mt-0.5">{timeAgo(notif.createdAt)}</span>
@@ -157,6 +158,7 @@ export default function NotificationsPage() {
           </div>
         )}
       </main>
+      <Footer />
     </div>
   )
 }
