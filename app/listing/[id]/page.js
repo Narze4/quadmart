@@ -8,7 +8,6 @@ import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, where } from 'firebase/firestore'
 import { getUniversity, getListingStatus } from '@/lib/utils'
-import { createNotification } from '@/lib/notifications'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Badge from '@/components/ui/Badge'
@@ -28,7 +27,7 @@ const CATEGORY_TONE = {
 }
 
 export default function ListingDetailPage() {
-  const { user, loading } = useAuth()
+  const { user, loading, savedListings, toggleSaved } = useAuth()
   const router = useRouter()
   const { id } = useParams()
   const [listing, setListing] = useState(null)
@@ -36,7 +35,6 @@ export default function ListingDetailPage() {
   const [selectedImage, setSelectedImage] = useState(0)
   const [messaging, setMessaging] = useState(false)
   const [messageError, setMessageError] = useState('')
-  const [addedToCart, setAddedToCart] = useState(false)
   const [sellerUid, setSellerUid] = useState(null)
 
   useEffect(() => {
@@ -92,23 +90,6 @@ export default function ListingDetailPage() {
     }
   }
 
-  const handleAddToCart = async () => {
-    if (!listing || addedToCart) return
-    setAddedToCart(true)
-    // Notify the seller
-    const sellerSnap = await getDocs(query(collection(db, 'users'), where('email', '==', listing.sellerEmail)))
-    if (!sellerSnap.empty) {
-      const sellerUid = sellerSnap.docs[0].id
-      await createNotification(
-        sellerUid,
-        'cart',
-        `${user.email.split('@')[0]} is interested in ${listing.title}`,
-        'They added your item to their cart',
-        `/listing/${listing.id}`
-      )
-    }
-  }
-
   if (loading || !user || !user.emailVerified || fetchLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -123,6 +104,7 @@ export default function ListingDetailPage() {
   const sellerUsername = listing.sellerEmail?.split('@')[0] ?? 'unknown'
   const isOwnListing = listing.sellerEmail === user.email
   const status = getListingStatus(listing)
+  const saved = savedListings?.includes(listing.id) ?? false
 
   return (
     <div className="min-h-screen flex flex-col bg-bg">
@@ -266,15 +248,13 @@ export default function ListingDetailPage() {
                   <p className="text-sm text-red-600 text-center -mt-2">{messageError}</p>
                 )}
                 <button
-                  onClick={handleAddToCart}
-                  disabled={addedToCart}
-                  className="w-full flex items-center justify-center gap-2 px-6 py-3 border-2 border-primary text-primary-dark font-semibold rounded-xl hover:bg-primary/10 transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                  onClick={() => toggleSaved(listing.id)}
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3 border-2 border-primary text-primary-dark font-semibold rounded-xl hover:bg-primary/10 transition-all duration-200 active:scale-[0.98]"
                 >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
-                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                  <svg className={`w-4 h-4 ${saved ? 'fill-primary text-primary' : 'fill-none'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                   </svg>
-                  {addedToCart ? 'Added ✓' : 'Add to Cart'}
+                  {saved ? 'Saved' : 'Save'}
                 </button>
               </div>
             )}

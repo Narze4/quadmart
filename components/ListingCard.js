@@ -7,6 +7,7 @@ import Badge from '@/components/ui/Badge'
 import CategoryPlaceholder from '@/components/CategoryPlaceholder'
 import { getUniversity, timeAgo, getListingStatus } from '@/lib/utils'
 import { isSampleSeller } from '@/lib/sellers'
+import { useAuth } from '@/lib/auth-context'
 
 const CONDITION_TONE = {
   New: 'green',
@@ -22,7 +23,7 @@ const CATEGORY_TONE = {
 }
 
 const HeartIcon = ({ filled }) => (
-  <svg className={`w-4 h-4 ${filled ? 'fill-red-500 text-red-500' : 'fill-none text-gray-400'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+  <svg className={`w-4 h-4 ${filled ? 'fill-primary text-primary' : 'fill-none text-gray-400'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
   </svg>
 )
@@ -48,13 +49,14 @@ const ArrowIcon = () => (
 )
 
 export default function ListingCard({ listing, showSeller = true }) {
-  const [liked, setLiked] = useState(false)
+  const { savedListings, toggleSaved } = useAuth()
   const [imgError, setImgError] = useState(false)
   const [isSample, setIsSample] = useState(false)
   const sellerUsername = listing.sellerEmail?.split('@')[0] ?? 'unknown'
   const hasImage = listing.images?.[0] && !imgError
   const imageCount = listing.images?.length ?? 0
   const status = getListingStatus(listing)
+  const saved = savedListings?.includes(listing.id) ?? false
 
   useEffect(() => {
     let cancelled = false
@@ -89,11 +91,11 @@ export default function ListingCard({ listing, showSeller = true }) {
         )}
 
         <button
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiked(l => !l) }}
-          aria-label={liked ? 'Remove from favorites' : 'Add to favorites'}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleSaved(listing.id) }}
+          aria-label={saved ? 'Remove from saved' : 'Save listing'}
           className="absolute top-3 left-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow motion-safe:hover:scale-110 motion-safe:transition-transform"
         >
-          <HeartIcon filled={liked} />
+          <HeartIcon filled={saved} />
         </button>
 
         {imageCount > 1 && (
