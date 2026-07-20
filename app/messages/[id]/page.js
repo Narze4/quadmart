@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore'
+import { addDoc, collection, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { createNotification } from '@/lib/notifications'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
@@ -68,25 +68,23 @@ export default function ConversationPage() {
       setText('')
 
       // Notify the recipient
-      if (otherParticipant) {
-        const recipientSnap = await getDocs(query(collection(db, 'users'), where('email', '==', otherParticipant)))
-        if (!recipientSnap.empty) {
-          const recipientUid = recipientSnap.docs[0].id
-          await createNotification(
-            recipientUid,
-            'message',
-            `New message from ${user.email.split('@')[0]}`,
-            trimmed.slice(0, 50),
-            `/messages/${id}`
-          )
-        }
+      if (otherParticipantUid) {
+        await createNotification(
+          otherParticipantUid,
+          'message',
+          `New message from ${user.email.split('@')[0]}`,
+          trimmed.slice(0, 50),
+          `/messages/${id}`
+        )
       }
     } finally {
       setSending(false)
     }
   }
 
-  const otherParticipant = conversation?.participants?.find((p) => p !== user?.email)
+  const otherIdx = conversation?.participants?.findIndex((p) => p !== user?.uid) ?? -1
+  const otherParticipantUid = otherIdx > -1 ? conversation.participants[otherIdx] : null
+  const otherParticipantEmail = otherIdx > -1 ? conversation.participantEmails?.[otherIdx] : null
 
   if (loading || !user || !user.emailVerified) {
     return (
@@ -104,7 +102,7 @@ export default function ConversationPage() {
         <div className="flex items-center gap-3">
           <Link href="/messages" className="text-sm text-primary-dark hover:underline">← Back</Link>
           <div>
-            <p className="text-sm font-semibold text-text-primary">{otherParticipant}</p>
+            <p className="text-sm font-semibold text-text-primary">{otherParticipantEmail ?? 'Unknown'}</p>
             {conversation?.listingTitle && (
               <p className="text-xs text-text-secondary">Re: {conversation.listingTitle}</p>
             )}

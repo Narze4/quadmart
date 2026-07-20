@@ -33,7 +33,7 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (!user) return
-    const q = query(collection(db, 'conversations'), where('participants', 'array-contains', user.email))
+    const q = query(collection(db, 'conversations'), where('participants', 'array-contains', user.uid))
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
@@ -51,8 +51,10 @@ export default function MessagesPage() {
     return unsubscribe
   }, [user, retryKey])
 
-  const otherParticipant = (participants) =>
-    participants?.find((p) => p !== user.email) ?? 'Unknown'
+  const otherParticipant = (conv) => {
+    const idx = conv.participants?.findIndex((p) => p !== user.uid) ?? -1
+    return (idx > -1 ? conv.participantEmails?.[idx] : null) ?? 'Unknown'
+  }
 
   if (loading || !user || !user.emailVerified) {
     return (
@@ -108,10 +110,10 @@ export default function MessagesPage() {
                 className="bg-surface rounded-2xl border border-border px-5 py-4 shadow-sm hover:shadow-md hover:border-primary/50 transition-all duration-200 flex items-center gap-4"
               >
                 <div className="w-10 h-10 rounded-full bg-primary-dark flex items-center justify-center text-white text-sm font-semibold shrink-0">
-                  {otherParticipant(conv.participants)[0]?.toUpperCase()}
+                  {otherParticipant(conv)[0]?.toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-text-primary truncate">{otherParticipant(conv.participants)}</p>
+                  <p className="text-sm font-medium text-text-primary truncate">{otherParticipant(conv)}</p>
                   <p className="text-xs text-text-secondary truncate mt-0.5">Re: {conv.listingTitle ?? 'Listing'}</p>
                   {conv.lastMessage && (
                     <p className="text-xs text-gray-400 truncate mt-0.5">{conv.lastMessage}</p>

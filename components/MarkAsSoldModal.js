@@ -6,6 +6,7 @@ import {
   addDoc,
   collection,
   doc,
+  getDoc,
   getDocs,
   increment,
   query,
@@ -35,12 +36,13 @@ export default function MarkAsSoldModal({ listing, sellerUsername, onClose, onSo
         const candidates = []
         for (const convoDoc of convoSnap.docs) {
           const convo = convoDoc.data()
-          const otherEmail = convo.participants?.find(p => p !== listing.sellerEmail)
-          if (!otherEmail || seen.has(otherEmail)) continue
-          seen.add(otherEmail)
-          const userSnap = await getDocs(query(collection(db, 'users'), where('email', '==', otherEmail)))
-          if (userSnap.empty) continue
-          candidates.push({ uid: userSnap.docs[0].id, email: otherEmail, username: otherEmail.split('@')[0] })
+          const otherUid = convo.participants?.find(p => p !== listing.sellerUid)
+          if (!otherUid || seen.has(otherUid)) continue
+          seen.add(otherUid)
+          const userSnap = await getDoc(doc(db, 'users', otherUid))
+          if (!userSnap.exists()) continue
+          const email = userSnap.data().email
+          candidates.push({ uid: otherUid, email, username: email?.split('@')[0] ?? 'user' })
         }
         if (!cancelled) setBuyers(candidates)
       } finally {
@@ -49,7 +51,7 @@ export default function MarkAsSoldModal({ listing, sellerUsername, onClose, onSo
     }
     loadBuyers()
     return () => { cancelled = true }
-  }, [listing.id, listing.sellerEmail])
+  }, [listing.id, listing.sellerUid])
 
   const handleConfirm = async () => {
     setSubmitting(true)

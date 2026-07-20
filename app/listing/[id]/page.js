@@ -35,6 +35,7 @@ export default function ListingDetailPage() {
   const [fetchLoading, setFetchLoading] = useState(true)
   const [selectedImage, setSelectedImage] = useState(0)
   const [messaging, setMessaging] = useState(false)
+  const [messageError, setMessageError] = useState('')
   const [addedToCart, setAddedToCart] = useState(false)
   const [sellerUid, setSellerUid] = useState(null)
 
@@ -62,18 +63,20 @@ export default function ListingDetailPage() {
   }, [id, router])
 
   const handleMessage = async () => {
-    if (!user || !listing || messaging) return
+    if (!user || !listing || messaging || !sellerUid) return
     setMessaging(true)
+    setMessageError('')
     try {
       const q = query(
         collection(db, 'conversations'),
-        where('participants', 'array-contains', user.email),
+        where('participants', 'array-contains', user.uid),
         where('listingId', '==', listing.id)
       )
       const snap = await getDocs(q)
       if (!snap.empty) { router.push(`/messages/${snap.docs[0].id}`); return }
       const ref = await addDoc(collection(db, 'conversations'), {
-        participants: [user.email, listing.sellerEmail],
+        participants: [user.uid, sellerUid],
+        participantEmails: [user.email, listing.sellerEmail],
         listingId: listing.id,
         listingTitle: listing.title,
         lastMessage: '',
@@ -81,6 +84,9 @@ export default function ListingDetailPage() {
         createdAt: serverTimestamp(),
       })
       router.push(`/messages/${ref.id}`)
+    } catch (err) {
+      console.error('Failed to open conversation:', err)
+      setMessageError("Couldn't message this seller right now. Please try again.")
     } finally {
       setMessaging(false)
     }
@@ -244,7 +250,8 @@ export default function ListingDetailPage() {
               <div className="flex flex-col gap-3">
                 <button
                   onClick={handleMessage}
-                  disabled={messaging}
+                  disabled={messaging || !sellerUid}
+                  title={!sellerUid ? 'Sample listing — messaging unavailable' : undefined}
                   className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-primary-dark hover:bg-primary-dark-hover text-white font-semibold text-base rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -252,6 +259,12 @@ export default function ListingDetailPage() {
                   </svg>
                   {messaging ? 'Opening…' : 'Message Seller'}
                 </button>
+                {!sellerUid && (
+                  <p className="text-xs text-text-secondary text-center -mt-2">Sample listing — messaging unavailable</p>
+                )}
+                {messageError && (
+                  <p className="text-sm text-red-600 text-center -mt-2">{messageError}</p>
+                )}
                 <button
                   onClick={handleAddToCart}
                   disabled={addedToCart}
