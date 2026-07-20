@@ -9,16 +9,7 @@ import Link from 'next/link'
 import PublicHeader from '@/components/PublicHeader'
 import Footer from '@/components/Footer'
 import Button from '@/components/ui/Button'
-
-const UNIVERSITIES = [
-  { name: 'Emory University', city: 'Atlanta, GA', domain: 'emory.edu' },
-  { name: 'University of Georgia', city: 'Athens, GA', domain: 'uga.edu' },
-  { name: 'Georgia Institute of Technology', city: 'Atlanta, GA', domain: 'gatech.edu' },
-  { name: 'SCAD University', city: 'Savannah, GA', domain: 'scad.edu' },
-  { name: 'Georgia State University', city: 'Atlanta, GA', domain: 'gsu.edu' },
-  { name: 'Kennesaw State University', city: 'Kennesaw, GA', domain: 'ksu.edu' },
-  { name: 'University of Tennessee', city: 'Knoxville, TN', domain: 'utk.edu' },
-]
+import { UNIVERSITIES, getUniversityFromEmail } from '@/lib/universities'
 
 const FIREBASE_ERRORS = {
   'auth/email-already-in-use': 'An account with this email already exists.',
@@ -44,16 +35,15 @@ const CubeIcon = () => (
   </svg>
 )
 
-const GradCapIcon = () => (
-  <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-    <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
+const CheckIcon = () => (
+  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
   </svg>
 )
 
-const CheckIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"/>
+const AlertIcon = () => (
+  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
   </svg>
 )
 
@@ -72,8 +62,6 @@ const EyeOffIcon = () => (
 )
 
 export default function SignUpPage() {
-  const [step, setStep] = useState(1)
-  const [selectedUniversity, setSelectedUniversity] = useState(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -81,26 +69,33 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  const handleNext = () => {
-    if (selectedUniversity) setStep(2)
-  }
+  const trimmedEmail = email.trim()
+  const isEduEmail = trimmedEmail.endsWith('.edu')
+  const matchedUniversity = isEduEmail ? getUniversityFromEmail(trimmedEmail) : null
+  const showUnsupported = isEduEmail && trimmedEmail.includes('@') && !matchedUniversity
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
-    if (!email.endsWith('.edu')) {
+    if (!trimmedEmail.endsWith('.edu')) {
       setError('Only .edu email addresses are allowed. Please use your university email.')
+      return
+    }
+
+    const university = getUniversityFromEmail(trimmedEmail)
+    if (!university) {
+      setError("QuadMart isn't at your school yet.")
       return
     }
 
     setLoading(true)
     try {
-      const { user } = await createUserWithEmailAndPassword(auth, email, password)
+      const { user } = await createUserWithEmailAndPassword(auth, trimmedEmail, password)
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         email: user.email,
-        university: selectedUniversity.name,
+        university: university.name,
         sellerScore: 100,
         buyerScore: 100,
         transactions: 0,
@@ -113,59 +108,6 @@ export default function SignUpPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  if (step === 1) {
-    return (
-      <div className="min-h-screen flex flex-col bg-surface">
-        <PublicHeader />
-
-        <div className="flex-1 px-4 py-12 max-w-5xl mx-auto w-full">
-          <p className="text-sm text-text-secondary text-center mb-6">Step 1 of 2</p>
-
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold text-text-primary mb-1">Select your university</h1>
-            <p className="text-sm text-text-secondary">You&apos;ll only see listings from students at your school.</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-            {UNIVERSITIES.map((uni) => {
-              const selected = selectedUniversity?.name === uni.name
-              return (
-                <button
-                  key={uni.name}
-                  onClick={() => setSelectedUniversity(uni)}
-                  className={`relative text-left p-6 rounded-2xl border-2 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
-                    selected
-                      ? 'ring-2 ring-primary ring-offset-2 border-transparent bg-primary/10'
-                      : 'border-border bg-surface hover:border-gray-300 hover:shadow-sm'
-                  }`}
-                >
-                  {selected && (
-                    <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-primary-dark flex items-center justify-center text-white">
-                      <CheckIcon />
-                    </span>
-                  )}
-                  <div className={`mb-3 ${selected ? 'text-primary-dark' : 'text-gray-400'}`}>
-                    <GradCapIcon />
-                  </div>
-                  <h3 className="font-semibold text-text-primary text-base leading-snug mb-0.5">{uni.name}</h3>
-                  <p className="text-sm text-text-secondary">{uni.city}</p>
-                </button>
-              )
-            })}
-          </div>
-
-          <div className="flex justify-end">
-            <Button onClick={handleNext} disabled={!selectedUniversity} size="lg">
-              Next →
-            </Button>
-          </div>
-        </div>
-
-        <Footer />
-      </div>
-    )
   }
 
   return (
@@ -189,10 +131,10 @@ export default function SignUpPage() {
               <span className="font-bold text-xl">QuadMart</span>
             </div>
             <h2 className="text-3xl font-bold leading-tight mb-4">
-              Almost there, {selectedUniversity?.name?.split(' ')[0]}.
+              Your campus, your marketplace.
             </h2>
             <p className="text-green-100 mb-8">
-              One more step and you&apos;ll be browsing what your campus has to offer.
+              Sign up with your university email and we&apos;ll match you to your campus automatically.
             </p>
             <ul className="flex flex-col gap-3 mb-10">
               {BENEFITS.map(b => (
@@ -226,19 +168,9 @@ export default function SignUpPage() {
         {/* Form panel */}
         <div className="flex-1 flex items-center justify-center px-4 py-12 lg:py-16">
           <div className="w-full max-w-[420px]">
-            <button
-              onClick={() => setStep(1)}
-              className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary mb-6 transition-colors"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="15 18 9 12 15 6"/>
-              </svg>
-              {selectedUniversity?.name}
-            </button>
-
             <h1 className="text-3xl font-bold text-text-primary mb-1">Create your account</h1>
             <p className="text-sm text-text-secondary mb-8">
-              Use your <span className="font-medium text-text-primary">{selectedUniversity?.domain}</span> email to verify your student status.
+              Use your university email — we&apos;ll figure out your campus from the domain.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -248,12 +180,33 @@ export default function SignUpPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder={`you@${selectedUniversity?.domain}`}
+                  placeholder="you@youruniversity.edu"
                   required
                   autoFocus
                   className="input-field"
                 />
               </div>
+
+              {matchedUniversity && (
+                <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 text-primary-dark text-sm rounded-xl px-4 py-3">
+                  <CheckIcon />
+                  <span>
+                    You&apos;re joining <span className="font-semibold">{matchedUniversity.name}</span>
+                  </span>
+                </div>
+              )}
+
+              {showUnsupported && (
+                <div className="flex gap-2 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
+                  <AlertIcon />
+                  <div>
+                    <p className="font-medium mb-1">QuadMart isn&apos;t at your school yet.</p>
+                    <p className="text-xs text-amber-700">
+                      Supported schools: {UNIVERSITIES.map(u => u.name).join(', ')}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1">Password</label>
@@ -283,7 +236,7 @@ export default function SignUpPage() {
                 </div>
               )}
 
-              <Button type="submit" variant="primary" loading={loading} className="w-full">
+              <Button type="submit" variant="primary" loading={loading} disabled={!matchedUniversity} className="w-full">
                 {loading ? 'Creating account…' : 'Create Account'}
               </Button>
             </form>

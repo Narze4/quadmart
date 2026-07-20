@@ -6,25 +6,19 @@ import PublicHeader from '@/components/PublicHeader'
 import Footer from '@/components/Footer'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
+import { UNIVERSITIES as SUPPORTED_UNIVERSITIES } from '@/lib/universities'
 
-const UNIVERSITIES = [
-  { name: "Emory University", abbr: "EU", color: "#012169" },
-  { name: "University of Georgia", abbr: "UGA", color: "#BA0C2F" },
-  { name: "Georgia Tech", abbr: "GT", color: "#B3A369" },
-  { name: "SCAD", abbr: "SCAD", color: "#000000" },
-  { name: "Georgia State University", abbr: "GSU", color: "#0039A6" },
-  { name: "Kennesaw State University", abbr: "KSU", color: "#FDBB30" },
-  { name: "Spelman College", abbr: "SC", color: "#00356B" },
-  { name: "Morehouse College", abbr: "MC", color: "#8B0000" },
-  { name: "Georgia Southern University", abbr: "GSou", color: "#011E41" },
-  { name: "Mercer University", abbr: "MU", color: "#F26522" },
-  { name: "Agnes Scott College", abbr: "ASC", color: "#002868" },
-  { name: "University of West Georgia", abbr: "UWG", color: "#8B0000" },
-  { name: "Augusta University", abbr: "AU", color: "#003087" },
-  { name: "Valdosta State University", abbr: "VSU", color: "#1F3C88" },
-  { name: "Clayton State University", abbr: "CSU", color: "#003366" },
-  { name: "Columbus State University", abbr: "ColSU", color: "#002855" },
-];
+const UNIVERSITY_DISPLAY = {
+  'Emory University': { abbr: 'EU', color: '#012169' },
+  'University of Georgia': { abbr: 'UGA', color: '#BA0C2F' },
+  'Georgia Institute of Technology': { abbr: 'GT', color: '#B3A369' },
+  'SCAD University': { abbr: 'SCAD', color: '#000000' },
+  'Georgia State University': { abbr: 'GSU', color: '#0039A6' },
+  'Kennesaw State University': { abbr: 'KSU', color: '#FDBB30' },
+  'University of Tennessee': { abbr: 'UT', color: '#FF8200' },
+}
+
+const UNIVERSITIES = SUPPORTED_UNIVERSITIES.map(u => ({ name: u.name, ...UNIVERSITY_DISPLAY[u.name] }));
 
 const COLLAGE_ITEMS = [
   { icon: '📚', label: 'Textbooks', pos: 'top-10 left-[4%] -rotate-6' },
