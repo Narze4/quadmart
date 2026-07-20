@@ -66,8 +66,8 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      await signInWithEmailAndPassword(auth, email, password)
-      router.push('/dashboard')
+      const { user } = await signInWithEmailAndPassword(auth, email, password)
+      router.push(user.emailVerified ? '/dashboard' : '/verify-email')
     } catch (err) {
       setError('Invalid email or password. Please try again.')
     } finally {

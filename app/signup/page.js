@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth'
 import { auth, db } from '@/lib/firebase'
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { useRouter } from 'next/navigation'
@@ -106,7 +106,8 @@ export default function SignUpPage() {
         transactions: 0,
         createdAt: serverTimestamp(),
       })
-      router.push('/dashboard')
+      await sendEmailVerification(user)
+      router.push('/verify-email')
     } catch (err) {
       setError(FIREBASE_ERRORS[err.code] ?? 'Something went wrong. Please try again.')
     } finally {

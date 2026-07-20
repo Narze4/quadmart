@@ -40,6 +40,7 @@ export default function ListingDetailPage() {
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
+    else if (!loading && user && !user.emailVerified) router.replace('/verify-email')
   }, [user, loading, router])
 
   useEffect(() => {
@@ -102,7 +103,7 @@ export default function ListingDetailPage() {
     }
   }
 
-  if (loading || !user || fetchLoading) {
+  if (loading || !user || !user.emailVerified || fetchLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
