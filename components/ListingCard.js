@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import Badge from '@/components/ui/Badge'
 import CategoryPlaceholder from '@/components/CategoryPlaceholder'
 import { getUniversity, timeAgo, getListingStatus } from '@/lib/utils'
+import { isSampleSeller } from '@/lib/sellers'
 
 const CONDITION_TONE = {
   New: 'green',
@@ -49,10 +50,17 @@ const ArrowIcon = () => (
 export default function ListingCard({ listing, showSeller = true }) {
   const [liked, setLiked] = useState(false)
   const [imgError, setImgError] = useState(false)
+  const [isSample, setIsSample] = useState(false)
   const sellerUsername = listing.sellerEmail?.split('@')[0] ?? 'unknown'
   const hasImage = listing.images?.[0] && !imgError
   const imageCount = listing.images?.length ?? 0
   const status = getListingStatus(listing)
+
+  useEffect(() => {
+    let cancelled = false
+    isSampleSeller(listing).then(result => { if (!cancelled) setIsSample(result) })
+    return () => { cancelled = true }
+  }, [listing])
 
   return (
     <Link
@@ -125,7 +133,9 @@ export default function ListingCard({ listing, showSeller = true }) {
         </div>
 
         <div className="flex items-center justify-between gap-2">
-          {showSeller ? (
+          {isSample ? (
+            <span className="text-xs font-medium text-text-secondary">Sample listing</span>
+          ) : showSeller ? (
             <div className="flex items-center gap-2 min-w-0">
               <div className="relative w-6 h-6 shrink-0">
                 <div className="w-6 h-6 rounded-full bg-primary-dark flex items-center justify-center text-white text-xs font-bold">
