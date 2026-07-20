@@ -7,7 +7,7 @@ import Image from 'next/image'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, where } from 'firebase/firestore'
-import { getUniversity } from '@/lib/utils'
+import { getUniversity, getListingStatus } from '@/lib/utils'
 import { createNotification } from '@/lib/notifications'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
@@ -116,6 +116,7 @@ export default function ListingDetailPage() {
   const images = listing.images ?? []
   const sellerUsername = listing.sellerEmail?.split('@')[0] ?? 'unknown'
   const isOwnListing = listing.sellerEmail === user.email
+  const status = getListingStatus(listing)
 
   return (
     <div className="min-h-screen flex flex-col bg-bg">
@@ -132,6 +133,23 @@ export default function ListingDetailPage() {
           </svg>
           Back
         </button>
+
+        {status === 'reserved' && (
+          <div className="mb-6 flex items-center gap-2 px-4 py-3 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm font-medium">
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+            </svg>
+            Reserved — this item is being held for another buyer
+          </div>
+        )}
+        {status === 'sold' && (
+          <div className="mb-6 flex items-center gap-2 px-4 py-3 rounded-xl bg-gray-100 border border-gray-200 text-gray-600 text-sm font-medium">
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 6L9 17l-5-5" />
+            </svg>
+            Sold — this item is no longer available
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-start">
 
@@ -222,7 +240,7 @@ export default function ListingDetailPage() {
             )}
 
             {/* Actions */}
-            {!isOwnListing && (
+            {!isOwnListing && status !== 'sold' && (
               <div className="flex flex-col gap-3">
                 <button
                   onClick={handleMessage}

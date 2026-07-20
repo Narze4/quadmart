@@ -122,6 +122,7 @@ export default function SellPage() {
         images,
         sellerEmail: user.email,
         sellerUid: user.uid,
+        status: 'active',
         createdAt: serverTimestamp(),
       })
       router.push('/my-listings')

@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore'
-import { getUniversity, getUsername, getDomain } from '@/lib/utils'
+import { getUniversity, getUsername, getDomain, getListingStatus } from '@/lib/utils'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
@@ -96,9 +96,10 @@ export default function DashboardPage() {
 
   const university = userUniversity ?? getUniversity(user.email)
   const username = getUsername(user)
+  const activeListings = listings.filter(l => getListingStatus(l) === 'active')
   const userDomain = getDomain(user.email)
-  const campusListings = listings.filter(l => getDomain(l.sellerEmail) === userDomain)
-  const source = campusListings.length > 0 ? campusListings : listings
+  const campusListings = activeListings.filter(l => getDomain(l.sellerEmail) === userDomain)
+  const source = campusListings.length > 0 ? campusListings : activeListings
 
   const searchQuery = search.trim().toLowerCase()
   const searchResults = searchQuery

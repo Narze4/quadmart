@@ -6,7 +6,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { collection, getDocs, query, where } from 'firebase/firestore'
+import { collection, doc, getDocs, query, updateDoc, where } from 'firebase/firestore'
+import { getListingStatus, getUsername } from '@/lib/utils'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
@@ -14,6 +15,7 @@ import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
 import CategoryPlaceholder from '@/components/CategoryPlaceholder'
+import MarkAsSoldModal from '@/components/MarkAsSoldModal'
 
 const TABS = ['Active', 'Reserved', 'Sold']
 
@@ -22,6 +24,12 @@ const CONDITION_TONE = {
   'Like New': 'blue',
   Good: 'yellow',
   Fair: 'orange',
+}
+
+const STATUS_TONE = {
+  active: 'green',
+  reserved: 'yellow',
+  sold: 'neutral',
 }
 
 const AlertIcon = () => (
@@ -43,6 +51,8 @@ export default function MyListingsPage() {
   const [fetchLoading, setFetchLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
   const [activeTab, setActiveTab] = useState('Active')
+  const [updatingId, setUpdatingId] = useState(null)
+  const [soldModalListing, setSoldModalListing] = useState(null)
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
@@ -79,6 +89,25 @@ export default function MyListingsPage() {
     fetchListings()
   }
 
+  const setLocalStatus = (id, status) => {
+    setListings(prev => prev.map(l => (l.id === id ? { ...l, status } : l)))
+  }
+
+  const handleSetStatus = async (listing, status) => {
+    setUpdatingId(listing.id)
+    try {
+      await updateDoc(doc(db, 'listings', listing.id), { status })
+      setLocalStatus(listing.id, status)
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  const handleSold = () => {
+    setLocalStatus(soldModalListing.id, 'sold')
+    setSoldModalListing(null)
+  }
+
   if (loading || !user || !user.emailVerified) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -87,7 +116,13 @@ export default function MyListingsPage() {
     )
   }
 
-  const activeListings = listings // All listings are "Active" for now
+  const byStatus = {
+    Active: listings.filter(l => getListingStatus(l) === 'active'),
+    Reserved: listings.filter(l => getListingStatus(l) === 'reserved'),
+    Sold: listings.filter(l => getListingStatus(l) === 'sold'),
+  }
+  const currentListings = byStatus[activeTab]
+  const sellerUsername = getUsername(user)
 
   return (
     <div className="min-h-screen flex flex-col bg-bg">
@@ -101,40 +136,30 @@ export default function MyListingsPage() {
             </svg>
             <h1 className="text-2xl font-bold text-text-primary">My Listings</h1>
           </div>
-          <div className="flex items-center gap-3">
-            <select className="input-field sm:w-auto text-text-secondary">
-              <option>Last 7 days</option>
-              <option>Last 30 days</option>
-              <option>All time</option>
-            </select>
-            <Link
-              href="/sell"
-              className="flex items-center gap-1.5 px-4 py-2 bg-primary-dark hover:bg-primary-dark-hover text-white text-sm font-semibold rounded-xl transition-all duration-200 active:scale-95"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              New Listing
-            </Link>
-          </div>
+          <Link
+            href="/sell"
+            className="flex items-center gap-1.5 px-4 py-2 bg-primary-dark hover:bg-primary-dark-hover text-white text-sm font-semibold rounded-xl transition-all duration-200 active:scale-95"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New Listing
+          </Link>
         </div>
 
         {/* Tabs */}
         <div className="flex gap-0 border-b border-border mb-6">
-          {TABS.map(tab => {
-            const count = tab === 'Active' ? activeListings.length : 0
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === tab
-                    ? 'border-primary text-primary-dark'
-                    : 'border-transparent text-text-secondary hover:text-text-primary'
-                }`}
-              >
-                {tab} ({count})
-              </button>
-            )
-          })}
+          {TABS.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === tab
+                  ? 'border-primary text-primary-dark'
+                  : 'border-transparent text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              {tab} ({byStatus[tab].length})
+            </button>
+          ))}
         </div>
 
         {/* Content */}
@@ -158,37 +183,85 @@ export default function MyListingsPage() {
             description="We couldn't load your listings right now."
             action={<Button onClick={handleRetry}>Try again</Button>}
           />
-        ) : activeTab === 'Active' && activeListings.length > 0 ? (
+        ) : currentListings.length > 0 ? (
           <div className="flex flex-col gap-3">
-            {activeListings.map(listing => (
-              <div key={listing.id} className="bg-surface rounded-2xl border border-border p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-all duration-200">
-                <div className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0">
-                  {listing.images?.[0] ? (
-                    <Image src={listing.images[0]} alt={listing.title} fill unoptimized className="object-cover" />
-                  ) : (
-                    <CategoryPlaceholder category={listing.category} size="sm" />
+            {currentListings.map(listing => {
+              const status = getListingStatus(listing)
+              const isUpdating = updatingId === listing.id
+              return (
+                <div key={listing.id} className="bg-surface rounded-2xl border border-border p-4 flex flex-col sm:flex-row sm:items-center gap-4 shadow-sm hover:shadow-md transition-all duration-200">
+                  <Link href={`/listing/${listing.id}`} className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0">
+                      {listing.images?.[0] ? (
+                        <Image src={listing.images[0]} alt={listing.title} fill unoptimized className="object-cover" />
+                      ) : (
+                        <CategoryPlaceholder category={listing.category} size="sm" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-text-primary truncate">{listing.title}</h3>
+                      <p className="text-sm font-bold text-primary-dark">${Number(listing.price).toFixed(2)}</p>
+                      <div className="flex gap-1.5 mt-1 flex-wrap">
+                        {listing.condition && (
+                          <Badge tone={CONDITION_TONE[listing.condition] ?? 'neutral'}>{listing.condition}</Badge>
+                        )}
+                        <Badge tone={STATUS_TONE[status]}>{status}</Badge>
+                      </div>
+                    </div>
+                  </Link>
+
+                  {status !== 'sold' && (
+                    <div className="flex gap-2 shrink-0">
+                      {status === 'active' && (
+                        <button
+                          onClick={() => handleSetStatus(listing, 'reserved')}
+                          disabled={isUpdating}
+                          className="px-3 py-2 border border-border text-text-primary text-xs font-semibold rounded-xl hover:bg-bg transition-all duration-200 active:scale-95 disabled:opacity-50"
+                        >
+                          Mark as Reserved
+                        </button>
+                      )}
+                      {status === 'reserved' && (
+                        <button
+                          onClick={() => handleSetStatus(listing, 'active')}
+                          disabled={isUpdating}
+                          className="px-3 py-2 border border-border text-text-primary text-xs font-semibold rounded-xl hover:bg-bg transition-all duration-200 active:scale-95 disabled:opacity-50"
+                        >
+                          Back to Active
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setSoldModalListing(listing)}
+                        disabled={isUpdating}
+                        className="px-3 py-2 bg-primary-dark hover:bg-primary-dark-hover text-white text-xs font-semibold rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-50"
+                      >
+                        Mark as Sold
+                      </button>
+                    </div>
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-text-primary truncate">{listing.title}</h3>
-                  <p className="text-sm font-bold text-primary-dark">${Number(listing.price).toFixed(2)}</p>
-                </div>
-                {listing.condition && (
-                  <Badge tone={CONDITION_TONE[listing.condition] ?? 'neutral'}>{listing.condition}</Badge>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         ) : (
           <EmptyState
             icon={<BoxIcon />}
-            title="No listings yet"
-            description="Create your first listing to start selling"
+            title={`No ${activeTab.toLowerCase()} listings`}
+            description={activeTab === 'Active' ? 'Create your first listing to start selling' : `You don't have any ${activeTab.toLowerCase()} listings right now.`}
             action={<Button href="/sell">Create Listing</Button>}
           />
         )}
       </main>
       <Footer />
+
+      {soldModalListing && (
+        <MarkAsSoldModal
+          listing={soldModalListing}
+          sellerUsername={sellerUsername}
+          onClose={() => setSoldModalListing(null)}
+          onSold={handleSold}
+        />
+      )}
     </div>
   )
 }

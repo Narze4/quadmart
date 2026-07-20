@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore'
-import { getUniversity, getDomain } from '@/lib/utils'
+import { getUniversity, getDomain, getListingStatus } from '@/lib/utils'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
@@ -137,10 +137,11 @@ export default function MarketplacePage() {
   }
 
   const userDomain = getDomain(user?.email)
-  const campusListings = listings.filter(l => getDomain(l.sellerEmail) === userDomain)
+  const campusListings = listings.filter(l => getDomain(l.sellerEmail) === userDomain && getListingStatus(l) === 'active')
 
   let filtered = listings.filter(l => {
     if (getDomain(l.sellerEmail) !== userDomain) return false
+    if (getListingStatus(l) !== 'active') return false
     if (activeTab !== 'All' && l.category !== activeTab) return false
     if (search && !l.title?.toLowerCase().includes(search.toLowerCase())) return false
     if (condition && l.condition !== condition) return false

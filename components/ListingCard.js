@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Badge from '@/components/ui/Badge'
 import CategoryPlaceholder from '@/components/CategoryPlaceholder'
-import { getUniversity, timeAgo } from '@/lib/utils'
+import { getUniversity, timeAgo, getListingStatus } from '@/lib/utils'
 
 const CONDITION_TONE = {
   New: 'green',
@@ -52,6 +52,7 @@ export default function ListingCard({ listing, showSeller = true }) {
   const sellerUsername = listing.sellerEmail?.split('@')[0] ?? 'unknown'
   const hasImage = listing.images?.[0] && !imgError
   const imageCount = listing.images?.length ?? 0
+  const status = getListingStatus(listing)
 
   return (
     <Link
@@ -92,6 +93,14 @@ export default function ListingCard({ listing, showSeller = true }) {
             <ImagesIcon />
             {imageCount}
           </span>
+        )}
+
+        {status !== 'active' && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <span className="px-4 py-1.5 rounded-full bg-white/90 text-text-primary text-xs font-bold uppercase tracking-wide">
+              {status}
+            </span>
+          </div>
         )}
       </div>
 
