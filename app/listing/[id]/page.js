@@ -12,6 +12,7 @@ import { createNotification } from '@/lib/notifications'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Badge from '@/components/ui/Badge'
+import CategoryPlaceholder from '@/components/CategoryPlaceholder'
 
 const CONDITION_TONE = {
   New: 'green',
@@ -145,13 +146,7 @@ export default function ListingDetailPage() {
                   className="object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <svg className="w-16 h-16 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                    <polyline points="21 15 16 10 5 21"/>
-                  </svg>
-                </div>
+                <CategoryPlaceholder category={listing.category} />
               )}
             </div>
 

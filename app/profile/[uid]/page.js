@@ -3,21 +3,27 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { collection, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
-import Badge from '@/components/ui/Badge'
+import ListingCard from '@/components/ListingCard'
+import EmptyState from '@/components/ui/EmptyState'
+import Button from '@/components/ui/Button'
 
-const CONDITION_TONE = {
-  New: 'green',
-  'Like New': 'blue',
-  Good: 'yellow',
-  Fair: 'orange',
-}
+const AlertIcon = () => (
+  <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+  </svg>
+)
+
+const BoxIcon = () => (
+  <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+  </svg>
+)
 
 function memberSince(ts) {
   if (!ts) return 'Unknown'
@@ -32,15 +38,16 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState(null)
   const [listings, setListings] = useState([])
   const [fetchLoading, setFetchLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
   const [activeTab, setActiveTab] = useState('Listings')
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
   }, [user, loading, router])
 
-  useEffect(() => {
+  const loadProfile = async () => {
     if (!uid) return
-    const load = async () => {
+    try {
       const snap = await getDoc(doc(db, 'users', uid))
       if (!snap.exists()) { router.replace('/marketplace'); return }
       const data = { id: snap.id, ...snap.data() }
@@ -51,12 +58,29 @@ export default function ProfilePage() {
         where('sellerEmail', '==', data.email),
         orderBy('createdAt', 'desc')
       )
-      const listSnap = await getDocs(q).catch(() => ({ docs: [] }))
+      const listSnap = await getDocs(q)
       setListings(listSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+    } catch {
+      setFetchError(true)
+    } finally {
       setFetchLoading(false)
     }
-    load()
+  }
+
+  useEffect(() => {
+    // loadProfile is also called directly by the retry button (a plain
+    // event handler), which is what trips this rule — the state updates
+    // inside it only ever happen after an await, never synchronously here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadProfile()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid, router])
+
+  const handleRetry = () => {
+    setFetchLoading(true)
+    setFetchError(false)
+    loadProfile()
+  }
 
   if (loading || !user) {
     return (
@@ -156,7 +180,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm">
-                  <Skeleton className="h-44 rounded-none" />
+                  <Skeleton className="aspect-[4/3] rounded-none" />
                   <div className="p-3 flex flex-col gap-2">
                     <Skeleton className="h-4 w-3/4" />
                     <Skeleton className="h-4 w-1/3" />
@@ -164,46 +188,20 @@ export default function ProfilePage() {
                 </div>
               ))}
             </div>
+          ) : fetchError ? (
+            <EmptyState
+              tone="error"
+              icon={<AlertIcon />}
+              title="Something went wrong"
+              description="We couldn't load this profile's listings right now."
+              action={<Button onClick={handleRetry}>Try again</Button>}
+            />
           ) : listings.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <svg className="w-9 h-9 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-                </svg>
-              </div>
-              <p className="text-base font-semibold text-text-primary">No listings yet</p>
-            </div>
+            <EmptyState icon={<BoxIcon />} title="No listings yet" />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {listings.map(listing => (
-                <Link
-                  key={listing.id}
-                  href={`/listing/${listing.id}`}
-                  className="group block bg-surface rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-md transition-all duration-200"
-                >
-                  <div className="relative h-44 overflow-hidden">
-                    {listing.images?.[0] ? (
-                      <Image src={listing.images[0]} alt={listing.title} fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-300" />
-                    ) : (
-                      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                        <svg className="w-8 h-8 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                          <circle cx="8.5" cy="8.5" r="1.5"/>
-                          <polyline points="21 15 16 10 5 21"/>
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className="font-medium text-text-primary text-sm leading-snug line-clamp-2">{listing.title}</h3>
-                      {listing.condition && (
-                        <Badge tone={CONDITION_TONE[listing.condition] ?? 'neutral'}>{listing.condition}</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm font-bold text-primary-dark">${Number(listing.price).toFixed(2)}</p>
-                  </div>
-                </Link>
+                <ListingCard key={listing.id} listing={listing} showSeller={false} />
               ))}
             </div>
           )
@@ -211,12 +209,14 @@ export default function ProfilePage() {
 
         {/* Reviews tab */}
         {activeTab === 'Reviews' && (
-          <div className="flex flex-col items-center justify-center py-20 text-center text-text-secondary">
-            <svg className="w-10 h-10 mb-3 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-            <p className="text-base font-medium text-text-secondary">No reviews yet</p>
-          </div>
+          <EmptyState
+            icon={
+              <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            }
+            title="No reviews yet"
+          />
         )}
       </main>
       <Footer />

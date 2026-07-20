@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
@@ -12,112 +11,79 @@ import { getUniversity, getUsername, getDomain } from '@/lib/utils'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
-import Badge from '@/components/ui/Badge'
+import ListingCard from '@/components/ListingCard'
+import EmptyState from '@/components/ui/EmptyState'
+import Button from '@/components/ui/Button'
 
-const CONDITION_TONE = {
-  New: 'green',
-  'Like New': 'blue',
-  Good: 'yellow',
-  Fair: 'orange',
+const CATEGORY_META = {
+  Product: { icon: '📦' },
+  Service: { icon: '🛠️' },
+  Sublease: { icon: '🏠' },
 }
 
-function ListingCard({ listing, user }) {
-  const [liked, setLiked] = useState(false)
-  const sellerUsername = listing.sellerEmail?.split('@')[0] ?? 'unknown'
+const SearchIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+)
 
-  return (
-    <Link href={`/listing/${listing.id}`} className="group block bg-surface rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
-      {/* Image */}
-      <div className="relative h-48 overflow-hidden">
-        {listing.images?.[0] ? (
-          <Image
-            src={listing.images[0]}
-            alt={listing.title}
-            fill
-            unoptimized
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
-            <svg className="w-10 h-10 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-              <circle cx="8.5" cy="8.5" r="1.5"/>
-              <polyline points="21 15 16 10 5 21"/>
-            </svg>
-          </div>
-        )}
-        <button
-          onClick={(e) => { e.preventDefault(); setLiked(l => !l) }}
-          className="absolute top-3 left-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow hover:scale-110 transition-transform"
-        >
-          <svg className={`w-4 h-4 ${liked ? 'fill-red-500 text-red-500' : 'fill-none text-gray-400'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-          </svg>
-        </button>
-      </div>
+const AlertIcon = () => (
+  <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+  </svg>
+)
 
-      {/* Content */}
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="font-medium text-text-primary text-sm leading-snug line-clamp-2">{listing.title}</h3>
-          {listing.condition && (
-            <Badge tone={CONDITION_TONE[listing.condition] ?? 'neutral'}>{listing.condition}</Badge>
-          )}
-        </div>
-        <p className="text-base font-bold text-primary-dark mb-3">${Number(listing.price).toFixed(2)}</p>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-primary-dark flex items-center justify-center text-white text-xs font-bold">
-              {sellerUsername[0]?.toUpperCase()}
-            </div>
-            <span className="text-xs text-text-secondary truncate max-w-[100px]">{sellerUsername}</span>
-          </div>
-          {listing.sellerEmail !== user?.email && (
-            <button
-              onClick={(e) => e.preventDefault()}
-              className="flex items-center gap-1 text-xs font-medium text-white bg-primary-dark hover:bg-primary-dark-hover px-3 py-1.5 rounded-xl transition-all duration-200 active:scale-95"
-            >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
-                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-              </svg>
-              Add
-            </button>
-          )}
-        </div>
-      </div>
-    </Link>
-  )
-}
+const BoxIcon = () => (
+  <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+    <polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" />
+  </svg>
+)
 
 export default function DashboardPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const [listings, setListings] = useState([])
   const [fetchLoading, setFetchLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
   const [userUniversity, setUserUniversity] = useState(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
   }, [user, loading, router])
 
-  useEffect(() => {
+  const fetchAll = async () => {
     if (!user) return
-    const fetchAll = async () => {
-      try {
-        // Fetch user profile for university
-        const profileSnap = await getDoc(doc(db, 'users', user.uid))
-        if (profileSnap.exists()) setUserUniversity(profileSnap.data().university)
+    try {
+      // Fetch user profile for university
+      const profileSnap = await getDoc(doc(db, 'users', user.uid))
+      if (profileSnap.exists()) setUserUniversity(profileSnap.data().university)
 
-        const q = query(collection(db, 'listings'), orderBy('createdAt', 'desc'))
-        const snap = await getDocs(q)
-        setListings(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-      } catch { /* empty collection or index building */ }
-      finally { setFetchLoading(false) }
+      const q = query(collection(db, 'listings'), orderBy('createdAt', 'desc'))
+      const snap = await getDocs(q)
+      setListings(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    } catch {
+      setFetchError(true)
+    } finally {
+      setFetchLoading(false)
     }
+  }
+
+  useEffect(() => {
+    // fetchAll is also called directly by the retry button (a plain event
+    // handler), which is what trips this rule — the state updates inside
+    // it only ever happen after an await, never synchronously here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAll()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
+
+  const handleRetry = () => {
+    setFetchLoading(true)
+    setFetchError(false)
+    fetchAll()
+  }
 
   if (loading || !user) {
     return (
@@ -130,47 +96,78 @@ export default function DashboardPage() {
   const university = userUniversity ?? getUniversity(user.email)
   const username = getUsername(user)
   const userDomain = getDomain(user.email)
-  const featured = listings.filter(l => getDomain(l.sellerEmail) === userDomain).slice(0, 6)
-  const showAll = featured.length === 0
+  const campusListings = listings.filter(l => getDomain(l.sellerEmail) === userDomain)
+  const source = campusListings.length > 0 ? campusListings : listings
+
+  const searchQuery = search.trim().toLowerCase()
+  const searchResults = searchQuery
+    ? source.filter(l => l.title?.toLowerCase().includes(searchQuery))
+    : null
+
+  const recent = source.slice(0, 8)
+  const categoryCounts = source.reduce((acc, l) => {
+    if (l.category) acc[l.category] = (acc[l.category] ?? 0) + 1
+    return acc
+  }, {})
+  const popularCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])
 
   return (
     <div className="min-h-screen flex flex-col bg-bg">
       <AuthenticatedHeader />
 
-      {/* Hero */}
+      {/* Compact header */}
       <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-0 max-w-7xl mx-auto w-full">
         <div
-          className="relative overflow-hidden rounded-2xl p-8 sm:p-12 text-white"
+          className="relative overflow-hidden rounded-2xl px-6 py-6 sm:px-8 sm:py-7 text-white"
           style={{ background: 'linear-gradient(135deg, #2d8a5e 0%, #1a5c3a 100%)' }}
         >
-          <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/10" aria-hidden="true" />
-          <div className="absolute -bottom-16 right-24 w-32 h-32 rounded-full bg-white/10" aria-hidden="true" />
-          <div className="relative">
-            <h1 className="text-2xl sm:text-4xl font-bold mb-2">Welcome back, {username} 👋</h1>
-            <p className="text-green-100 text-sm sm:text-base mb-6">
-              Here&apos;s what&apos;s trending at {university}
-            </p>
-            <Link
-              href="/marketplace"
-              className="inline-block px-6 py-2.5 border-2 border-white text-white text-sm font-semibold rounded-xl hover:bg-white hover:text-primary-dark transition-all duration-200 active:scale-95"
-            >
-              Go to Marketplace
-            </Link>
+          <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-white/10" aria-hidden="true" />
+          <div className="absolute -bottom-10 right-20 w-20 h-20 rounded-full bg-white/10" aria-hidden="true" />
+
+          <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold">Welcome back, {username} 👋</h1>
+              <p className="text-green-100 text-sm">{university}</p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 lg:items-center">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/70">
+                  <SearchIcon />
+                </span>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search your campus listings…"
+                  className="w-full sm:w-64 pl-9 pr-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/60 text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Link
+                  href="/marketplace"
+                  className="inline-flex items-center justify-center px-4 py-2.5 border-2 border-white text-white text-sm font-semibold rounded-xl hover:bg-white hover:text-primary-dark transition-all duration-200 active:scale-95 whitespace-nowrap"
+                >
+                  Browse marketplace
+                </Link>
+                <Link
+                  href="/sell"
+                  className="inline-flex items-center justify-center px-4 py-2.5 bg-white text-primary-dark text-sm font-semibold rounded-xl hover:bg-gray-100 transition-all duration-200 active:scale-95 whitespace-nowrap"
+                >
+                  Create listing
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Featured listings */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
-        <h2 className="text-xl font-semibold text-text-primary mb-4">
-          {showAll ? 'Recent Listings' : `Featured for ${university}`}
-        </h2>
-
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full flex flex-col gap-12">
         {fetchLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm">
-                <Skeleton className="h-48 rounded-none" />
+                <Skeleton className="aspect-[4/3] rounded-none" />
                 <div className="p-4 flex flex-col gap-2">
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-4 w-1/3" />
@@ -178,19 +175,73 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-        ) : (showAll ? listings : featured).length === 0 ? (
-          <div className="text-center py-16 text-text-secondary">
-            <p className="text-lg font-medium">No listings yet</p>
-            <Link href="/sell" className="inline-block mt-4 px-5 py-2 bg-primary-dark text-white text-sm rounded-xl hover:bg-primary-dark-hover transition-all duration-200 active:scale-95">
-              Post the first one
-            </Link>
-          </div>
+        ) : fetchError ? (
+          <EmptyState
+            tone="error"
+            icon={<AlertIcon />}
+            title="Something went wrong"
+            description="We couldn't load your campus listings right now."
+            action={<Button onClick={handleRetry}>Try again</Button>}
+          />
+        ) : searchResults !== null ? (
+          <section>
+            <h2 className="text-xl font-semibold text-text-primary mb-4">
+              Results for &ldquo;{search}&rdquo;
+            </h2>
+            {searchResults.length === 0 ? (
+              <EmptyState
+                icon={<SearchIcon />}
+                title="No matches"
+                description="Try a different search, or browse the full marketplace."
+                action={<Button href="/marketplace" variant="secondary">Browse marketplace</Button>}
+              />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {searchResults.map(listing => <ListingCard key={listing.id} listing={listing} />)}
+              </div>
+            )}
+          </section>
+        ) : source.length === 0 ? (
+          <EmptyState
+            icon={<BoxIcon />}
+            title="No listings yet"
+            description="Be the first to post something at your school."
+            action={<Button href="/sell">Post the first one</Button>}
+          />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(showAll ? listings : featured).map(listing => (
-              <ListingCard key={listing.id} listing={listing} user={user} />
-            ))}
-          </div>
+          <>
+            {recent.length > 0 && (
+              <section>
+                <h2 className="text-xl font-semibold text-text-primary mb-4">Recently added</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {recent.map(listing => <ListingCard key={listing.id} listing={listing} />)}
+                </div>
+              </section>
+            )}
+
+            {popularCategories.length > 0 && (
+              <section>
+                <h2 className="text-xl font-semibold text-text-primary mb-4">Popular categories</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {popularCategories.map(([category, count]) => (
+                    <Link
+                      key={category}
+                      href="/marketplace"
+                      className="flex items-center gap-4 bg-surface border border-border rounded-2xl p-5 shadow-sm hover:shadow-md motion-safe:hover:-translate-y-0.5 motion-safe:transition-all motion-safe:duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-2xl shrink-0">
+                        {CATEGORY_META[category]?.icon ?? '🛍️'}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-text-primary">{category}</p>
+                        <p className="text-sm text-text-secondary">{count} listing{count === 1 ? '' : 's'}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
         )}
       </main>
 

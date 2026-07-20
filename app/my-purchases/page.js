@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
+import EmptyState from '@/components/ui/EmptyState'
+import Button from '@/components/ui/Button'
 
 const TABS = ['Pending', 'Completed', 'Expired']
 
@@ -57,21 +58,16 @@ export default function MyPurchasesPage() {
         </div>
 
         {/* Empty state */}
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-            <svg className="w-9 h-9 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <EmptyState
+          icon={
+            <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
             </svg>
-          </div>
-          <p className="text-base font-semibold text-text-primary mb-1">No {activeTab.toLowerCase()} purchases</p>
-          <p className="text-sm text-text-secondary mb-5">Items you checkout will show up here</p>
-          <Link
-            href="/marketplace"
-            className="px-5 py-2.5 bg-primary-dark hover:bg-primary-dark-hover text-white text-sm font-semibold rounded-xl transition-all duration-200 active:scale-95"
-          >
-            Browse Marketplace
-          </Link>
-        </div>
+          }
+          title={`No ${activeTab.toLowerCase()} purchases`}
+          description="Items you checkout will show up here"
+          action={<Button href="/marketplace">Browse Marketplace</Button>}
+        />
       </main>
       <Footer />
     </div>

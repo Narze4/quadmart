@@ -9,12 +9,22 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
+import EmptyState from '@/components/ui/EmptyState'
+import Button from '@/components/ui/Button'
+
+const AlertIcon = () => (
+  <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+  </svg>
+)
 
 export default function MessagesPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const [conversations, setConversations] = useState([])
   const [fetchLoading, setFetchLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
+  const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
@@ -33,9 +43,12 @@ export default function MessagesPage() {
         })
       setConversations(docs)
       setFetchLoading(false)
-    }, () => setFetchLoading(false))
+    }, () => {
+      setFetchError(true)
+      setFetchLoading(false)
+    })
     return unsubscribe
-  }, [user])
+  }, [user, retryKey])
 
   const otherParticipant = (participants) =>
     participants?.find((p) => p !== user.email) ?? 'Unknown'
@@ -66,19 +79,25 @@ export default function MessagesPage() {
               </div>
             ))}
           </div>
+        ) : fetchError ? (
+          <EmptyState
+            tone="error"
+            icon={<AlertIcon />}
+            title="Something went wrong"
+            description="We couldn't load your messages right now."
+            action={<Button onClick={() => { setFetchLoading(true); setFetchError(false); setRetryKey(k => k + 1) }}>Try again</Button>}
+          />
         ) : conversations.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <svg className="w-9 h-9 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <EmptyState
+            icon={
+              <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
-            </div>
-            <p className="text-lg font-semibold text-text-primary mb-1">No messages yet</p>
-            <p className="text-sm text-text-secondary mb-5">Message a seller from the marketplace to get started</p>
-            <Link href="/marketplace" className="inline-block px-5 py-2.5 bg-primary-dark text-white text-sm font-semibold rounded-xl hover:bg-primary-dark-hover transition-all duration-200 active:scale-95">
-              Browse listings
-            </Link>
-          </div>
+            }
+            title="No messages yet"
+            description="Message a seller from the marketplace to get started"
+            action={<Button href="/marketplace">Browse listings</Button>}
+          />
         ) : (
           <div className="flex flex-col gap-2">
             {conversations.map((conv) => (

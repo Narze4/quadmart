@@ -8,15 +8,15 @@ import { collection, doc, onSnapshot, orderBy, query, updateDoc, where, writeBat
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
+import EmptyState from '@/components/ui/EmptyState'
+import Button from '@/components/ui/Button'
+import { timeAgo } from '@/lib/utils'
 
-function timeAgo(ts) {
-  if (!ts) return ''
-  const secs = Math.floor((Date.now() - ts.toMillis()) / 1000)
-  if (secs < 60) return 'just now'
-  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`
-  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`
-  return `${Math.floor(secs / 86400)}d ago`
-}
+const AlertIcon = () => (
+  <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+  </svg>
+)
 
 function NotifIcon({ type }) {
   if (type === 'message') return (
@@ -43,6 +43,8 @@ export default function NotificationsPage() {
   const router = useRouter()
   const [notifications, setNotifications] = useState([])
   const [fetchLoading, setFetchLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
+  const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
@@ -58,9 +60,12 @@ export default function NotificationsPage() {
     const unsub = onSnapshot(q, snap => {
       setNotifications(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       setFetchLoading(false)
-    }, () => setFetchLoading(false))
+    }, () => {
+      setFetchError(true)
+      setFetchLoading(false)
+    })
     return unsub
-  }, [user])
+  }, [user, retryKey])
 
   const markRead = async (notif) => {
     if (!notif.read) await updateDoc(doc(db, 'notifications', notif.id), { read: true })
@@ -118,17 +123,25 @@ export default function NotificationsPage() {
               </div>
             ))}
           </div>
+        ) : fetchError ? (
+          <EmptyState
+            tone="error"
+            icon={<AlertIcon />}
+            title="Something went wrong"
+            description="We couldn't load your notifications right now."
+            action={<Button onClick={() => { setFetchLoading(true); setFetchError(false); setRetryKey(k => k + 1) }}>Try again</Button>}
+          />
         ) : notifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <svg className="w-9 h-9 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <EmptyState
+            icon={
+              <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
               </svg>
-            </div>
-            <p className="text-base font-semibold text-text-primary mb-1">No notifications yet</p>
-            <p className="text-sm text-text-secondary">You&apos;ll see updates about your listings and messages here</p>
-          </div>
+            }
+            title="No notifications yet"
+            description="You'll see updates about your listings and messages here"
+          />
         ) : (
           <div className="flex flex-col gap-2">
             {notifications.map(notif => (
