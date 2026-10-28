@@ -7,6 +7,11 @@ cloudinary.config({
 })
 
 export async function POST(request) {
+  // Keep the existing upload service closed until authentication, limits and
+  // ownership are implemented. Development trades can omit optional photos.
+  if (process.env.QUADMART_ENABLE_UPLOADS !== 'true') {
+    return Response.json({ error: 'Photo uploads are not available yet. You can publish without photos.' }, { status: 503 })
+  }
   try {
     const formData = await request.formData()
     const files = formData.getAll('images')

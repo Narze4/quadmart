@@ -41,16 +41,26 @@ XDG_CONFIG_HOME=/private/tmp/quadmart-config FIREBASE_EMULATORS_PATH=/private/tm
 
 ## Development cloud setup
 
-Existing project: quadmart-4410f. Separate project: quadmart-development, Standard Firestore in nam5, Spark plan. Cloud development still has deny-all initialization rules. Neither the new rules nor this app integration has been deployed to either cloud project.
+Production remains quadmart-4410f. Development is quadmart-development (377519547132), Standard Firestore in nam5, Spark plan. The development web app is registered, Email/Password Auth is enabled, and the rules/indexes in this branch have been deployed explicitly to development. No production rules or data were changed.
 
-To move this tested local integration into cloud development:
+Vercel project narze4s-projects/quadmart uses development Firebase in its Preview environment. Production environment variables and main were left untouched. The stable branch URL is https://quadmart-git-security-firestore-rules-narze4s-projects.vercel.app and is an authorized development Auth domain.
 
-1. Register a development web app, enable Email/Password Auth and configure authorized development domains.
-2. Set NEXT_PUBLIC_FIREBASE_* from that web app, and FIREBASE_ADMIN_PROJECT_ID=quadmart-development. NEXT_PUBLIC_USE_FIREBASE_EMULATORS and QUADMART_LOCAL must be absent/false. Never publish a build made with build:local.
-3. Configure a trusted server identity via Application Default Credentials with only the permissions needed for Firestore and Auth verification. Keep credentials outside Git and client-prefixed environment variables. No service-account keys are included here.
-4. Deploy firestore.rules and firestore.indexes.json explicitly to quadmart-development, then deploy the matching application. Wait for indexes to become ready; emulator tests do not verify deployed indexes.
-5. Test real email delivery, hosting credentials, authorized domains and cloud queries before any production rollout. Legacy data needs a reviewed migration for campusId, UID-based identity and public profile projections; this change does not migrate existing cloud data.
+The Preview environment contains the web-app NEXT_PUBLIC_FIREBASE_* configuration plus FIREBASE_ADMIN_PROJECT_ID=quadmart-development. Next.js embeds the public values at build time, so changing them requires a fresh deployment. Vercel builds reject emulator flags and a preview pointing at another Firebase project. Local emulator commands still use demo-quadmart.
+
+Server authentication uses Vercel OIDC and Google Workload Identity Federation:
+
+- Service account: quadmart-preview@quadmart-development.iam.gserviceaccount.com.
+- Project roles: roles/datastore.user and roles/firebaseauth.viewer. These allow backend database operations and checking whether Auth tokens were revoked. The identity cannot administer Auth users, deploy rules, or manage IAM.
+- Pool/provider: projects/377519547132/locations/global/workloadIdentityPools/quadmart-preview/providers/vercel.
+- Issuer: https://oidc.vercel.com/narze4s-projects; audience: https://vercel.com/narze4s-projects.
+- Provider condition requires the exact subject owner:narze4s-projects:project:quadmart:environment:preview AND project_id prj_9xZTvLfaS6wXCG9R00TyFVM4icai. The exact subject receives roles/iam.workloadIdentityUser on this service account.
+- QUADMART_CREDENTIAL_MODE=vercel-oidc and the two GCP identifiers in .env.development.example select this identity. No service-account key is created or stored. Google tokens refresh automatically.
+- The Firebase Auth credential and Firestore GoogleAuth client share the same refreshing federated client. Outside Vercel preview, the existing ADC path remains available.
+
+Deploy development rules with npm run deploy:rules:development. Always check deployed index readiness; the emulator does not enforce composite-index availability. Run npm run test:credentials and npm run test:integration for local regression coverage.
+
+Cloud test fixtures may be provisioned as explicitly verified synthetic development accounts without sending email. Such tests exercise hosted Auth, rules and the backend, but do not establish real student email delivery or ownership. Real email delivery remains a separate prelaunch check. Existing production data still needs a reviewed migration for campusId, UID-based identity and public profiles.
 
 ## Remaining launch work
 
-Photo uploads use Cloudinary and were not exercised in the two-account test (photos are optional). Upload authentication, content validation, rate limits and asset ownership still need hardening before public deployment. Account deletion cleanup, blocking/reporting, suspension policy, abuse limits, pagination, backups and dependency security advisories also remain separate launch tasks. This branch is locally integrated, not a claim that the whole service is production-ready.
+Photo uploads use Cloudinary and are disabled by default; the development preview explicitly sets QUADMART_ENABLE_UPLOADS=false. Photos are optional and were not exercised in the two-account test. Upload authentication, content validation, rate limits and asset ownership still need hardening before public deployment. Account deletion cleanup, blocking/reporting, suspension policy, abuse limits, pagination, backups and dependency security advisories also remain separate launch tasks. A development deployment is not a claim that the whole service is production-ready. npm audit currently reports unresolved dependency advisories, including Next.js; resolve or assess them before a public launch.

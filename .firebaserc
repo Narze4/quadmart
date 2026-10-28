@@ -1,1 +1,1 @@
-{ "projects": { "default": "demo-quadmart" } }
+{ "projects": { "default": "demo-quadmart", "development": "quadmart-development" } }
