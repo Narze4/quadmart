@@ -113,6 +113,7 @@ export default function SellPage() {
     URL.revokeObjectURL(preview)
     photoPreviews.current.delete(preview)
     setPhotos(prev => prev.filter((_, i) => i !== index))
+    setError('')
   }
 
   const uploadImages = async () => {
@@ -142,7 +143,9 @@ export default function SellPage() {
     setError('')
     setSubmitting(true)
     try {
-      const assets = await uploadImages()
+      let assets
+      try { assets = await uploadImages() }
+      catch (uploadError) { setStep(2); throw uploadError }
       await addDoc(collection(db, 'listings'), {
         title: form.title.trim(),
         description: form.description.trim(),
@@ -181,7 +184,7 @@ export default function SellPage() {
       <main className="flex-1 max-w-2xl mx-auto px-4 sm:px-6 py-12 w-full">
         {/* Step header */}
         <div className="flex items-center gap-4 mb-8">
-          <button onClick={handleBack} className="p-2 rounded-full hover:bg-gray-100 transition-colors text-text-secondary">
+          <button onClick={handleBack} aria-label="Back" disabled={submitting} className="p-2 rounded-full hover:bg-gray-100 transition-colors text-text-secondary">
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="15 18 9 12 15 6" />
             </svg>
@@ -275,7 +278,8 @@ export default function SellPage() {
                       />
                       <button
                         onClick={() => removePhoto(i)}
-                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gray-900/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-900"
+                        aria-label={`Remove photo ${i + 1}`}
+                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gray-900/70 text-white flex items-center justify-center hover:bg-gray-900 focus-visible:ring-2 focus-visible:ring-primary"
                       >
                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -373,10 +377,10 @@ export default function SellPage() {
                 ))}
               </div>
 
-              {error && <p className="text-sm text-red-600 mt-6">{error}</p>}
             </div>
           )}
           </div>
+          {error && <p role="alert" className="text-sm text-red-600 mt-6">{error}</p>}
         </div>
 
         {/* Next / Post button */}
