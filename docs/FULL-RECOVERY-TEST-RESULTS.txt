@@ -1,0 +1,57 @@
+QuadMart complete development recovery checks — 2026-10-28
+
+Scope: quadmart-development; existing free Firebase/Cloudinary and owner-only
+Google Drive folder. No production, main, billing or runtime IAM changes.
+
+Implementation:
+- AES-256-GCM version 2 payload includes fixed-read-time Firestore documents,
+  password account metadata/hashes/salts plus modified SCRYPT parameters,
+  and original registered authenticated JPEG bytes with separate checksums.
+- Fail closed for missing password hashes, unsupported auth providers/MFA,
+  incomplete required photos, malformed namespaces or resource bounds.
+- Compare Auth exports and hash configuration around capture.
+- Offsite receipt requires owner-only metadata, exact parent/size, matching
+  downloaded ciphertext and successful authenticated decryption.
+- Cloud cleanup requires that complete capture and receipt be <30 minutes old.
+- Rehearsal uses only isolated empty loopback Firestore/Auth emulators and
+  private temporary photo files; imported accounts are disabled.
+- Local backups keep 28. Offsite upload budget is 1 GiB; Drive retention is
+  manual for now, with no automatic permanent deletion or paid upgrade.
+
+Verified evidence:
+- Full real development backup: 69 documents, 3 password accounts, 3 photos,
+  100,866 original photo bytes. One unfinished failed upload had no provider
+  asset and was explicitly recorded as skipped; no ready photo was omitted.
+- Encrypted bundle uploaded to the dedicated private Drive folder; file
+  metadata had exactly the expected owner permission and shared=false.
+- Downloaded ciphertext matched SHA-256 and decrypted with the local key.
+- The actual Drive download restored 69 documents, 3 disabled accounts and
+  3 photos. Every document and account identity/hash/salt/profile/claim was
+  checked; image bytes and dimensions matched. Scratch images were removed.
+- Disposable cloud password test: exported a new synthetic account, encrypted
+  and decrypted its hash data, deleted only that fixture, imported the same
+  UID/hash parameters, and signed in with its original password. A wrong
+  password was rejected. Fixture removed afterward; 3 original users retained.
+- Disposable Cloudinary test: downloaded a generated fixture JPEG, deleted
+  that fixture, re-uploaded its bytes with overwrite disabled, downloaded it
+  again and compared SHA-256. Exact match (275 bytes); fixture cleaned up.
+- Installed source-pinned maintenance launcher completed with offsiteVerified,
+  3 profiles checked, zero failures/manual-review/stale/outstanding jobs.
+- Installed rehearsal launcher completed, shut down both emulators and
+  reported successful document/account/photo verification.
+- User confirmed recovery key is saved in their separate password manager.
+- Local changed-area checks: 18 backup/recovery/launcher tests, 8 operations
+  tests, 2 isolated restore tests; ESLint passed. Full CI runs on the PR.
+- Existing schedules updated, not duplicated: every six hours; weekly Sunday
+  11 a.m. local. These tests were manual executions of the installed workflow;
+  a future unattended scheduled tick has not yet been observed.
+
+Limits:
+This is development recovery evidence, not launch approval. Mac/app/network
+availability and live connector/CLI access remain necessary. Emulator Auth
+import does not test real passwords; the separate disposable cloud test does.
+No complete new-cloud disaster restore or traffic cutover has been performed.
+Cross-service snapshots are not atomic. Cloud restoration must reconcile newer
+closure/moderation decisions before enabling users. IAM, platform settings,
+non-password/MFA/tenant auth, active sessions and unregistered assets are excluded.
+No credentials, key material, private records or photo bytes are included here.

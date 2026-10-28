@@ -16,16 +16,18 @@ try {
     if (name.includes('..') || path.isAbsolute(name)) throw new Error('Invalid manifest');
     if (createHash('sha256').update(await fs.readFile(path.join(runtime, name))).digest('hex') !== expected) throw new Error('Changed runtime');
   }
-  const backups = path.join(home, 'backups');
-  const files = (await fs.readdir(backups)).filter(n => /^quadmart-[0-9T-]+Z-[a-f0-9-]{36}\.qmb$/.test(n)).sort();
-  const file = files.at(-1);
-  if (!file || Date.now() - (await fs.stat(path.join(backups, file))).mtimeMs > 18 * 3600000) throw new Error('Fresh backup required');
+  const backups = path.join(home, 'offsite-downloads');
+  const receipt = JSON.parse(await fs.readFile(path.join(home, 'backups/latest-offsite.json'), 'utf8'));
+  const file = receipt.filename;
+  if (!/^quadmart-[0-9T-]+Z-[a-f0-9-]{36}\.qmb$/.test(file ?? '') || Date.now() - Date.parse(receipt.capturedAt) > 18 * 3600000 || !Number.isFinite(Date.parse(receipt.capturedAt))) throw new Error('Fresh offsite backup required');
+  const bytes = await fs.readFile(path.join(backups, file));
+  if (createHash('sha256').update(bytes).digest('hex') !== receipt.sha256 || receipt.ownerOnly !== true) throw new Error('Verified downloaded backup required');
   const quote = text => `'${text.replaceAll("'", "'\\''")}'`;
   const command = [process.execPath, path.join(runtime, 'scripts/operations.mjs'), '--action', 'restore-test', '--project', 'demo-quadmart-restore', '--directory', backups, '--key', path.join(home, 'backup.key'), '--file', file].map(quote).join(' ');
   const startedAt = new Date().toISOString();
   // The CLI must start its OWN empty emulator. An occupied port fails rather
   // than connecting to/clearing an existing database. It shuts down on exit.
-  const child = spawnSync(process.execPath, [path.join(runtime, 'node_modules/firebase-tools/lib/bin/firebase.js'), 'emulators:exec', '--config', path.join(runtime, 'firebase.restore.json'), '--only', 'firestore', '--project', 'demo-quadmart-restore', command], {
+  const child = spawnSync(process.execPath, [path.join(runtime, 'node_modules/firebase-tools/lib/bin/firebase.js'), 'emulators:exec', '--config', path.join(runtime, 'firebase.restore.json'), '--only', 'auth,firestore', '--project', 'demo-quadmart-restore', command], {
     cwd: runtime, env: { ...process.env, XDG_CONFIG_HOME: path.join(home, 'firebase-config'), FIREBASE_EMULATORS_PATH: path.join(home, 'emulators') }, timeout: 8 * 60000, maxBuffer: 2 * 1024 * 1024, encoding: 'utf8'
   });
   let result;

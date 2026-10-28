@@ -1,61 +1,68 @@
 # Development maintenance and recovery
 
-This setup is restricted to `quadmart-development`. The user chose the existing free Firebase/Cloudinary setup and a schedule running through Codex on their Mac. It is a development aid, not an always-on production recovery service. Keep the Mac awake, online and the desktop app running; local task permissions and an unexpired Firebase CLI login are required. Codex task runs use the account's normal usage allowance.
+This setup is restricted to `quadmart-development`. It uses existing free Firebase, Cloudinary and personal Google Drive storage and runs through Codex on the owner's Mac. No billing upgrade or privileged Vercel credential is needed. Keep the Mac awake, online and the desktop app running; local permissions, connected Drive and an unexpired Firebase CLI login are required. Codex runs use the account's normal usage allowance. This is not an always-on production recovery service.
 
-## Six-hour job
+## Six-hour workflow
 
-The installed launcher uses a private, frozen copy of the reviewed operations code and dependencies. It verifies the source manifest before starting, refuses emulator variables and terminates a run after eight minutes. This avoids running unfinished edits from the app checkout. Refresh the runtime and manifest deliberately when operations code changes. Credentials remain local; no privileged Auth credential was added to Vercel.
+The private launcher verifies a pinned source manifest and runs with an eight-minute timeout. `prepare` captures and validates an encrypted complete bundle. The scheduled task uploads it through the connected Google Drive tool into the configured private folder, verifies owner-only permissions and parent, downloads the file, and registers a receipt only when the bytes match and decrypt correctly. Only then may `apply BACKUP_FILENAME` perform cleanup. Both capture and verified receipt must be less than 30 minutes old. Failed capture, upload, download, privacy checks or decryption stop cleanup.
 
-Each run obtains a 15-minute Firestore lease. Another worker skips an active lease, and an expired lease can recover. A run must capture a new encrypted backup, write it successfully, decrypt it and validate its checksum before any cleanup begins. Backup failures stop cleanup. Lease checks prevent an expired worker proceeding to another cleanup step.
+Cleanup obtains a 15-minute Firestore lease; overlapping work skips and expired leases can recover. The worker visits at most 25 private profiles, 25 deletion jobs and 25 old media records per run. Cursors persist in client-inaccessible `systemOperations/developmentMaintenance`. Each deletion job advances at most 20 batches per run. Auth network errors never count as a missing account; active moderator and invalid membership cases require review. Photo deletion keeps its 24-hour grace period, exact namespace checks, transactional claims and live/archive/report evidence holds.
 
-The worker visits at most 25 private profiles, 25 deletion jobs and 25 old media registry records per run. Cursors persist in `systemOperations/developmentMaintenance`, which clients cannot read or write. Profile scanning positively checks Firebase Auth before queueing an externally deleted login. Missing/invalid membership and active moderator cases require review; network errors never count as missing accounts. Each deletion job advances at most 20 batches in a run. Failed jobs are revisited after the cursor wraps. Photo cleanup retains the existing 24-hour grace period, exact development namespace checks, transaction claims and live/archive/report evidence holds.
+Safe reports contain counts and stages, never emails, messages, credential values or raw SDK errors. Failures, stale/incomplete jobs and an 18-hour overdue interval are reported in the chat. Ordinary successes stay quiet. An offline Mac cannot notify until it next runs. A skipped overlap is not evidence that another run succeeded. No external messages or emails are sent.
 
-The safe report contains counts and phases, not emails, message text, raw SDK exceptions or credentials. A run with failures/manual-review cases exits unsuccessfully. The scheduled prompt also flags incomplete/stale jobs and a previous successful run older than 18 hours. The clock cannot alert while this same Mac/app is unavailable; an overdue period is detected when it next runs. Cursor-based backlog counts cover the current page, not the entire database.
+## Contents and limits
 
-Private local reports are `latest-launch.json` and `backups/latest-run.json`. The launch report also covers configuration errors, dependency failures and timeouts before the worker starts. A skipped overlapping run is not proof that the other worker succeeded; inspect its eventual report. No automatic email, Slack message or third-party alert destination is configured.
+A version 2 encrypted bundle contains:
 
-## Backup boundary
+- Firestore documents, including nested collections with missing parents. Collection discovery and every page use one fixed `readTime` five seconds before capture starts. REST value types, large integers, timestamps, references, bytes and geo points are preserved. Rules/indexes/Firebase config are repository reference copies.
+- Firebase email/password accounts: stable user IDs, email verification and disabled status, profile fields, custom claims, creation/sign-in metadata, exportable password hashes and salts, and the project's modified SCRYPT parameters. Missing hashes, unsupported providers, tenant accounts or enrolled MFA stop the backup. No plaintext passwords or active refresh tokens are backed up.
+- Actual authenticated JPEG bytes for registered photos, with independent SHA-256 checksums, dimensions and provider identifiers. Deleted records are skipped. A missing unfinished/failed upload is explicitly recorded; a missing ready/blocked/deleting image fails the capture. The source-upload digest is not reused for the sanitized stored JPEG.
 
-The backup covers **Firestore document data**, recursively including nested collections under missing parents. Collection discovery and every document page use one fixed `readTime` five seconds before capture starts. REST Firestore values are retained, including integers beyond JavaScript's safe range, timestamps, references, bytes and geo points. Source rules, indexes and Firebase config files are bundled as reference copies; these are repository versions, not a live export of IAM or platform settings.
+Auth is exported twice around photo capture and compared; hash parameters are also checked again. Firestore and Auth/provider state are not one atomic transaction. Quiesce writes and reconcile account closure/moderation history before a real disaster restore. Unregistered provider assets, IAM, billing, provider account configuration and active sessions are outside this backup.
 
-The collector fails rather than truncate at 10,000 documents, 20,000 requests, 64 MiB or 30 minutes. The launcher has a stricter eight-minute process limit. These bounds suit the small development database; reconsider them and quota usage as data grows. Reads and discovery consume service quota. The run is not a replacement for managed Firestore backups.
+Bounds fail closed at 10,000 documents/accounts, 20,000 Firestore requests, 1,000 photos, 4 MiB per photo, 32 MiB photo bytes or 64 MiB total plaintext. The collector limit is 30 minutes and the launcher limit is eight. Reads and image downloads consume provider quotas. Reassess these limits before inviting students or adding authentication methods.
 
-Snapshots use authenticated AES-256-GCM encryption with a random 32-byte local key, random nonce, checksum validation and owner-only files/directories. No plaintext snapshot is written. Completed files have a `.qmb` suffix; incomplete files are never treated as valid backups. Only after verifying the new snapshot does retention keep the newest 28 completed backups (about seven days at an uninterrupted six-hour cadence). This is a development storage setting, not a privacy retention policy.
+## Encryption, storage and recovery key
 
-The encryption key and archives are on the same Mac. This protects files from casual disclosure but does **not** protect against loss of that Mac or compromise of its account. An independently protected off-device copy and separate recovery-key custody remain launch requirements. Backups may contain data removed by subsequent account deletion; a future cloud restore must reconcile the latest closure/moderation state before enabling access.
+Bundles use AES-256-GCM with a random 32-byte key, random nonce, authenticated envelope and per-content checksums. No plaintext snapshot is saved. Private directories are mode 0700 and files 0600. A missing key is an error; scheduled runs never generate a replacement. Latest 28 completed local bundles are retained. Incomplete files are not accepted.
 
-Not included: Firebase Auth login/password records, Cloudinary image bytes, deployed IAM/identity-provider configuration or billing settings. The backup includes image registry references only. A Firestore restore test does not prove complete service recovery, image recovery or password recovery. These need separate recovery plans before launch.
+Only encrypted `.qmb` files go to the dedicated private Google Drive folder. The key stays separate in the owner's password manager (confirmed October 28, 2026). Google Drive files must have exactly the expected owner permission and no shared access. Metadata alone is not proof of recovery: every successful offsite receipt records the checksum of downloaded ciphertext and validated decrypted contents.
 
-## Restore rehearsal
+Offsite archives are retained until the operator chooses a retention policy; the task does not permanently delete Drive files. Before uploads, it checks the folder inventory and a 1 GiB development budget. A partial/ambiguous listing, budget or provider quota failure stops the upload and cleanup and alerts the operator. No paid storage is enabled. The task removes only obsolete local download-cache files after a successful verification. Backups may include records later deleted; data retention and restoration of closed accounts need a launch policy.
 
-`restore-test` can write only to `demo-quadmart-restore` on `http://127.0.0.1:8180`. It refuses the normal local-test emulator, any cloud target and any nonempty target. The dedicated emulator has deny-all client rules. Restored documents use create-only preconditions; internal document references are remapped to the rehearsal project. Every restored document is independently read back and compared. A partial/failed target must be discarded, not overwritten.
+Private state lives under the installed operations directory: `backup.key`, `offsite-config.json`, `backups/`, `offsite-downloads/`, `latest-launch.json`, `latest-rehearsal.json`, and `backups/latest-offsite.json`. Do not commit, attach or paste these private files. Source manifests and reports must not include credentials.
 
-The rehearsal makes no Auth accounts, sends no emails and performs no Cloudinary operation. It validates Firestore recovery in a disposable emulator; it does not implement an automatic cloud restore command. The local emulator is shut down after the rehearsal. Test snapshots and safe proof reports should be distinguished from the private backup files.
+## Restore rehearsal and manual disaster procedure
 
-A weekly local rehearsal uses the most recent backup, requires it to be less than 18 hours old, starts its own isolated emulator and refuses an occupied port/nonempty database. Its safe result is `latest-rehearsal.json`. Java 21 and the cached official Firestore emulator are required. An eight-minute timeout aborts a stuck rehearsal; if interrupted, inspect and stop only its own emulator before retrying. The schedule reports failed rehearsals or a meaningful recovery, and stays quiet on routine success.
+The weekly Sunday 11 a.m. local rehearsal downloads the latest verified Drive file again and checks its metadata and ciphertext against the receipt. It requires a capture younger than 18 hours, starts its own empty `demo-quadmart-restore` emulators on loopback Firestore 8180 and Auth 9199, and shuts them down afterward. Occupied ports fail; do not stop an unidentified process.
+
+Firestore restore refuses cloud, normal development emulator and nonempty targets. It uses create-only writes, remaps internal references, and independently compares every document. Auth imports retain password hash/salt and metadata but disable every restored account. Photos restore to an empty private temporary folder, are checked byte-for-byte and decoded for dimensions, then removed. Emulator Auth import does **not** prove actual password sign-in; a separate disposable development-cloud test covers that. Neither weekly rehearsal nor the CLI automatically writes restored data into cloud services.
+
+If the Mac is lost:
+
+1. Recover the reviewed source/runtime and dependencies on a trusted replacement. Download an encrypted backup from the private Drive folder. Keep it and any recovery note in a mode-0700 directory.
+2. Export the recovery-key note from the password manager to a mode-0600 local text file. Run `node scripts/recover-backup-key.mjs PRIVATE_NOTE ABSENT_KEY_PATH`. It writes the raw key with mode 0600, prints only its fingerprint, and refuses an existing destination. Compare the fingerprint with the saved note and remove the temporary note. Never put key bytes in a command or chat.
+3. Decrypt and rehearse the backup only in the isolated local emulators using the command below. Verify account/photo/document counts and checksums. A tampered bundle or wrong key must fail.
+4. Provision a separate recovery cloud environment and review current closure, suspension, verification and moderator state. Re-establish IAM, email templates, domains and provider configuration. Restore accounts quarantined; no account should be re-enabled solely because it appeared in an old backup. Auth hashes must use the saved SCRYPT parameters. Restore authenticated images with original IDs and create-only/overwrite-disabled uploads. Reconcile registry references before enabling access.
+5. Test real password sign-in and the complete marketplace flow before switching traffic. A fresh device/cloud disaster exercise, operator ownership, retention and recovery-time/data-loss targets remain pre-invitation work.
 
 ## Commands
 
-Run these from an installed checkout/runtime with Node 22. Replace the uppercase paths with private absolute paths. Never pass credential values or backup-key bytes on the command line.
+Use Node 22, Java 21 and private absolute paths. Never pass credential/key bytes in command arguments. `PRIVATE_HOME` below denotes the installed private directory.
 
 ```sh
-# Read/backup only; no database or provider mutation.
-XDG_CONFIG_HOME=PRIVATE_CLI_CONFIG npm run operations -- --project quadmart-development --action run --directory PRIVATE_BACKUPS --key PRIVATE_KEY
+node scripts/run-scheduled-maintenance.mjs PRIVATE_HOME prepare
+# Connector: upload .qmb, verify metadata, fetch raw download reference.
+# Save only that temporary reference to a private input JSON, then:
+node scripts/download-offsite.mjs PRIVATE_DOWNLOAD_INPUT PRIVATE_DOWNLOAD_DIRECTORY
+node scripts/operations.mjs --action register-offsite --directory PRIVATE_BACKUPS --key PRIVATE_KEY --file BACKUP_FILENAME.qmb --download PRIVATE_DOWNLOADED_FILE --metadata PRIVATE_DRIVE_METADATA --offsite-config PRIVATE_OFFSITE_CONFIG
+node scripts/run-scheduled-maintenance.mjs PRIVATE_HOME apply BACKUP_FILENAME.qmb
+node scripts/run-scheduled-restore.mjs PRIVATE_HOME
 
-# Approved development cleanup after a newly verified backup.
-XDG_CONFIG_HOME=PRIVATE_CLI_CONFIG npm run operations -- --project quadmart-development --action run --apply --directory PRIVATE_BACKUPS --key PRIVATE_KEY --cloudinary-config PRIVATE_CLOUDINARY_JSON
-
-# Safe last-run report; an older-than-18-hours report exits unsuccessfully.
-npm run operations -- --action status --directory PRIVATE_BACKUPS --key PRIVATE_KEY
-
-# Disposable restore rehearsal; this target must be empty.
-firebase emulators:exec --config firebase.restore.json --only firestore --project demo-quadmart-restore "node scripts/operations.mjs --action restore-test --project demo-quadmart-restore --directory PRIVATE_BACKUPS --key PRIVATE_KEY --file BACKUP_FILENAME.qmb"
+# Manual isolated rehearsal on a recovered bundle; no cloud writes.
+firebase emulators:exec --config firebase.restore.json --only auth,firestore --project demo-quadmart-restore "node scripts/operations.mjs --action restore-test --project demo-quadmart-restore --directory PRIVATE_BACKUPS --key PRIVATE_KEY --file BACKUP_FILENAME.qmb"
 ```
 
-`test:backup`, `test:operations` and `test:restore` cover encryption/tampering, source/target guards, paging, missing parents, private permissions, retention, leases, interrupted runs, recent-backup gating, Auth failures, moderator protection, stale-job reporting and actual typed document restoration. CI also runs the pre-existing rules, backend, upload and marketplace flow checks.
+`test:backup`, `test:operations` and `test:restore` exercise encryption, tampering, private files, pagination, missing hashes/providers, image scope/bytes, offsite privacy/checksum/freshness gates, recovery-key import, worker leases and empty-target document/account restoration. CI also runs rules, uploads, safety, abuse, cleanup and production-build marketplace flows.
 
-## Before student invitations
-
-Move scheduling and recovery to an always-on host; add independent missed-run alerts, least-privileged worker identity, protected off-device backups and a separate recovery key. Decide Auth and photo recovery procedures, test a cloud recovery environment, document recovery-time/data-loss targets and assign an operator. Set retention policy and audit restores for previously deleted/suspended accounts. This local schedule does not make the project launch-ready by itself.
-
-Sources: [Firebase managed backup requirements](https://firebase.google.com/docs/firestore/backups), [fixed-time collection discovery](https://firebase.google.com/docs/firestore/reference/rest/v1/projects.databases.documents/listCollectionIds), [fixed-time document listing and missing parents](https://firebase.google.com/docs/firestore/reference/rest/v1/projects.databases.documents/listDocuments), [Codex local scheduled tasks](https://learn.chatgpt.com/docs/automations?surface=app).
+Sources: [Firebase password import](https://firebase.google.com/docs/auth/admin/import-users), [Auth export and SCRYPT parameters](https://firebase.google.com/docs/cli/auth), [Cloudinary authenticated downloads](https://cloudinary.com/documentation/image_upload_api_reference), [Firestore fixed-time discovery](https://firebase.google.com/docs/firestore/reference/rest/v1/projects.databases.documents/listCollectionIds), [Codex local scheduled tasks](https://learn.chatgpt.com/docs/automations?surface=app).

@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 
 // This launcher imports only Node builtins. Its private runtime is a reviewed
 // source/dependency copy, independent of an unfinished application checkout.
-const home = process.argv[2];
+const home = process.argv[2], action = process.argv[3] ?? "prepare", filename = process.argv[4];
 let report, privateHome = false;
 try {
   if (!home || !path.isAbsolute(home)) throw new Error('Absolute operations directory required');
@@ -22,8 +22,9 @@ try {
     const actual = createHash('sha256').update(await fs.readFile(path.join(runtime, name))).digest('hex');
     if (actual !== expected) throw new Error('Operations runtime changed; review and refresh required');
   }
+  if (!['prepare', 'apply'].includes(action) || (action === 'apply' && !/^quadmart-[0-9T-]+Z-[a-f0-9-]{36}\.qmb$/.test(filename ?? ''))) throw new Error('Explicit prepared backup required');
   const startedAt = new Date().toISOString();
-  const child = spawnSync(process.execPath, [path.join(runtime, 'scripts/operations.mjs'), '--project', 'quadmart-development', '--action', 'run', '--apply', '--directory', path.join(home, 'backups'), '--key', path.join(home, 'backup.key'), '--cloudinary-config', config.cloudinaryConfig], {
+  const child = spawnSync(process.execPath, [path.join(runtime, 'scripts/operations.mjs'), '--project', 'quadmart-development', '--action', action === 'prepare' ? 'backup' : 'run', ...(action === 'apply' ? ['--apply', '--file', filename] : []), '--offsite-config', path.join(home, 'offsite-config.json'), '--directory', path.join(home, 'backups'), '--key', path.join(home, 'backup.key'), '--cloudinary-config', config.cloudinaryConfig], {
     cwd: runtime, env: { ...process.env, XDG_CONFIG_HOME: path.join(home, 'firebase-config') }, timeout: 8 * 60 * 1000, maxBuffer: 1024 * 1024, encoding: 'utf8'
   });
   // Read the worker's explicit safe projection. Do not emit SDK stderr or raw

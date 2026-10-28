@@ -30,5 +30,10 @@ export async function maintenanceServices(projectId) {
   client.setCredentials({ access_token: token.access_token, expiry_date: token.expires_at });
   const db = new Firestore({ projectId, auth: new GoogleAuth({ projectId, authClient: client }) });
   const app = initializeApp({ projectId, credential: { getAccessToken: async () => { const t = await fresh(); return { access_token: t.access_token, expires_in: Math.floor((t.expires_at - Date.now()) / 1000) }; } } }, 'quadmart-maintenance');
-  return { db, auth: getAuth(app), snapshotRequest: firestoreRest({ projectId, accessToken: async () => (await fresh()).access_token }), close: async () => { await db.terminate(); await deleteApp(app); } };
+  const authConfiguration = async () => {
+    const response = await fetch(`https://identitytoolkit.googleapis.com/admin/v2/projects/${projectId}/config`, { headers: { Authorization: `Bearer ${(await fresh()).access_token}` }, signal: AbortSignal.timeout(30000) });
+    if (!response.ok) throw new Error('Auth backup configuration could not be read');
+    return response.json();
+  };
+  return { db, auth: getAuth(app), authConfiguration, snapshotRequest: firestoreRest({ projectId, accessToken: async () => (await fresh()).access_token }), close: async () => { await db.terminate(); await deleteApp(app); } };
 }

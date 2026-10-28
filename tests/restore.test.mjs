@@ -24,3 +24,12 @@ test('restore an encrypted snapshot into an empty isolated database and verify e
   // Empty target enforcement covers nested-only documents, too.
   assert((await request('POST', `${target}:listCollectionIds`, {})).collectionIds.includes('missing'));
 });
+
+test('restore exported password account metadata into empty isolated Auth, disabled by default',async()=>{
+ const { fixture } = await import('./recovery-fixture.mjs');
+ const { addRecovery, restoreAccountsLocally } = await import('../lib/operations/recovery.mjs');
+ const {snapshot,services}=await fixture(),full=await addRecovery(snapshot,services);
+ const result=await restoreAccountsLocally(full.recovery);
+ assert.equal(result.restoredAccounts,1);assert.equal(result.accountsQuarantined,true);assert.equal(result.passwordLoginTested,false);
+ await assert.rejects(restoreAccountsLocally(full.recovery),/empty/);
+});
