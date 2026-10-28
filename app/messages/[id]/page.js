@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { marketApi } from '@/lib/market-api'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { addDoc, collection, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore'
-import { createNotification } from '@/lib/notifications'
+import { collection, doc, getDoc, onSnapshot, orderBy, query, limit } from 'firebase/firestore'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 
@@ -19,6 +19,8 @@ export default function ConversationPage() {
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const bottomRef = useRef(null)
+  const pending = useRef(null)
+  const [sendError, setSendError] = useState('')
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
@@ -35,11 +37,11 @@ export default function ConversationPage() {
 
   useEffect(() => {
     if (!user || !id) return
-    const q = query(collection(db, 'conversations', id, 'messages'), orderBy('createdAt', 'asc'))
+    const q = query(collection(db, 'conversations', id, 'messages'), orderBy('createdAt', 'desc'), limit(100))
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        setMessages(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })))
+        setMessages(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })).reverse())
       },
       (err) => console.error('messages listener error:', err)
     )
@@ -56,35 +58,19 @@ export default function ConversationPage() {
     if (!trimmed || sending) return
     setSending(true)
     try {
-      await addDoc(collection(db, 'conversations', id, 'messages'), {
-        text: trimmed,
-        senderEmail: user.email,
-        createdAt: serverTimestamp(),
-      })
-      await updateDoc(doc(db, 'conversations', id), {
-        lastMessage: trimmed,
-        lastMessageAt: serverTimestamp(),
-      })
+      setSendError('')
+      if (!pending.current || pending.current.text !== trimmed) pending.current = { text: trimmed, requestId: crypto.randomUUID() }
+      await marketApi('message', { conversationId: id, ...pending.current })
+      pending.current = null
       setText('')
-
-      // Notify the recipient
-      if (otherParticipantUid) {
-        await createNotification(
-          otherParticipantUid,
-          'message',
-          `New message from ${user.email.split('@')[0]}`,
-          trimmed.slice(0, 50),
-          `/messages/${id}`
-        )
-      }
+    } catch (error) { setSendError(error.message)
     } finally {
       setSending(false)
     }
   }
 
   const otherIdx = conversation?.participants?.findIndex((p) => p !== user?.uid) ?? -1
-  const otherParticipantUid = otherIdx > -1 ? conversation.participants[otherIdx] : null
-  const otherParticipantEmail = otherIdx > -1 ? conversation.participantEmails?.[otherIdx] : null
+  const otherParticipantEmail = otherIdx > -1 ? conversation.participantNames?.[otherIdx] : null
 
   if (loading || !user || !user.emailVerified) {
     return (
@@ -114,7 +100,7 @@ export default function ConversationPage() {
             <p className="text-center text-sm text-text-secondary my-auto">No messages yet. Say hello!</p>
           )}
           {messages.map((msg) => {
-            const isMe = msg.senderEmail === user.email
+            const isMe = msg.senderUid === user.uid
             return (
               <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-xs sm:max-w-sm px-4 py-2.5 rounded-2xl text-sm ${
@@ -128,6 +114,7 @@ export default function ConversationPage() {
           <div ref={bottomRef} />
         </div>
 
+        {sendError && <p role="alert">{sendError}</p>}
         <form onSubmit={handleSend} className="flex gap-2">
           <input
             type="text"

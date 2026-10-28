@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { collection, collectionGroup, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
@@ -50,13 +50,12 @@ export default function MyPurchasesPage() {
       const sellerIds = [...new Set(txs.map(t => t.sellerUid).filter(Boolean))]
       const sellerNames = {}
       await Promise.all(sellerIds.map(async uid => {
-        const sSnap = await getDoc(doc(db, 'users', uid))
-        sellerNames[uid] = sSnap.exists() ? sSnap.data().email?.split('@')[0] : 'Unknown seller'
+        const sSnap = await getDoc(doc(db, 'publicProfiles', uid))
+        sellerNames[uid] = sSnap.exists() ? sSnap.data().displayName : 'Unknown seller'
       }))
       setTransactions(txs.map(t => ({ ...t, sellerName: sellerNames[t.sellerUid] ?? 'Unknown seller' })))
 
-      const reviewSnap = await getDocs(query(collectionGroup(db, 'reviews'), where('reviewerUid', '==', user.uid)))
-      setReviewedSellers(new Set(reviewSnap.docs.map(d => d.ref.parent.parent.id)))
+      setReviewedSellers(new Set(txs.filter(t => t.buyerReviewed).map(t => t.id)))
     } catch {
       setFetchError(true)
     } finally {
@@ -161,8 +160,8 @@ export default function MyPurchasesPage() {
                       {purchaseDate(tx.createdAt)} · from {tx.sellerName}
                     </p>
                   </div>
-                  {!reviewedSellers.has(tx.sellerUid) && (
-                    <Button href={`/review/${tx.sellerUid}?type=seller`} size="sm" className="shrink-0">
+                  {!reviewedSellers.has(tx.id) && (
+                    <Button href={`/review/${tx.sellerUid}?type=seller&transactionId=${tx.id}`} size="sm" className="shrink-0">
                       Leave a Review
                     </Button>
                   )}

@@ -3,22 +3,18 @@
 import { useEffect, useState } from 'react'
 import { db } from '@/lib/firebase'
 import {
-  addDoc,
   collection,
   doc,
   getDoc,
   getDocs,
-  increment,
   query,
-  serverTimestamp,
-  updateDoc,
   where,
 } from 'firebase/firestore'
-import { createNotification } from '@/lib/notifications'
+import { marketApi } from '@/lib/market-api'
 
 const OFF_PLATFORM = 'off-platform'
 
-export default function MarkAsSoldModal({ listing, sellerUsername, onClose, onSold }) {
+export default function MarkAsSoldModal({ listing, onClose, onSold }) {
   const [buyers, setBuyers] = useState([])
   const [loadingBuyers, setLoadingBuyers] = useState(true)
   const [selected, setSelected] = useState(OFF_PLATFORM)
@@ -30,7 +26,7 @@ export default function MarkAsSoldModal({ listing, sellerUsername, onClose, onSo
     const loadBuyers = async () => {
       try {
         const convoSnap = await getDocs(
-          query(collection(db, 'conversations'), where('listingId', '==', listing.id))
+          query(collection(db, 'conversations'), where('listingId', '==', listing.id), where('participants', 'array-contains', listing.sellerUid))
         )
         const seen = new Set()
         const candidates = []
@@ -39,12 +35,12 @@ export default function MarkAsSoldModal({ listing, sellerUsername, onClose, onSo
           const otherUid = convo.participants?.find(p => p !== listing.sellerUid)
           if (!otherUid || seen.has(otherUid)) continue
           seen.add(otherUid)
-          const userSnap = await getDoc(doc(db, 'users', otherUid))
+          const userSnap = await getDoc(doc(db, 'publicProfiles', otherUid))
           if (!userSnap.exists()) continue
-          const email = userSnap.data().email
-          candidates.push({ uid: otherUid, email, username: email?.split('@')[0] ?? 'user' })
+          candidates.push({ uid: otherUid, username: userSnap.data().displayName ?? 'Student' })
         }
         if (!cancelled) setBuyers(candidates)
+      } catch { if (!cancelled) setError('Could not load buyers. Close this dialog and try again.')
       } finally {
         if (!cancelled) setLoadingBuyers(false)
       }
@@ -60,28 +56,7 @@ export default function MarkAsSoldModal({ listing, sellerUsername, onClose, onSo
       const buyer = selected === OFF_PLATFORM ? null : buyers.find(b => b.uid === selected)
       const buyerUid = buyer?.uid ?? null
 
-      await addDoc(collection(db, 'transactions'), {
-        listingId: listing.id,
-        listingTitle: listing.title,
-        price: listing.price,
-        sellerUid: listing.sellerUid,
-        buyerUid,
-        createdAt: serverTimestamp(),
-      })
-
-      await updateDoc(doc(db, 'listings', listing.id), { status: 'sold' })
-      await updateDoc(doc(db, 'users', listing.sellerUid), { transactions: increment(1) })
-
-      if (buyerUid) {
-        await updateDoc(doc(db, 'users', buyerUid), { transactions: increment(1) })
-        await createNotification(
-          buyerUid,
-          'review',
-          `Did you buy ${listing.title}?`,
-          `Leave ${sellerUsername} a review`,
-          `/review/${listing.sellerUid}?type=seller`
-        )
-      }
+      await marketApi('sale', { listingId: listing.id, buyerUid })
 
       onSold()
     } catch {

@@ -37,6 +37,10 @@ service cloud.firestore {
     match /publicProfiles/{uid} {
       allow read: if student() && resource.data.campusId == campus();
       allow write: if false;
+      match /reviews/{reviewId} {
+        allow read: if student() && resource.data.campusId == campus();
+        allow write: if false;
+      }
     }
     match /listings/{listingId} {
       function validListing(d) {
@@ -70,30 +74,12 @@ service cloud.firestore {
     }
     match /conversations/{conversationId} {
       allow read: if student() && request.auth.uid in resource.data.participants;
-      allow create: if student()
-        && request.resource.data.keys().hasOnly(['participants','participantEmails','listingId','listingTitle','lastMessage','lastMessageAt','createdAt'])
-        && request.resource.data.participants is list && request.resource.data.participants.size() == 2
-        && request.resource.data.participants[0] == request.auth.uid
-        && request.resource.data.participants[1] != request.auth.uid
-        && validConversation(request.resource.data);
-      function validConversation(d) {
-        let listing = get(/databases/$(database)/documents/listings/$(d.listingId)).data;
-        return listing.campusId == campus() && listing.status == 'active'
-          && d.participants[1] == listing.sellerUid
-          && d.participantEmails == [request.auth.token.email, listing.sellerEmail]
-          && d.listingTitle == listing.title && d.lastMessage == ''
-          && d.createdAt == request.time && d.lastMessageAt == request.time;
-      }
+      allow create: if false; // Authenticated backend validates and deduplicates conversations.
       // Message previews/notifications are backend-owned to prevent forged events.
       allow update, delete: if false;
       match /messages/{messageId} {
         allow read: if member(conversationId);
-        allow create: if member(conversationId)
-          && request.resource.data.keys().hasAll(['text','senderUid','createdAt'])
-          && request.resource.data.keys().hasOnly(['text','senderUid','createdAt'])
-          && request.resource.data.senderUid == request.auth.uid
-          && shortText(request.resource.data.text, 4000)
-          && request.resource.data.createdAt == request.time;
+        allow create: if false; // Backend atomically writes message, preview and notification.
         allow update, delete: if false;
       }
     }

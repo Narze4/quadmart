@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { marketApi } from '@/lib/market-api'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, where } from 'firebase/firestore'
+import { doc, getDoc } from 'firebase/firestore'
 import { getUniversity, getListingStatus } from '@/lib/utils'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
@@ -43,44 +44,22 @@ export default function ListingDetailPage() {
   }, [user, loading, router])
 
   useEffect(() => {
-    if (!id) return
+    if (!id || !user?.emailVerified) return
     getDoc(doc(db, 'listings', id)).then(async snap => {
       if (!snap.exists()) { router.replace('/marketplace'); setFetchLoading(false); return }
       const data = { id: snap.id, ...snap.data() }
       setListing(data)
-      // Resolve seller UID: use stored sellerUid or look up by email
-      if (data.sellerUid) {
-        setSellerUid(data.sellerUid)
-      } else {
-        const q = query(collection(db, 'users'), where('email', '==', data.sellerEmail))
-        const uSnap = await getDocs(q).catch(() => null)
-        if (uSnap && !uSnap.empty) setSellerUid(uSnap.docs[0].id)
-      }
+      setSellerUid(data.sellerUid ?? null)
       setFetchLoading(false)
     })
-  }, [id, router])
+  }, [id, router, user])
 
   const handleMessage = async () => {
     if (!user || !listing || messaging || !sellerUid) return
     setMessaging(true)
     setMessageError('')
     try {
-      const q = query(
-        collection(db, 'conversations'),
-        where('participants', 'array-contains', user.uid),
-        where('listingId', '==', listing.id)
-      )
-      const snap = await getDocs(q)
-      if (!snap.empty) { router.push(`/messages/${snap.docs[0].id}`); return }
-      const ref = await addDoc(collection(db, 'conversations'), {
-        participants: [user.uid, sellerUid],
-        participantEmails: [user.email, listing.sellerEmail],
-        listingId: listing.id,
-        listingTitle: listing.title,
-        lastMessage: '',
-        lastMessageAt: serverTimestamp(),
-        createdAt: serverTimestamp(),
-      })
+      const ref = await marketApi('conversation', { listingId: listing.id })
       router.push(`/messages/${ref.id}`)
     } catch (err) {
       console.error('Failed to open conversation:', err)

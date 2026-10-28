@@ -1,23 +1,32 @@
-QuadMart security foundation
-October 27, 2026 (America/New_York)
-Base commit: 9e90e81a6457909020ea57d59920c214521a1164
+QuadMart backend integration — October 27, 2026 (America/New_York)
 
-Official Firestore emulator: 33 tests passed, 0 failed.
-ESLint: passed.
-git diff --check: passed.
+PASS: 33 Firestore emulator security tests.
+PASS: Full HTTP/Firestore integration against a Next production build with local Auth and Firestore (29 explicit status/access checkpoints plus state assertions).
+PASS: ESLint, Next production build with local configuration, git diff --check.
 
-Test coverage: verified supported university access, anonymous/unverified rejection,
-lookalike and unsupported domains, subdomain campus matching, campus-scoped reads
-and queries, listing validation/ownership, private account data, public profile
-campus boundaries, immutable reputation, participant-only conversations/messages,
-notification ownership, transaction privacy, denied client financial/reputation
-writes, default-deny paths.
+Integration exercised:
+- Two distinct seller/buyer accounts, actual emulator email-verification action codes,
+  profile provisioning and retry, private profile denial, campus listing discovery.
+- Concurrent conversation creation returns one conversation.
+- Concurrent message retry creates one message, preview and notification.
+- Buyer cannot mark another user's listing sold; review before sale is rejected.
+- Concurrent sale retry records one transaction and increments counters once.
+- Purchase history, bilateral reviews, review retry, changed-review conflict,
+  reputation aggregation and review flags.
+- Third account from another campus cannot open the listing's chat, inject messages,
+  or submit a review. Invalid ratings are rejected.
 
-This is a local rules contract and regression suite, not a completed app migration.
-No end-to-end UI, real verification email, deployed indexes, load test, or cloud
-permission integration has been verified. Read FIREBASE-SECURITY.md before use.
+Browser walkthrough with seller@emory.edu and buyer@emory.edu:
+Seller login -> create Browser test desk ($25, optional photos skipped) -> buyer login
+-> listing discovery -> Message Seller -> send pickup message -> seller login
+-> mark sold to Local Buyer -> buyer login -> completed purchase -> five-star review
+-> seller public profile shows the review, earned seller score and transaction count.
+Final profile rendering was verified against the production build.
 
-Dependency scan: npm audit --omit=dev reports 16 production dependency findings
-(6 moderate, 8 high, 2 critical). This scan is separate from the rules tests; it
-requires advisory review and tested package updates before a student pilot.
-No automatic force-upgrade was applied.
+Tests use only demo-quadmart emulators. No changes deployed to quadmart-4410f or
+quadmart-development. Cloud indexes/credentials, real email delivery and Cloudinary
+uploads are unverified. This tests an exchange record, not payment processing or
+physical handoff. See FIREBASE-SECURITY.md for setup and remaining launch work.
+
+Known separate follow-up: dependency security advisories reported in the prior
+audit; no blanket force-upgrade was performed in this backend integration.

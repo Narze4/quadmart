@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
+import { getCampusId } from '@/lib/utils'
 import { db } from '@/lib/firebase'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
@@ -122,6 +123,7 @@ export default function SellPage() {
         images,
         sellerEmail: user.email,
         sellerUid: user.uid,
+        campusId: getCampusId(user.email),
         status: 'active',
         createdAt: serverTimestamp(),
       })

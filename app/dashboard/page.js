@@ -6,8 +6,8 @@ import Link from 'next/link'
 
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore'
-import { getUniversity, getUsername, getDomain, getListingStatus } from '@/lib/utils'
+import { collection, doc, getDoc, getDocs, orderBy, query, where, limit } from 'firebase/firestore'
+import { getUniversity, getUsername, getDomain, getCampusId, getListingStatus } from '@/lib/utils'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
@@ -61,7 +61,7 @@ export default function DashboardPage() {
       const profileSnap = await getDoc(doc(db, 'users', user.uid))
       if (profileSnap.exists()) setUserUniversity(profileSnap.data().university)
 
-      const q = query(collection(db, 'listings'), orderBy('createdAt', 'desc'))
+      const q = query(collection(db, 'listings'), where('campusId', '==', getCampusId(user.email)), where('status', '==', 'active'), orderBy('createdAt', 'desc'), limit(100))
       const snap = await getDocs(q)
       setListings(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     } catch {
@@ -98,7 +98,7 @@ export default function DashboardPage() {
   const username = getUsername(user)
   const activeListings = listings.filter(l => getListingStatus(l) === 'active')
   const userDomain = getDomain(user.email)
-  const campusListings = activeListings.filter(l => getDomain(l.sellerEmail) === userDomain)
+  const campusListings = activeListings.filter(l => l.campusId === getCampusId(user.email))
   const source = campusListings.length > 0 ? campusListings : activeListings
 
   const searchQuery = search.trim().toLowerCase()

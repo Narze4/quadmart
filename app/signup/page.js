@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth'
-import { auth, db } from '@/lib/firebase'
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { auth } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import PublicHeader from '@/components/PublicHeader'
@@ -92,15 +91,6 @@ export default function SignUpPage() {
     setLoading(true)
     try {
       const { user } = await createUserWithEmailAndPassword(auth, trimmedEmail, password)
-      await setDoc(doc(db, 'users', user.uid), {
-        uid: user.uid,
-        email: user.email,
-        university: university.name,
-        sellerScore: 100,
-        buyerScore: 100,
-        transactions: 0,
-        createdAt: serverTimestamp(),
-      })
       await sendEmailVerification(user)
       router.push('/verify-email')
     } catch (err) {

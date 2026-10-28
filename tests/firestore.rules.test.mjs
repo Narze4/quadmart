@@ -71,7 +71,7 @@ test('owner can save items but cannot forge campus, score, or transaction count'
   for (const field of ['campusId','sellerScore','buyerScore','transactions','email']) await assertFails(updateDoc(doc(auth(),'users/alice'),{[field]:100}));
   await assertFails(setDoc(doc(auth(),'users/new'),{uid:'new'}));
 });
-test('buyer can open a conversation with listing owner', async () => { await assertSucceeds(setDoc(doc(auth('bob','bob@emory.edu'),'conversations/new'),conversation())); });
+test('direct conversation creates require backend', async () => { await assertFails(setDoc(doc(auth('bob','bob@emory.edu'),'conversations/new'),conversation())); });
 test('cannot forge participants, listing, or campus in a conversation', async () => {
   const db=auth('bob','bob@emory.edu');
   await assertFails(setDoc(doc(db,'conversations/new'),conversation({participants:['bob','eve']})));
@@ -83,7 +83,8 @@ test('participants can query inbox and send messages; outsiders cannot', async (
   const db=auth('bob','bob@emory.edu');
   await assertSucceeds(getDocs(query(collection(db,'conversations'),where('participants','array-contains','bob'))));
   const path='conversations/chat/messages/m';
-  await assertSucceeds(setDoc(doc(db,path),{text:'Hello',senderUid:'bob',createdAt:serverTimestamp()}));
+  await assertFails(setDoc(doc(db,path),{text:'Hello',senderUid:'bob',createdAt:serverTimestamp()}));
+  await seed(path,{text:'Hello',senderUid:'bob',createdAt:Timestamp.now()});
   await assertSucceeds(getDoc(doc(auth(),path)));
   await assertFails(getDoc(doc(auth('eve','eve@emory.edu'),path)));
   await assertFails(setDoc(doc(auth('eve','eve@emory.edu'),path+'2'),{text:'Intrusion',senderUid:'eve',createdAt:serverTimestamp()}));

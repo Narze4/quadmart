@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { marketApi } from '@/lib/market-api'
 import { useAuth } from '@/lib/auth-context'
-import { auth, db } from '@/lib/firebase'
+import { auth } from '@/lib/firebase'
 import {
   deleteUser,
   EmailAuthProvider,
@@ -12,7 +13,6 @@ import {
   updatePassword,
   updateProfile,
 } from 'firebase/auth'
-import { doc, setDoc } from 'firebase/firestore'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Card from '@/components/ui/Card'
@@ -61,7 +61,7 @@ export default function SettingsPage() {
     try {
       const trimmed = currentDisplayName.trim()
       await updateProfile(auth.currentUser, { displayName: trimmed })
-      await setDoc(doc(db, 'users', user.uid), { displayName: trimmed }, { merge: true })
+      await marketApi('profile', { displayName: trimmed })
       setNameSuccess('Display name updated.')
     } catch {
       setNameError('Failed to update name. Please try again.')

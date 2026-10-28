@@ -36,6 +36,7 @@ export default function ProfilePage() {
   const router = useRouter()
   const { uid } = useParams()
   const [profile, setProfile] = useState(null)
+  const [reviews, setReviews] = useState([])
   const [listings, setListings] = useState([])
   const [fetchLoading, setFetchLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
@@ -47,16 +48,18 @@ export default function ProfilePage() {
   }, [user, loading, router])
 
   const loadProfile = async () => {
-    if (!uid) return
+    if (!uid || !user?.emailVerified) return
     try {
-      const snap = await getDoc(doc(db, 'users', uid))
+      const snap = await getDoc(doc(db, 'publicProfiles', uid))
       if (!snap.exists()) { router.replace('/marketplace'); return }
       const data = { id: snap.id, ...snap.data() }
       setProfile(data)
+      const reviewSnap = await getDocs(query(collection(db, 'publicProfiles', uid, 'reviews'), where('campusId', '==', data.campusId), orderBy('createdAt', 'desc')))
+      setReviews(reviewSnap.docs.map(d => ({ id: d.id, ...d.data() })))
 
       const q = query(
         collection(db, 'listings'),
-        where('sellerEmail', '==', data.email),
+        where('sellerUid', '==', uid), where('campusId', '==', data.campusId),
         orderBy('createdAt', 'desc')
       )
       const listSnap = await getDocs(q)
@@ -75,7 +78,7 @@ export default function ProfilePage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadProfile()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uid, router])
+  }, [uid, router, user])
 
   const handleRetry = () => {
     setFetchLoading(true)
@@ -143,11 +146,11 @@ export default function ProfilePage() {
             {/* Stats */}
             <div className="flex gap-6 sm:gap-8 shrink-0">
               <div className="text-center">
-                <p className="text-2xl font-bold text-primary-dark">{profile.sellerScore ?? 100}</p>
+                <p className="text-2xl font-bold text-primary-dark">{profile.sellerScore ?? 'New'}</p>
                 <p className="text-xs text-text-secondary mt-0.5">Seller Score</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-blue-500">{profile.buyerScore ?? 100}</p>
+                <p className="text-2xl font-bold text-blue-500">{profile.buyerScore ?? 'New'}</p>
                 <p className="text-xs text-text-secondary mt-0.5">Buyer Score</p>
               </div>
               <div className="text-center">
@@ -209,7 +212,7 @@ export default function ProfilePage() {
         )}
 
         {/* Reviews tab */}
-        {activeTab === 'Reviews' && (
+        {activeTab === 'Reviews' && (reviews.length ? <div className="space-y-4">{reviews.map(review => <article key={review.id} className="p-4 bg-surface rounded-xl border border-border"><p>{review.rating}/5 · {review.type === 'seller' ? 'As a seller' : 'As a buyer'}</p><p>{review.comment}</p></article>)}</div> :
           <EmptyState
             icon={
               <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

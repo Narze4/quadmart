@@ -7,7 +7,7 @@ import Image from 'next/image'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { collection, doc, getDocs, query, updateDoc, where } from 'firebase/firestore'
-import { getListingStatus, getUsername } from '@/lib/utils'
+import { getListingStatus, getUsername, getCampusId } from '@/lib/utils'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
@@ -62,7 +62,7 @@ export default function MyListingsPage() {
   const fetchListings = async () => {
     if (!user) return
     try {
-      const q = query(collection(db, 'listings'), where('sellerEmail', '==', user.email))
+      const q = query(collection(db, 'listings'), where('sellerUid', '==', user.uid), where('campusId', '==', getCampusId(user.email)))
       const snap = await getDocs(q)
       setListings(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => {
         return (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0)

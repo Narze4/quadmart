@@ -43,3 +43,5 @@ next-env.d.ts
 # Local Firebase emulator output
 *-debug.log
 .firebase/
+
+!.env.development.example

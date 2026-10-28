@@ -68,6 +68,7 @@ export default function VerifyEmailPage() {
     try {
       await user.reload()
       if (user.emailVerified) {
+        await user.getIdToken(true)
         router.replace('/dashboard')
       } else {
         setError("Still not verified — click the link in the email, then try again.")

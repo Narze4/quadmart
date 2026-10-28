@@ -1,60 +1,56 @@
-# Local security foundation — not a production deployment
+# Backend and local testing
 
-This branch is the first security milestone. It does NOT yet migrate the current UI to the new data contract. Do not deploy these rules to the existing app: account creation, profile reads, message sends, sale completion and reviews still need the coordinated changes listed below.
+The app now uses authenticated Next.js backend operations for profile provisioning, conversation creation, messages, sale completion and reviews. The browser reads campus-scoped public data and participant-only chats. Private account documents remain owner-only. Clients cannot write transactions, reputation, reviews, notifications or message previews.
 
-## Environments
+## Local setup
 
-- Existing project: quadmart-4410f (unchanged).
-- Separate cloud development project: quadmart-development.
-- Local disposable emulator project: demo-quadmart (the default alias).
-
-No production credentials are required for tests. No deployment workflow is included.
-
-## Run local tests
-
-Use Node 22 and Java 21, then:
+Requirements: Node 22, Java 21, npm.
 
 ```sh
 npm ci
-npm run test:rules
+npm run emulators
+# In a second terminal:
+npm run dev:local
 ```
 
-The script explicitly targets demo-quadmart and runs the official Firestore emulator. Tests refuse to run without a loopback emulator endpoint. Fixtures are fake users and get cleared only inside the emulator. Rules tests mock verified auth claims; they do not prove the real signup/email verification flow works. The emulator also does not validate deployed composite index availability.
-
-For an environment that restricts writes to your home directory:
+Local scripts force demo-quadmart and loopback Auth/Firestore endpoints. No production credentials are needed. The backend rejects partial emulator configuration and checks matching browser/server project IDs outside local mode.
 
 ```sh
-XDG_CONFIG_HOME=/private/tmp/quadmart-config FIREBASE_EMULATORS_PATH=/private/tmp/quadmart-emulators npm run test:rules
+npm run test:rules
+npm run test:integration
 ```
 
-`npm run emulators` starts local Auth and Firestore. The existing web app does not yet connect to those emulators automatically. Do not point it at production to test this branch.
+Stop separately running emulators before invoking these commands. The integration command builds the app in local mode, starts disposable emulators and a Next production server on port 3100, runs the full HTTP/Firestore trade, then stops its server. Tests intentionally clear only the demo-quadmart emulator database and Auth users; do not run them against a manually populated emulator session you want to keep.
 
-## Contract
+If filesystem permissions prevent Firebase cache writes, prefix emulator/test commands with:
 
-- Verified email at one of seven supported universities is required for protected data. Subdomains share a canonical campusId, e.g. students.emory.edu becomes emory.edu. Campus membership is derived from signed Firebase claims, not an editable profile field. This verifies mailbox access, not current enrollment.
-- Private users/{uid} documents are owner-readable only. Owners can update displayName (80 characters) and savedListings (200 entries). Account provisioning and sensitive fields are backend-owned.
-- publicProfiles/{uid} is a separate backend-maintained, campus-readable projection. It must contain no private email or saved items. Do not mirror an entire users document.
-- Listings include immutable campusId, sellerUid, sellerEmail and createdAt. Validated title, price, category, condition, description and up to five Cloudinary image URLs are required. Real upload ownership verification remains future backend work.
-- Listing queries must include campusId; owner listing queries include campusId and sellerUid. Rules do not filter broad queries.
-- Conversations live at conversations/{id}. Creation validates an active same-campus listing and exactly the requesting buyer plus the listing seller. Participants are immutable.
-- Message creates contain text, senderUid and createdAt; body size is limited to 4000 characters. Edits/deletes are denied. Only participants read or send. Inbox queries filter participants with array-contains.
-- Trusted backend owns previews, notifications, sale records, reviews and reputation. Notification recipients can only mark a notification read.
-- All unmatched paths are denied, including the old /messages collection.
+```sh
+XDG_CONFIG_HOME=/private/tmp/quadmart-config FIREBASE_EMULATORS_PATH=/private/tmp/quadmart-emulators npm run test:integration
+```
 
-## Required before cloud deployment or end-to-end claims
+## Implemented behavior
 
-1. Add authenticated backend account provisioning after email verification. Validate campus and claims; recover missing profiles on retry. Remove client signup writes to scores and user documents.
-2. Add a campusId to new listings and update all marketplace/dashboard/profile/owner queries. Plan any legacy-data migration separately; do not silently expose unscoped documents.
-3. Move public-profile reads to publicProfiles and stop querying private users by email. Sync display-name changes through the backend projection.
-4. Change chat payloads to senderUid, enforce participant queries, and generate message previews/notifications in trusted backend code. The old client preview/notification writes will be denied.
-5. Implement authenticated, idempotent server operations for sale completion and transaction-linked reviews, using atomic writes. Remove direct client counter and score updates. These operations are intentionally denied until implemented, rather than leaving unsafe fallback writes.
-6. Secure /api/upload with token verification, content validation, per-user quotas and server-owned upload metadata. Firestore image URL validation does not secure that endpoint.
-7. Bind the app to local Auth/Firestore using explicit emulator-only settings. Add a separate development env template and a production-project guard. Existing .env.local configuration is not changed by this branch.
-8. Deploy to development only after those changes, then test real signup, verification, two-user chat, trade/review retries, and every required index.
-9. Address blocked/suspended accounts, account cleanup, reporting, abuse limits and dependency advisories before a student pilot. These rules do not implement those systems.
+- Verified supported university email is required by both the API and rules. Server-derived campusId handles supported subdomains.
+- Verification triggers idempotent private/public profile provisioning before protected screens receive the signed-in user. Profile names update through the API; public profiles omit email and saved items. New reputation displays New.
+- Listings are scoped by campusId and validated by rules. Dashboard and marketplace fetch up to 100 active campus listings; message views load the latest 100 messages. Further pagination remains future work.
+- Conversation IDs derive from listing and buyer, preventing duplicate chat creation on retries. The server verifies listing ownership, campus and availability.
+- Message IDs derive from sender and a per-send request ID. One transaction writes the message, preview and recipient notification. Browser retries reuse the request ID.
+- Sale IDs equal listing IDs. A transaction validates seller ownership and the contacted buyer, marks sold, records the trade, increments both profiles once and creates review notifications. Off-platform sales have no buyer or review eligibility. This records an exchange; it does not process payment or prove physical handoff.
+- Reviews derive their recipient and role from the completed transaction. Each participant may review once per trade. Rating, review, reputation aggregate and transaction review flag update atomically. Replaying the identical review succeeds; changing an already submitted review returns a conflict.
+- Chat participants cannot add outsiders or forge messages through direct database writes. Clients cannot inflate counters or create notifications.
 
-## Deployment discipline
+## Development cloud setup
 
-No cloud rules or data were changed by running local tests. Keep default alias demo-quadmart. Any future deployment must name the development project explicitly and confirm matching application compatibility. Do not deploy this draft over quadmart-4410f.
+Existing project: quadmart-4410f. Separate project: quadmart-development, Standard Firestore in nam5, Spark plan. Cloud development still has deny-all initialization rules. Neither the new rules nor this app integration has been deployed to either cloud project.
 
-Development cloud setup: created on October 27, 2026 on the no-cost Spark plan, with a Standard (default) Firestore database in user-approved nam5 (United States). The database starts in production mode (deny all client reads/writes). Optional Analytics, Gemini and paid scheduled backups were not enabled. No app environment, production deployment or production database was modified.
+To move this tested local integration into cloud development:
+
+1. Register a development web app, enable Email/Password Auth and configure authorized development domains.
+2. Set NEXT_PUBLIC_FIREBASE_* from that web app, and FIREBASE_ADMIN_PROJECT_ID=quadmart-development. NEXT_PUBLIC_USE_FIREBASE_EMULATORS and QUADMART_LOCAL must be absent/false. Never publish a build made with build:local.
+3. Configure a trusted server identity via Application Default Credentials with only the permissions needed for Firestore and Auth verification. Keep credentials outside Git and client-prefixed environment variables. No service-account keys are included here.
+4. Deploy firestore.rules and firestore.indexes.json explicitly to quadmart-development, then deploy the matching application. Wait for indexes to become ready; emulator tests do not verify deployed indexes.
+5. Test real email delivery, hosting credentials, authorized domains and cloud queries before any production rollout. Legacy data needs a reviewed migration for campusId, UID-based identity and public profile projections; this change does not migrate existing cloud data.
+
+## Remaining launch work
+
+Photo uploads use Cloudinary and were not exercised in the two-account test (photos are optional). Upload authentication, content validation, rate limits and asset ownership still need hardening before public deployment. Account deletion cleanup, blocking/reporting, suspension policy, abuse limits, pagination, backups and dependency security advisories also remain separate launch tasks. This branch is locally integrated, not a claim that the whole service is production-ready.

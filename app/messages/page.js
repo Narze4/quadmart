@@ -53,7 +53,7 @@ export default function MessagesPage() {
 
   const otherParticipant = (conv) => {
     const idx = conv.participants?.findIndex((p) => p !== user.uid) ?? -1
-    return (idx > -1 ? conv.participantEmails?.[idx] : null) ?? 'Unknown'
+    return (idx > -1 ? conv.participantNames?.[idx] : null) ?? 'Unknown'
   }
 
   if (loading || !user || !user.emailVerified) {
