@@ -23,9 +23,10 @@ Seller login -> create Browser test desk ($25, optional photos skipped) -> buyer
 -> seller public profile shows the review, earned seller score and transaction count.
 Final profile rendering was verified against the production build.
 
-Tests use only demo-quadmart emulators. No changes deployed to quadmart-4410f or
-quadmart-development. Cloud indexes/credentials, real email delivery and Cloudinary
-uploads are unverified. This tests an exchange record, not payment processing or
+These automated tests use only demo-quadmart emulators. The later development
+deployment and cloud walkthrough are recorded separately in CLOUD-TEST-RESULTS.txt.
+Production quadmart-4410f remains unchanged. Real email delivery and Cloudinary
+uploads remain unverified. This tests an exchange record, not payment processing or
 physical handoff. See FIREBASE-SECURITY.md for setup and remaining launch work.
 
 Known separate follow-up: dependency security advisories reported in the prior
