@@ -19,7 +19,7 @@ const request = (body = png, headers = {}) => new Request('http://localhost/api/
 });
 const storeImage = async (bytes, publicId) => {
   stored.push({ bytes, publicId });
-  return { secure_url: `https://res.cloudinary.com/test/image/authenticated/${publicId}.jpg`, public_id: publicId, type: 'authenticated', resource_type: 'image', format: 'jpg' };
+  return { secure_url: `https://res.cloudinary.com/test/image/authenticated/${publicId}.jpg`, public_id: publicId, asset_folder: 'quadmart/demo-quadmart', type: 'authenticated', resource_type: 'image', format: 'jpg' };
 };
 const deps = () => ({ auth, db, storeImage, projectId: 'demo-quadmart', now });
 const rejects = (fn, status) => assert.rejects(fn, error => error.status === status);
@@ -106,14 +106,14 @@ test('failed storage never makes an attachable asset and does not expose provide
 test('unexpected or public storage responses never become attachable photos', async () => {
   for (const change of [
     { type: 'upload' }, { public_id: 'someone-elses-photo' },
-    { secure_url: 'https://untrusted.example/photo.jpg' }, { format: 'svg' },
+    { secure_url: 'https://untrusted.example/photo.jpg' }, { format: 'svg' }, { asset_folder: 'unrelated-folder' },
   ]) {
     await rejects(() => uploadPhoto(request(), {
       ...deps(), storeImage: async (bytes, publicId) => ({ ...await storeImage(bytes, publicId), ...change }),
     }), 503);
   }
   const media = await db.collection('media').get();
-  assert.equal(media.size, 4);
+  assert.equal(media.size, 5);
   assert.ok(media.docs.every(asset => asset.data().status === 'failed' && !asset.data().url));
 });
 test('photo reads require verified same-campus membership and ready status', async () => {

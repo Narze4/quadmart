@@ -24,6 +24,9 @@ export async function POST(request) {
       return new Promise((resolve, reject) => {
         cloudinary.uploader.upload_stream({
           cloud_name, api_key, api_secret, public_id: publicId,
+          // Dynamic folders do not follow public_id paths. Keep the restricted
+          // development key's uploads inside its explicitly shared asset folder.
+          asset_folder: `quadmart/${projectId}`,
           resource_type: 'image', type: 'authenticated', format: 'jpg',
           allowed_formats: ['jpg'], overwrite: false, timeout: 15000,
         }, (error, result) => error ? reject(error) : resolve(result)).end(bytes)
