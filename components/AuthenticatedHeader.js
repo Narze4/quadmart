@@ -165,7 +165,7 @@ export default function AuthenticatedHeader() {
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-0.5 lg:gap-1">
+          <div className="hidden lg:flex items-center gap-0.5 lg:gap-1">
             {NAV_LINKS.map(link => (
               <Link key={link.href} href={link.href} className={linkClass(link.href)}>
                 {link.label}
@@ -239,7 +239,7 @@ export default function AuthenticatedHeader() {
           </div>
 
           {/* Mobile toggle */}
-          <div className="flex items-center gap-1 md:hidden">
+          <div className="flex items-center gap-1 lg:hidden">
             <Link href="/notifications" className={iconClass('/notifications')} aria-label="Notifications">
               <BellIcon />
               {unreadCount > 0 && (
@@ -262,7 +262,7 @@ export default function AuthenticatedHeader() {
 
       {/* Mobile drawer */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-border bg-surface px-4 py-4 flex flex-col gap-1">
+        <div className="lg:hidden border-t border-border bg-surface px-4 py-4 flex flex-col gap-1">
           {NAV_LINKS.map(link => (
             <Link
               key={link.href}

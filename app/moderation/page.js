@@ -7,6 +7,8 @@ import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import ProtectedPhoto from '@/components/ProtectedPhoto'
 import Footer from '@/components/Footer'
 
+const decisionLabels = { dismiss: 'No action taken', removeListing: 'Listing removed', suspend: 'Account suspended', restoreListing: 'Listing restored', reinstate: 'Account reinstated' }
+
 function Report({ report, onResolved }) {
   const [note,setNote]=useState(''), [decision,setDecision]=useState('dismiss'), [busy,setBusy]=useState(false), [error,setError]=useState('')
   const reversible = report.resolution === 'removeListing' ? 'restoreListing' : report.resolution === 'suspend' ? 'reinstate' : null
@@ -23,7 +25,7 @@ function Report({ report, onResolved }) {
       {report.snapshot?.imageIds?.length > 0 && <div className="flex flex-wrap gap-3">{report.snapshot.imageIds.map(id=><div key={id} className="relative w-40 h-40"><ProtectedPhoto src={`/api/photos/${id}`} alt="Reported listing photo" className="object-contain"/></div>)}</div>}
       {report.evidence?.length > 0 && <><h3 className="font-semibold">Recent conversation messages</h3>{report.evidence.map(message=><p key={message.id}><strong>{message.senderUid===report.reporterUid?'Reporter':'Subject'}:</strong> {message.text}</p>)}</>}
     </div></details>
-    {report.status==='resolved' && <p>Decision: {report.resolution}. Moderator note: {report.note}</p>}
+    {report.status==='resolved' && <p>Decision: {decisionLabels[report.resolution] ?? report.resolution}. Moderator note: {report.note}</p>}
     {(report.status==='open'||reversible) && <form onSubmit={submit} className="space-y-3 border-t pt-3">
       {report.status==='open' ? <label className="block">Decision<select className="input-field mt-1" value={decision} onChange={e=>setDecision(e.target.value)}><option value="dismiss">Close without action</option>{report.targetType==='listing'&&<option value="removeListing">Remove listing</option>}<option value="suspend">Suspend account</option></select></label> : <p>{reversible==='restoreListing'?'Restore the archived listing':'Reinstate this account'} after reviewing the decision.</p>}
       <p className="text-sm text-text-secondary">Removal hides the listing and its photos, preserving a private copy. Suspension stops account access and new activity; review existing listings separately.</p>
