@@ -7,7 +7,6 @@ import { marketApi } from '@/lib/market-api'
 import { useAuth } from '@/lib/auth-context'
 import { auth } from '@/lib/firebase'
 import {
-  deleteUser,
   EmailAuthProvider,
   reauthenticateWithCredential,
   updatePassword,
@@ -104,13 +103,15 @@ export default function SettingsPage() {
     try {
       const credential = EmailAuthProvider.credential(user.email, deletePassword)
       await reauthenticateWithCredential(auth.currentUser, credential)
-      await deleteUser(auth.currentUser)
-      router.push('/')
+      await user.getIdToken(true)
+      await marketApi('accountClose', { confirmation: 'DELETE' })
+      setDeletePassword('')
+      await user.getIdToken(true)
     } catch (err) {
       if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setDeleteError('Password is incorrect.')
       } else {
-        setDeleteError('Failed to delete account. Please try again.')
+        setDeleteError(err.message || 'Could not request deletion. Please try again.')
       }
     } finally {
       setDeleting(false)
@@ -210,7 +211,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-text-primary">Delete account</p>
-                <p className="text-xs text-text-secondary mt-0.5">Permanently remove your account. This cannot be undone.</p>
+                <p className="text-xs text-text-secondary mt-0.5">Close marketplace access and remove your listings and private profile.</p>
               </div>
               <button
                 onClick={() => setShowDeleteConfirm(true)}
@@ -222,10 +223,12 @@ export default function SettingsPage() {
           ) : (
             <form onSubmit={handleDeleteAccount} className="flex flex-col gap-3">
               <p className="text-sm text-text-primary">
-                Enter your password to confirm deletion. <strong>This cannot be undone.</strong>
+                Enter your password to close your account and start deletion. <strong>This cannot be undone.</strong>
               </p>
+              <p className="text-sm text-text-secondary">Shared messages, completed trades, reviews and moderation records are retained. Unused photos are cleaned up separately; evidence photos are preserved. If interrupted, sign in again to finish.</p>
               <input
                 type="password"
+                autoComplete="current-password"
                 value={deletePassword}
                 onChange={(e) => setDeletePassword(e.target.value)}
                 placeholder="Your password"
@@ -239,7 +242,7 @@ export default function SettingsPage() {
                   disabled={deleting}
                   className="px-5 py-2 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 transition-all duration-200 active:scale-95 disabled:opacity-60"
                 >
-                  {deleting ? 'Deleting…' : 'Confirm Delete'}
+                  {deleting ? 'Requesting deletion…' : 'Close account and delete'}
                 </button>
                 <button
                   type="button"

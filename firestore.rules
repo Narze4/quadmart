@@ -14,6 +14,8 @@ service cloud.firestore {
     }
     function student() {
       return signedIn() && request.auth.token.email_verified == true && campus() != ''
+        && (!exists(/databases/$(database)/documents/accountLifecycle/$(request.auth.uid))
+          || get(/databases/$(database)/documents/accountLifecycle/$(request.auth.uid)).data.closed != true)
         && (!exists(/databases/$(database)/documents/moderationAccounts/$(request.auth.uid))
           || get(/databases/$(database)/documents/moderationAccounts/$(request.auth.uid)).data.suspended != true);
     }
@@ -77,6 +79,11 @@ service cloud.firestore {
     match /operationLimits/{id} { allow read, write: if false; }
     match /listingRequests/{id} { allow read, write: if false; }
     match /uploadLimits/{id} { allow read, write: if false; }
+    match /accountLifecycle/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+    match /accountDeletions/{uid} { allow read, write: if false; }
     match /moderationAccounts/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;
       allow list, write: if false;

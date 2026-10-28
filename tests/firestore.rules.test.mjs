@@ -150,3 +150,12 @@ test('operation budgets and listing retry records cannot be read, reset or delet
     await assertFails(deleteDoc(doc(auth(),path)));
   }
 });
+
+test('closed accounts lose existing-session access and cannot reopen or expose deletion jobs',async()=>{
+ const db=auth();await seed('accountLifecycle/alice',{closed:true});await seed('accountDeletions/alice',{phase:'listings'});
+ for(const path of ['users/alice','listings/desk','conversations/chat','transactions/t','publicProfiles/alice'])await assertFails(getDoc(doc(db,path)));
+ await assertSucceeds(getDoc(doc(db,'accountLifecycle/alice')));
+ await assertFails(getDoc(doc(auth('bob','bob@emory.edu'),'accountLifecycle/alice')));
+ await assertFails(setDoc(doc(db,'accountLifecycle/alice'),{closed:false}));
+ await assertFails(getDoc(doc(db,'accountDeletions/alice')));await assertFails(setDoc(doc(db,'accountDeletions/alice'),{phase:'complete'}));
+});

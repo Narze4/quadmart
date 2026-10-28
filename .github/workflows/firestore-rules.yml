@@ -24,4 +24,5 @@ jobs:
       - run: npm run test:safety
       - run: npm run test:abuse
       - run: npm run test:observability
+      - run: npm run test:cleanup
       - run: npm run test:integration

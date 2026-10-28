@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { limitId, LIMITS } from '../lib/server/limits.mjs';
 import { verificationSettings } from '../lib/email-verification.mjs';
 import { initializeApp,deleteApp } from 'firebase/app';
-import { getAuth,connectAuthEmulator,createUserWithEmailAndPassword,signInWithEmailAndPassword,sendEmailVerification } from 'firebase/auth';
+import { getAuth,connectAuthEmulator,createUserWithEmailAndPassword,signInWithEmailAndPassword,sendEmailVerification,deleteUser } from 'firebase/auth';
 import { getFirestore,connectFirestoreEmulator,doc,setDoc,getDoc,getDocs,collection,serverTimestamp,query,where } from 'firebase/firestore';
 import { initializeApp as adminApp,deleteApp as deleteAdmin } from 'firebase-admin/app';
 import { getAuth as adminAuth } from 'firebase-admin/auth';
@@ -116,5 +116,18 @@ try {
  const limited=await fetch(`${base}/api/market`,{method:'POST',headers:{Authorization:`Bearer ${await buyer.user.getIdToken()}`},body:JSON.stringify({action:'profile',data:{}})});
  const limitBody=await limited.json();assert.equal(limited.status,429);assert.equal(Number(limited.headers.get('retry-after')),limitBody.retryAfterSeconds);assert.ok(limitBody.retryAfterSeconds>0);checks++;
  assert.equal((await budget.get()).data().dayCount,LIMITS.api.day);
- console.log(JSON.stringify({passed:true,checks,listingId,conversationId:c.id,seller:seller.user.uid,buyer:buyer.user.uid}));
+ await budget.delete(); // Restore the isolated attempt-budget fixture before the next flow.
+ // Complete closure through actual HTTP and delete only the synthetic seller login.
+ const oldToken=await seller.user.getIdToken();
+ await api(seller.user,'accountClose',{confirmation:'DELETE',uid:buyer.user.uid},400);
+ await api(seller.user,'accountClose',{confirmation:'DELETE'});
+ await api(seller.user,'profile',{},403);await api(buyer.user,'conversation',{listingId:flaggedId},403);
+ await assert.rejects(getDoc(doc(seller.db,'users',seller.user.uid)),e=>e.code==='permission-denied');checks++;
+ let done=false;for(let i=0;i<20;i++){const s=await api(seller.user,'accountCloseStep',{});if(s.readyForAuthDeletion){done=true;break}}assert.equal(done,true);
+ const closed=(await getDoc(doc(buyer.db,'publicProfiles',seller.user.uid))).data();assert.equal(closed.displayName,'Deleted student');assert.equal(closed.sellerScore,100);checks++;
+ assert.equal((await getDoc(doc(buyer.db,'transactions',listingId))).exists(),true);checks++;
+ const sellerUid=seller.user.uid;await deleteUser(seller.user);
+ const oldResponse=await fetch(`${base}/api/market`,{method:'POST',headers:{Authorization:`Bearer ${oldToken}`},body:JSON.stringify({action:'accountCloseStep',data:{}})});assert.equal(oldResponse.status,401);checks++;
+ await assert.rejects(adminAuth(admin).getUser(sellerUid),e=>e.code==='auth/user-not-found');checks++;
+ console.log(JSON.stringify({passed:true,checks,listingId,conversationId:c.id,seller:sellerUid,buyer:buyer.user.uid}));
 }finally{await Promise.all(apps.map(deleteApp));await deleteAdmin(admin)}

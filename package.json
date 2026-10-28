@@ -17,7 +17,9 @@
     "test:uploads": "firebase emulators:exec --only firestore --project demo-quadmart \"node --test tests/uploads.test.mjs\"",
     "test:safety": "firebase emulators:exec --only firestore --project demo-quadmart \"node --test tests/safety.test.mjs\"",
     "test:abuse": "firebase emulators:exec --only firestore --project demo-quadmart \"node --test tests/abuse.test.mjs\"",
-    "test:observability": "node --test tests/api-observability.test.mjs"
+    "test:observability": "node --test tests/api-observability.test.mjs tests/closure-runner.test.mjs",
+    "test:cleanup": "firebase emulators:exec --only firestore --project demo-quadmart \"node --test tests/cleanup.test.mjs\"",
+    "maintenance": "node scripts/maintenance.mjs"
   },
   "dependencies": {
     "@google-cloud/firestore": "^9.4.0",
