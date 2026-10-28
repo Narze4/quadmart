@@ -18,6 +18,7 @@ Local scripts force demo-quadmart and loopback Auth/Firestore endpoints. No prod
 ```sh
 npm run test:rules
 npm run test:uploads
+npm run test:safety
 npm run test:credentials
 npm run test:integration
 ```
@@ -91,7 +92,7 @@ Reference: https://firebase.google.com/docs/auth/web/passing-state-in-email-acti
 
 ## Remaining launch work
 
-Development photo uploads are enabled and validated with real Cloudinary storage, seller publication, buyer image rendering and rejection of unauthenticated photo requests. Local security tests also cover unverified and cross-campus access, quotas and forged ownership. Real university mailbox verification is confirmed. See PHOTO-VERIFICATION-TEST-RESULTS.txt for the exact distinction between hosted and local checks. Account deletion/abandoned-photo cleanup, blocking/reporting, suspension policy, broader abuse limits, pagination and backups remain launch tasks. A development deployment is not a claim of launch readiness.
+Development photo uploads are enabled and validated with real Cloudinary storage, seller publication, buyer image rendering and rejection of unauthenticated photo requests. Local security tests also cover unverified and cross-campus access, quotas and forged ownership. Real university mailbox verification is confirmed. See PHOTO-VERIFICATION-TEST-RESULTS.txt for the exact distinction between hosted and local checks. Reporting, bidirectional blocking, reversible listing removal, account suspension and the private moderation queue are implemented; see SAFETY-AND-MODERATION.md. Moderator operating policy, account deletion/abandoned-photo cleanup, broader abuse limits, pagination and backups remain launch tasks. A development deployment is not a claim of launch readiness.
 
 Next.js is pinned to 16.4.3 and sharp is at 0.35.5. Scoped npm overrides replace Firebase's pinned Node gRPC dependency with @grpc/grpc-js 1.14.6 and Vercel CLI-config's pinned Zod with 4.6.7, without downgrading Firebase or the OIDC SDK. These overrides deliberately exceed the parent packages' old pins and must remain covered by rules, credential and integration checks; remove them once upstream dependencies select patched versions. The production audit reports zero findings on October 27, 2026. The full development dependency audit still has eight moderate findings through OpenTelemetry and uuid; the production-only audit excludes this tooling. CI runs the production audit at the high severity threshold so newly reported high/critical findings block changes. An audit result is a dependency snapshot, not a guarantee of application security.
 

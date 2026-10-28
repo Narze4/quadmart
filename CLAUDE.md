@@ -16,7 +16,7 @@ npm run lint     # Run ESLint
 node scripts/seed.mjs  # Seed Firestore with 20 sample listings
 ```
 
-Use npm run test:credentials, npm run test:rules, npm run test:uploads and npm run test:integration. See docs/FIREBASE-SECURITY.md for the current backend contract; the older architecture notes below may describe pre-migration fields.
+Use npm run test:credentials, npm run test:rules, npm run test:uploads, npm run test:safety and npm run test:integration. See docs/FIREBASE-SECURITY.md for the current backend contract; the older architecture notes below may describe pre-migration fields.
 
 ## Architecture
 

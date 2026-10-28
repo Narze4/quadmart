@@ -14,7 +14,8 @@
     "dev:local": "node scripts/dev-local.mjs",
     "build:local": "NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true next build",
     "test:integration": "npm run build:local && firebase emulators:exec --only auth,firestore --project demo-quadmart \"node scripts/test-integration.mjs\"",
-    "test:uploads": "firebase emulators:exec --only firestore --project demo-quadmart \"node --test tests/uploads.test.mjs\""
+    "test:uploads": "firebase emulators:exec --only firestore --project demo-quadmart \"node --test tests/uploads.test.mjs\"",
+    "test:safety": "firebase emulators:exec --only firestore --project demo-quadmart \"node --test tests/safety.test.mjs\""
   },
   "dependencies": {
     "@google-cloud/firestore": "^9.4.0",

@@ -5,6 +5,7 @@ import { getAuth,connectAuthEmulator,createUserWithEmailAndPassword,signInWithEm
 import { getFirestore,connectFirestoreEmulator,doc,setDoc,getDoc,getDocs,collection,serverTimestamp,query,where } from 'firebase/firestore';
 import { initializeApp as adminApp,deleteApp as deleteAdmin } from 'firebase-admin/app';
 import { getAuth as adminAuth } from 'firebase-admin/auth';
+import { getFirestore as adminFirestore } from 'firebase-admin/firestore';
 const base=process.env.QUADMART_TEST_BASE ?? 'http://127.0.0.1:3000';
 if (!['http://127.0.0.1:3000','http://127.0.0.1:3100'].includes(base)) throw Error('Loopback test server required');
 if(process.env.FIRESTORE_EMULATOR_HOST!=='127.0.0.1:8080'||process.env.FIREBASE_AUTH_EMULATOR_HOST!=='127.0.0.1:9099')throw Error('Local emulators required');
@@ -72,5 +73,38 @@ try {
  await api(outsider.user,'message',{conversationId:c.id,text:'Intrusion',requestId:crypto.randomUUID()},403);
  await api(outsider.user,'review',review,403);
  await api(buyer.user,'review',{...review,rating:6},400);
+ // Report -> moderator review -> enforcement -> restoration over the real HTTP boundary.
+ const mod=await account('moderator','moderator@emory.edu');await adminAuth(admin).updateUser(mod.user.uid,{emailVerified:true});await mod.user.reload();await mod.user.getIdToken(true);await api(mod.user,'profile',{});
+ const adb=adminFirestore(admin);await adb.doc(`moderators/${mod.user.uid}`).set({active:true,campusIds:['emory.edu']});
+ const flaggedId=`flagged-${Date.now()}`;
+ const flagged={title:'Synthetic moderation fixture',description:'Development moderation test only',price:0,category:'Product',condition:'Good',images:[],sellerUid:seller.user.uid,sellerEmail:seller.user.email,campusId:'emory.edu',status:'active',createdAt:serverTimestamp()};
+ await setDoc(doc(seller.db,'listings',flaggedId),flagged);
+ const thread=await api(buyer.user,'conversation',{listingId:flaggedId});
+ await api(buyer.user,'block',{targetUid:seller.user.uid,blocked:true});
+ for(const user of [seller.user,buyer.user])await api(user,'message',{conversationId:thread.id,text:'Blocked message',requestId:crypto.randomUUID()},403);
+ await api(buyer.user,'conversation',{listingId:flaggedId},403);
+ await api(seller.user,'sale',{listingId:flaggedId,buyerUid:buyer.user.uid},403);
+ await api(buyer.user,'block',{targetUid:seller.user.uid,blocked:false});
+ await api(seller.user,'message',{conversationId:thread.id,text:'Synthetic report evidence',requestId:crypto.randomUUID()});
+ const reportData={targetType:'listing',targetId:flaggedId,reason:'scam',details:'Synthetic report to test moderation safely.',conversationId:thread.id,requestId:crypto.randomUUID()};
+ const report=await api(buyer.user,'report',reportData);assert.equal((await api(buyer.user,'report',reportData)).id,report.id);
+ await api(buyer.user,'moderationQueue',{},403);
+ const decision={reportId:report.id,decision:'removeListing',version:0,note:'Reviewed the synthetic test report.'};
+ await api(buyer.user,'moderate',decision,403);
+ const queue=await api(mod.user,'moderationQueue',{});assert.equal(queue.reports[0].evidence[0].text,'Synthetic report evidence');
+ await api(mod.user,'moderate',decision);
+ await assert.rejects(getDoc(doc(buyer.db,'listings',flaggedId)),e=>e.code==='permission-denied');checks++;
+ await assert.rejects(setDoc(doc(seller.db,'listings',flaggedId),flagged),e=>e.code==='permission-denied');checks++;
+ await api(mod.user,'moderate',{...decision,decision:'restoreListing',version:1});assert.equal((await getDoc(doc(buyer.db,'listings',flaggedId))).data().title,flagged.title);checks++;
+ const userReport=await api(buyer.user,'report',{...reportData,targetType:'user',targetId:seller.user.uid,requestId:crypto.randomUUID()});
+ const suspension={reportId:userReport.id,decision:'suspend',version:0,note:'Synthetic suspension enforcement test.'};
+ await api(mod.user,'moderate',suspension);
+ await api(seller.user,'profile',{},403);
+ await assert.rejects(getDoc(doc(seller.db,'listings',flaggedId)),e=>e.code==='permission-denied');checks++;
+ await api(buyer.user,'conversation',{listingId:flaggedId},403);
+ for(const path of ['/api/upload','/api/photos/'+'a'.repeat(64)]){const r=await fetch(base+path,{method:path==='/api/upload'?'POST':'GET',headers:{Authorization:`Bearer ${await seller.user.getIdToken()}`}});assert.equal(r.status,403);checks++;}
+ await api(mod.user,'moderate',{...suspension,decision:'reinstate',version:1});await api(seller.user,'profile',{});
+ for(const path of [`moderators/${buyer.user.uid}`,`reports/${report.id}`,`users/${buyer.user.uid}/blocks/${seller.user.uid}`])await assert.rejects(setDoc(doc(buyer.db,path),{active:true}),e=>e.code==='permission-denied');checks++;
+ await adb.doc(`moderators/${mod.user.uid}`).delete();await api(mod.user,'moderationQueue',{},403);
  console.log(JSON.stringify({passed:true,checks,listingId,conversationId:c.id,seller:seller.user.uid,buyer:buyer.user.uid}));
 }finally{await Promise.all(apps.map(deleteApp));await deleteAdmin(admin)}

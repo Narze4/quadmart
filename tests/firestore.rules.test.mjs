@@ -141,3 +141,36 @@ test('client cannot forge media registry or reset upload budgets',async()=>{
   await seed(`media/${photoId}`,readyPhoto());
   await assertFails(getDoc(doc(auth(),`media/${photoId}`)));
 });
+
+test('suspension is enforced for existing authenticated clients across database access',async()=>{
+  const db=auth();
+  await assertSucceeds(getDoc(doc(db,'listings/desk')));
+  await seed('moderationAccounts/alice',{suspended:true,reportId:'private-report'});
+  for(const path of ['listings/desk','users/alice','publicProfiles/alice','conversations/chat','transactions/t','notifications/n'])await assertFails(getDoc(doc(db,path)));
+  await assertFails(setDoc(doc(db,'listings/new'),listing()));
+  await assertFails(updateDoc(doc(db,'listings/desk'),{price:20}));
+  await assertFails(deleteDoc(doc(db,'listings/desk')));
+  await assertSucceeds(getDoc(doc(db,'moderationAccounts/alice')));
+  await assertFails(updateDoc(doc(db,'moderationAccounts/alice'),{suspended:false}));
+  await seed('moderationAccounts/alice',{suspended:false});
+  await assertSucceeds(getDoc(doc(db,'listings/desk')));
+});
+test('moderation roles, evidence, reports, archives and block lists are not directly accessible',async()=>{
+  const db=auth();
+  for(const path of ['moderators/alice','reports/r','removedListings/desk','moderationEvents/e','openReports/r','reportLimits/alice','users/alice/blocks/bob']) {
+    await seed(path,{private:'evidence',active:true,campusIds:['emory.edu']});
+    await assertFails(getDoc(doc(db,path)));await assertFails(setDoc(doc(db,path),{active:true}));await assertFails(deleteDoc(doc(db,path)));
+  }
+  await seed('moderationAccounts/bob',{suspended:false});await assertFails(getDoc(doc(db,'moderationAccounts/bob')));
+});
+test('a removed listing cannot be recreated by its seller',async()=>{
+  await seed('removedListings/new',{reportId:'r',listing:listing({createdAt:Timestamp.now()})});
+  await assertFails(setDoc(doc(auth(),'listings/new'),listing()));
+});
+test('five owned photos still fit rule lookup budgets with suspension and removal checks',async()=>{
+  const ids=Array.from({length:5},(_,i)=>String(i).repeat(64));
+  for(const photoId of ids)await seed(`media/${photoId}`,{status:'ready',ownerUid:'alice',campusId:'emory.edu',url:`/api/photos/${photoId}`});
+  await assertSucceeds(setDoc(doc(auth(),'listings/photos'),listing({imageIds:ids,images:ids.map(i=>`/api/photos/${i}`)})));
+  await seed(`media/${ids[0]}`,{status:'blocked',ownerUid:'alice',campusId:'emory.edu',url:`/api/photos/${ids[0]}`});
+  await assertFails(setDoc(doc(auth(),'listings/blocked-photo'),listing({imageIds:[ids[0]],images:[`/api/photos/${ids[0]}`]})));
+});

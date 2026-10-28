@@ -13,7 +13,9 @@ service cloud.firestore {
         : email.matches('.*@([a-z0-9-]+[.])*utk[.]edu') ? 'utk.edu' : '';
     }
     function student() {
-      return signedIn() && request.auth.token.email_verified == true && campus() != '';
+      return signedIn() && request.auth.token.email_verified == true && campus() != ''
+        && (!exists(/databases/$(database)/documents/moderationAccounts/$(request.auth.uid))
+          || get(/databases/$(database)/documents/moderationAccounts/$(request.auth.uid)).data.suspended != true);
     }
     function member(conversationId) {
       return student() && request.auth.uid in
@@ -30,7 +32,7 @@ service cloud.firestore {
         && request.resource.data.get('displayName', '').size() <= 80
         && request.resource.data.get('savedListings', []) is list
         && request.resource.data.get('savedListings', []).size() <= 200;
-      // Reviews and reputation are backend-owned until transaction validation exists.
+      // Legacy reviews are denied; transaction-validated reviews use publicProfiles.
       match /reviews/{reviewId} { allow read, write: if false; }
     }
     // Public-facing fields must be explicitly projected by the trusted backend.
@@ -66,7 +68,7 @@ service cloud.firestore {
           && asset.campusId == campus() && asset.url == d.images[index];
       }
       allow read: if student() && resource.data.campusId == campus();
-      allow create: if student() && validListing(request.resource.data)
+      allow create: if student() && !exists(/databases/$(database)/documents/removedListings/$(listingId)) && validListing(request.resource.data)
         && request.resource.data.sellerUid == request.auth.uid
         && request.resource.data.sellerEmail == request.auth.token.email
         && request.resource.data.campusId == campus()
@@ -105,6 +107,18 @@ service cloud.firestore {
     // registry entries to validate listing photos; clients cannot forge them.
     match /media/{id} { allow read, write: if false; }
     match /uploadLimits/{id} { allow read, write: if false; }
+    match /moderationAccounts/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+    match /moderators/{uid} { allow read, write: if false; }
+    match /reports/{id} { allow read, write: if false; }
+    match /removedListings/{id} { allow read, write: if false; }
+    match /moderationEvents/{id} { allow read, write: if false; }
+    match /openReports/{id} { allow read, write: if false; }
+    match /reportLimits/{uid} { allow read, write: if false; }
+    // Blocks are API-only, including reads. The other party cannot enumerate them.
+    match /users/{uid}/blocks/{targetUid} { allow read, write: if false; }
     // All other paths (including legacy /messages) are denied by default.
   }
 }

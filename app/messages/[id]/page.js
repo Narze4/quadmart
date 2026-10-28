@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { collection, doc, getDoc, onSnapshot, orderBy, query, limit } from 'firebase/firestore'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
+import SafetyActions from '@/components/SafetyActions'
 import Footer from '@/components/Footer'
 
 export default function ConversationPage() {
@@ -113,6 +114,8 @@ export default function ConversationPage() {
           })}
           <div ref={bottomRef} />
         </div>
+
+        <SafetyActions targetUid={otherIdx > -1 ? conversation.participants[otherIdx] : null} conversationId={id} />
 
         {sendError && <p role="alert">{sendError}</p>}
         <form onSubmit={handleSend} className="flex gap-2">

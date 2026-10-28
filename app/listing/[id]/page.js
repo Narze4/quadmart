@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import SafetyActions from '@/components/SafetyActions'
 import ProtectedPhoto from '@/components/ProtectedPhoto'
 import { marketApi } from '@/lib/market-api'
 import { useAuth } from '@/lib/auth-context'
@@ -51,7 +52,7 @@ export default function ListingDetailPage() {
       setListing(data)
       setSellerUid(data.sellerUid ?? null)
       setFetchLoading(false)
-    })
+    }).catch(() => { setListing(null); setFetchLoading(false) })
   }, [id, router, user])
 
   const handleMessage = async () => {
@@ -63,7 +64,7 @@ export default function ListingDetailPage() {
       router.push(`/messages/${ref.id}`)
     } catch (err) {
       console.error('Failed to open conversation:', err)
-      setMessageError("Couldn't message this seller right now. Please try again.")
+      setMessageError(err.message)
     } finally {
       setMessaging(false)
     }
@@ -77,7 +78,7 @@ export default function ListingDetailPage() {
     )
   }
 
-  if (!listing) return null
+  if (!listing) return <main className="p-8"><p>This listing is no longer available.</p><Link className="underline" href="/marketplace">Back to marketplace</Link></main>
 
   const images = listing.images ?? []
   const sellerUsername = listing.sellerEmail?.split('@')[0] ?? 'unknown'
@@ -203,6 +204,8 @@ export default function ListingDetailPage() {
                 </div>
               </div>
             )}
+
+            <SafetyActions targetUid={sellerUid} listingId={listing.id} />
 
             {/* Actions */}
             {!isOwnListing && status !== 'sold' && (

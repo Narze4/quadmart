@@ -53,12 +53,13 @@ const NAV_LINKS = [
   { label: 'My listings', href: '/my-listings' },
   { label: 'Purchases', href: '/my-purchases' },
   { label: 'Messages', href: '/messages' },
+  { label: 'Safety', href: '/safety' },
 ]
 
 export default function AuthenticatedHeader() {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, logout } = useAuth()
+  const { user, logout, isModerator } = useAuth()
   const [unreadCount, setUnreadCount] = useState(0)
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -224,6 +225,7 @@ export default function AuthenticatedHeader() {
                   >
                     My profile
                   </Link>
+                  {isModerator && <Link href="/moderation" role="menuitem" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm hover:bg-bg">Moderation</Link>}
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); handleLogout() }}
@@ -296,6 +298,7 @@ export default function AuthenticatedHeader() {
             >
               My profile
             </Link>
+            {isModerator && <Link href="/moderation" onClick={() => setMobileOpen(false)} className="px-3 py-2.5 text-sm">Moderation</Link>}
             <button
               onClick={() => { setMobileOpen(false); handleLogout() }}
               className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"

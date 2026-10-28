@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { collection, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
+import SafetyActions from '@/components/SafetyActions'
 import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
 import ListingCard from '@/components/ListingCard'
@@ -160,6 +161,8 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        <div className="mb-6"><SafetyActions targetUid={uid} /></div>
 
         {/* Tabs */}
         <div className="flex gap-0 border-b border-border mb-6">

@@ -33,9 +33,9 @@ export default function SavedPage() {
     if (!user) return
     let cancelled = false
     const ids = [...savedListings].reverse()
-    Promise.all(ids.map(id => getDoc(doc(db, 'listings', id)))).then(snaps => {
+    Promise.all(ids.map(id => getDoc(doc(db, 'listings', id)).catch(() => null))).then(snaps => {
       if (cancelled) return
-      setListings(snaps.filter(s => s.exists()).map(s => ({ id: s.id, ...s.data() })))
+      setListings(snaps.filter(s => s?.exists()).map(s => ({ id: s.id, ...s.data() })))
       setFetchLoading(false)
     })
     return () => { cancelled = true }
