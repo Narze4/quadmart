@@ -34,4 +34,4 @@ The safety tests exercise concurrent reporting limits, evidence access, block en
 
 ## Before inviting students
 
-Define prohibited items, escalation/appeal handling, response expectations and report retention with the founding team. Confirm who monitors the support inbox. Broader spam limits, account/orphan-photo cleanup, pagination outside the moderation queue, backup/restore preparation, production migration and final phone/pilot testing remain separate launch tasks. Do not treat this development implementation as production launch approval.
+Define prohibited items, escalation/appeal handling, response expectations and report retention with the founding team. Confirm who monitors the support inbox. Server spam budgets and privacy-safe operational logs are implemented (see ABUSE-AND-OPERATIONS.md). Edge protection, automatic alerts, account/orphan-photo cleanup, pagination outside the moderation queue, backup/restore preparation, production migration and final phone/pilot testing remain separate launch tasks. Do not treat this development implementation as production launch approval.
