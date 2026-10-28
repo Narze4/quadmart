@@ -7,6 +7,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { Firestore } from '@google-cloud/firestore';
 import { GoogleAuth, OAuth2Client } from 'google-auth-library';
+import { firestoreRest } from '../lib/operations/rest.mjs';
 const require = createRequire(import.meta.url);
 export async function maintenanceServices(projectId) {
   if (!['demo-quadmart', 'quadmart-development'].includes(projectId)) throw new Error('Explicit demo/development project required');
@@ -15,7 +16,7 @@ export async function maintenanceServices(projectId) {
     if (process.env.FIRESTORE_EMULATOR_HOST !== '127.0.0.1:8080' || process.env.FIREBASE_AUTH_EMULATOR_HOST !== '127.0.0.1:9099') throw new Error('Both loopback emulators required');
     const app = initializeApp({ projectId }, 'quadmart-maintenance');
     const db = getFirestore(app);
-    return { db, auth: getAuth(app), close: async () => { await db.terminate(); await deleteApp(app); } };
+    return { db, auth: getAuth(app), snapshotRequest: firestoreRest({ projectId, endpoint: 'http://127.0.0.1:8080' }), close: async () => { await db.terminate(); await deleteApp(app); } };
   }
   if (process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_AUTH_EMULATOR_HOST) throw new Error('Unexpected emulator variables');
   // Uses the operator's existing firebase login. Never grant these privileges to
@@ -29,5 +30,5 @@ export async function maintenanceServices(projectId) {
   client.setCredentials({ access_token: token.access_token, expiry_date: token.expires_at });
   const db = new Firestore({ projectId, auth: new GoogleAuth({ projectId, authClient: client }) });
   const app = initializeApp({ projectId, credential: { getAccessToken: async () => { const t = await fresh(); return { access_token: t.access_token, expires_in: Math.floor((t.expires_at - Date.now()) / 1000) }; } } }, 'quadmart-maintenance');
-  return { db, auth: getAuth(app), close: async () => { await db.terminate(); await deleteApp(app); } };
+  return { db, auth: getAuth(app), snapshotRequest: firestoreRest({ projectId, accessToken: async () => (await fresh()).access_token }), close: async () => { await db.terminate(); await deleteApp(app); } };
 }

@@ -45,3 +45,9 @@ next-env.d.ts
 .firebase/
 
 !.env.development.example
+
+# Local operations snapshots and keys must never enter Git or deployments.
+*.qmb
+*.qmb.partial
+backup.key
+.operations/

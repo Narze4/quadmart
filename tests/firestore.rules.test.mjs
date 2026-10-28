@@ -143,7 +143,7 @@ test('a removed listing cannot be recreated by its seller',async()=>{
   await assertFails(setDoc(doc(auth(),'listings/new'),listing()));
 });
 test('operation budgets and listing retry records cannot be read, reset or deleted by clients',async()=>{
-  for(const path of ['operationLimits/private','listingRequests/private']) {
+  for(const path of ['operationLimits/private','listingRequests/private','systemOperations/developmentMaintenance']) {
     await seed(path,{dayCount:20});
     await assertFails(getDoc(doc(auth(),path)));
     await assertFails(setDoc(doc(auth(),path),{dayCount:0}));

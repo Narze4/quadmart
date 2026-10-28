@@ -48,9 +48,9 @@ Photo --apply requires the existing restricted development CLOUDINARY_CLOUD_NAME
 
 Set XDG_CONFIG_HOME when using a custom Firebase CLI cache; QUADMART_FIREBASE_CLI_CONFIG can point to an existing private CLI config file. Emulator account maintenance requires both loopback Auth and Firestore emulators. The scripts print only job stage/outcome and candidate IDs, not profile contents or credentials.
 
-## What is not automated yet
+## Scheduling and remaining limits
 
-No cron, paid service, additional IAM grant, automatic evidence erasure or production deployment was added. An operator must reconcile interrupted jobs, inspect logins deleted outside the UI, and run photo sweeps. Schedule and monitor those tasks before launch; until then, pending photos/data can remain indefinitely. Monitoring, backups/restore and a retention policy are still required. Do not broaden the web runtime's privileges merely to bypass this operational requirement.
+The local development worker and six-hour Codex schedule are described in [Scheduled maintenance and backups](SCHEDULED-MAINTENANCE-AND-BACKUPS.md). It captures a verified encrypted Firestore backup before bounded account/photo sweeps and records failures. It depends on the Mac/app being available and is not an always-on service. No paid service, additional runtime IAM grant, automatic evidence erasure or production deployment was added. Independent monitoring, off-device and Auth/photo recovery, and a retention policy remain launch requirements. Do not broaden the web runtime's privileges merely to bypass these operational requirements.
 
 ## Validation
 
