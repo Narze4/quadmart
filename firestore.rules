@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function campus() {
+      let email = request.auth.token.email.lower();
+      return email.matches('.*@([a-z0-9-]+[.])*emory[.]edu') ? 'emory.edu'
+        : email.matches('.*@([a-z0-9-]+[.])*uga[.]edu') ? 'uga.edu'
+        : email.matches('.*@([a-z0-9-]+[.])*gatech[.]edu') ? 'gatech.edu'
+        : email.matches('.*@([a-z0-9-]+[.])*scad[.]edu') ? 'scad.edu'
+        : email.matches('.*@([a-z0-9-]+[.])*gsu[.]edu') ? 'gsu.edu'
+        : email.matches('.*@([a-z0-9-]+[.])*kennesaw[.]edu') ? 'kennesaw.edu'
+        : email.matches('.*@([a-z0-9-]+[.])*utk[.]edu') ? 'utk.edu' : '';
+    }
+    function student() {
+      return signedIn() && request.auth.token.email_verified == true && campus() != '';
+    }
+    function member(conversationId) {
+      return student() && request.auth.uid in
+        get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+    }
+    function shortText(value, max) { return value is string && value.size() > 0 && value.size() <= max; }
+
+    // Private account data, including saved listings. Provisioned by trusted backend.
+    match /users/{uid} {
+      allow get: if student() && request.auth.uid == uid;
+      allow update: if student() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'savedListings'])
+        && request.resource.data.get('displayName', '') is string
+        && request.resource.data.get('displayName', '').size() <= 80
+        && request.resource.data.get('savedListings', []) is list
+        && request.resource.data.get('savedListings', []).size() <= 200;
+      // Reviews and reputation are backend-owned until transaction validation exists.
+      match /reviews/{reviewId} { allow read, write: if false; }
+    }
+    // Public-facing fields must be explicitly projected by the trusted backend.
+    match /publicProfiles/{uid} {
+      allow read: if student() && resource.data.campusId == campus();
+      allow write: if false;
+    }
+    match /listings/{listingId} {
+      function validListing(d) {
+        return d.keys().hasAll(['title','description','price','category','condition','images','sellerUid','sellerEmail','campusId','status','createdAt'])
+          && d.keys().hasOnly(['title','description','price','category','condition','images','sellerUid','sellerEmail','campusId','status','createdAt'])
+          && shortText(d.title, 120) && d.description is string && d.description.size() <= 5000
+          && d.price is number && d.price >= 0 && d.price <= 100000
+          && d.category in ['Product','Service','Sublease']
+          && d.condition in ['New','Like New','Good','Fair']
+          && d.images is list && d.images.size() <= 5
+          && (d.images.size() < 1 || validImage(d.images[0]))
+          && (d.images.size() < 2 || validImage(d.images[1]))
+          && (d.images.size() < 3 || validImage(d.images[2]))
+          && (d.images.size() < 4 || validImage(d.images[3]))
+          && (d.images.size() < 5 || validImage(d.images[4]));
+      }
+      function validImage(url) { return url is string && url.size() <= 2048 && url.matches('https://res[.]cloudinary[.]com/.*'); }
+      allow read: if student() && resource.data.campusId == campus();
+      allow create: if student() && validListing(request.resource.data)
+        && request.resource.data.sellerUid == request.auth.uid
+        && request.resource.data.sellerEmail == request.auth.token.email
+        && request.resource.data.campusId == campus()
+        && request.resource.data.status == 'active' && request.resource.data.createdAt == request.time;
+      allow update: if student() && resource.data.sellerUid == request.auth.uid
+        && resource.data.campusId == campus() && validListing(request.resource.data)
+        && resource.data.status in ['active','reserved']
+        && request.resource.data.status in ['active','reserved']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','description','price','category','condition','images','status']);
+      allow delete: if student() && resource.data.sellerUid == request.auth.uid
+        && resource.data.campusId == campus() && resource.data.status in ['active','reserved'];
+    }
+    match /conversations/{conversationId} {
+      allow read: if student() && request.auth.uid in resource.data.participants;
+      allow create: if student()
+        && request.resource.data.keys().hasOnly(['participants','participantEmails','listingId','listingTitle','lastMessage','lastMessageAt','createdAt'])
+        && request.resource.data.participants is list && request.resource.data.participants.size() == 2
+        && request.resource.data.participants[0] == request.auth.uid
+        && request.resource.data.participants[1] != request.auth.uid
+        && validConversation(request.resource.data);
+      function validConversation(d) {
+        let listing = get(/databases/$(database)/documents/listings/$(d.listingId)).data;
+        return listing.campusId == campus() && listing.status == 'active'
+          && d.participants[1] == listing.sellerUid
+          && d.participantEmails == [request.auth.token.email, listing.sellerEmail]
+          && d.listingTitle == listing.title && d.lastMessage == ''
+          && d.createdAt == request.time && d.lastMessageAt == request.time;
+      }
+      // Message previews/notifications are backend-owned to prevent forged events.
+      allow update, delete: if false;
+      match /messages/{messageId} {
+        allow read: if member(conversationId);
+        allow create: if member(conversationId)
+          && request.resource.data.keys().hasAll(['text','senderUid','createdAt'])
+          && request.resource.data.keys().hasOnly(['text','senderUid','createdAt'])
+          && request.resource.data.senderUid == request.auth.uid
+          && shortText(request.resource.data.text, 4000)
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+    match /notifications/{notificationId} {
+      allow read: if student() && resource.data.userId == request.auth.uid;
+      allow update: if student() && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+        && request.resource.data.read == true;
+      allow create, delete: if false;
+    }
+    match /transactions/{transactionId} {
+      allow read: if student() && (resource.data.sellerUid == request.auth.uid || resource.data.buyerUid == request.auth.uid);
+      allow write: if false;
+    }
+    // All other paths (including legacy /messages) are denied by default.
+  }
+}

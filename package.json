@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-quadmart \"node --test tests/firestore.rules.test.mjs\"",
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-quadmart"
   },
   "dependencies": {
     "cloudinary": "^2.10.0",
@@ -16,10 +18,12 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@tailwindcss/postcss": "^4",
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
+    "firebase-tools": "^15.34.1",
     "playwright": "^1.60.0",
     "tailwindcss": "^4"
   }

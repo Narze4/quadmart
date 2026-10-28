@@ -1,0 +1,23 @@
+QuadMart security foundation
+October 27, 2026 (America/New_York)
+Base commit: 9e90e81a6457909020ea57d59920c214521a1164
+
+Official Firestore emulator: 33 tests passed, 0 failed.
+ESLint: passed.
+git diff --check: passed.
+
+Test coverage: verified supported university access, anonymous/unverified rejection,
+lookalike and unsupported domains, subdomain campus matching, campus-scoped reads
+and queries, listing validation/ownership, private account data, public profile
+campus boundaries, immutable reputation, participant-only conversations/messages,
+notification ownership, transaction privacy, denied client financial/reputation
+writes, default-deny paths.
+
+This is a local rules contract and regression suite, not a completed app migration.
+No end-to-end UI, real verification email, deployed indexes, load test, or cloud
+permission integration has been verified. Read FIREBASE-SECURITY.md before use.
+
+Dependency scan: npm audit --omit=dev reports 16 production dependency findings
+(6 moderate, 8 high, 2 critical). This scan is separate from the rules tests; it
+requires advisory review and tested package updates before a student pilot.
+No automatic force-upgrade was applied.
