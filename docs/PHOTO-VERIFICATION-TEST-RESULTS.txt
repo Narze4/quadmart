@@ -1,0 +1,33 @@
+QuadMart photo security and real-email verification - October 27, 2026
+
+PASS: 40 Firestore rules tests, including five owned photos, foreign owners,
+wrong campus, incomplete uploads, forged registry records and mismatched URLs.
+PASS: 11 photo/verification tests, including bounded streaming, invalid image
+content, metadata removal, resizing, idempotency, concurrent rate limits,
+failed-storage behavior and verified same-campus photo access.
+PASS: 2 development federation credential tests.
+PASS: Production-build integration with 33 checkpoints, including anonymous and
+unverified upload/photo denials and real emulator verification action links.
+PASS: ESLint and git diff checks.
+
+The upload storage adapter was mocked in local tests. Actual Cloudinary upload,
+private-delivery proxy and browser rendering require development credentials and
+remain unverified. Uploads stay disabled until that hosted test is completed.
+
+A normal Firebase client signup was made in quadmart-development for the owner's
+requested Emory mailbox. A real verification email was sent successfully with a
+return link to the stable protected preview. The unverified account was denied
+marketplace reads. Recipient inbox receipt/link completion is still pending;
+emailVerified was false at the last check. No administrator verified this account.
+The random development-only credential is local, ignored by Git, and excluded
+from downloadable source archives.
+
+Next.js/eslint-config-next upgraded to 16.4.3; sharp 0.35.5 directly installed.
+Compatible lockfile updates removed all critical audit findings. The production
+audit still reports seven high findings inherited through gRPC/Firebase and
+Zod/Vercel CLI-config. These require assessment or compatible fixes before launch.
+No forced Firebase/OIDC downgrade or production deployment was performed.
+
+Local tests ran in a clean temporary checkout with identical edited sources
+because the main workspace's dependency files stalled during filesystem reads.
+No real payments, student invitations or production-data changes were made.

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
+import ProtectedPhoto from '@/components/ProtectedPhoto'
 import { marketApi } from '@/lib/market-api'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
@@ -124,11 +124,9 @@ export default function ListingDetailPage() {
           <div>
             <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-gray-100">
               {images[selectedImage] ? (
-                <Image
+                <ProtectedPhoto
                   src={images[selectedImage]}
                   alt={listing.title}
-                  fill
-                  unoptimized
                   className="object-cover"
                 />
               ) : (
@@ -146,7 +144,7 @@ export default function ListingDetailPage() {
                       selectedImage === i ? 'ring-2 ring-primary ring-offset-2' : 'ring-1 ring-gray-200 hover:ring-gray-300'
                     }`}
                   >
-                    <Image src={img} alt="" fill unoptimized className="object-cover" />
+                    <ProtectedPhoto src={img} alt="" className="object-cover" />
                   </button>
                 ))}
               </div>

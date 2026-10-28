@@ -113,3 +113,31 @@ test('legacy and unknown paths stay denied', async () => {
   await assertFails(setDoc(doc(auth(),'messages/legacy'),{participants:['alice','bob']}));
   await assertFails(setDoc(doc(auth(),'admin/settings'),{enabled:true}));
 });
+
+const photoId = 'a'.repeat(64);
+const photoUrl = `/api/photos/${photoId}`;
+const readyPhoto = (extra = {}) => ({ ownerUid: 'alice', campusId: 'emory.edu', status: 'ready', url: photoUrl, ...extra });
+test('five owned ready photos can be attached without exceeding rule lookup limits', async () => {
+  const ids = ['a','b','c','d','e'].map(x => x.repeat(64));
+  for (const id of ids) await seed(`media/${id}`,readyPhoto({url:`/api/photos/${id}`}));
+  await assertSucceeds(setDoc(doc(auth(),'listings/photos'),listing({images:ids.map(id=>`/api/photos/${id}`),imageIds:ids})));
+});
+for (const [name, change] of [['another owner',{ownerUid:'bob'}],['another campus',{campusId:'uga.edu'}],['pending upload',{status:'pending'}],['failed upload',{status:'failed'}]]) {
+  test(`listing cannot attach ${name}`,async()=>{
+    await seed(`media/${photoId}`,readyPhoto(change));
+    await assertFails(setDoc(doc(auth(),'listings/photos'),listing({images:[photoUrl],imageIds:[photoId]})));
+  });
+}
+test('listing rejects arbitrary URLs, unknown media and URL-ID mismatches',async()=>{
+  await assertFails(setDoc(doc(auth(),'listings/a'),listing({images:['https://res.cloudinary.com/other/photo.jpg']})));
+  await assertFails(setDoc(doc(auth(),'listings/b'),listing({images:[photoUrl],imageIds:[photoId]})));
+  await seed(`media/${photoId}`,readyPhoto());
+  await assertFails(setDoc(doc(auth(),'listings/c'),listing({images:['https://res.cloudinary.com/other/photo.jpg'],imageIds:[photoId]})));
+  await assertFails(setDoc(doc(auth(),'listings/d'),listing({images:[photoUrl],imageIds:[]})));
+});
+test('client cannot forge media registry or reset upload budgets',async()=>{
+  await assertFails(setDoc(doc(auth(),`media/${photoId}`),readyPhoto()));
+  await assertFails(setDoc(doc(auth(),'uploadLimits/global'),{daily:0}));
+  await seed(`media/${photoId}`,readyPhoto());
+  await assertFails(getDoc(doc(auth(),`media/${photoId}`)));
+});

@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { setTimeout } from 'node:timers/promises';
-const env={...process.env,QUADMART_LOCAL:'true',NEXT_PUBLIC_USE_FIREBASE_EMULATORS:'true',QUADMART_TEST_BASE:'http://127.0.0.1:3100'};
+const env={...process.env,QUADMART_LOCAL:'true',QUADMART_ENABLE_UPLOADS:'true',NEXT_PUBLIC_USE_FIREBASE_EMULATORS:'true',QUADMART_TEST_BASE:'http://127.0.0.1:3100'};
 const server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port','3100'],{env,stdio:'inherit'});
 try {
  let ready=false;

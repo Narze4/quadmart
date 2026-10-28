@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth'
+import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { sendVerification } from '@/lib/email-verification.mjs'
 import { auth } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -68,7 +69,7 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  const trimmedEmail = email.trim()
+  const trimmedEmail = email.trim().toLowerCase()
   const isEduEmail = trimmedEmail.endsWith('.edu')
   const matchedUniversity = isEduEmail ? getUniversityFromEmail(trimmedEmail) : null
   const showUnsupported = isEduEmail && trimmedEmail.includes('@') && !matchedUniversity
@@ -91,7 +92,9 @@ export default function SignUpPage() {
     setLoading(true)
     try {
       const { user } = await createUserWithEmailAndPassword(auth, trimmedEmail, password)
-      await sendEmailVerification(user)
+      // Account creation succeeded even if delivery fails; the verification page
+      // provides a resend path instead of asking the student to create it again.
+      try { await sendVerification(user) } catch { /* Delivery status is shown on the next page. */ }
       router.push('/verify-email')
     } catch (err) {
       setError(FIREBASE_ERRORS[err.code] ?? 'Something went wrong. Please try again.')

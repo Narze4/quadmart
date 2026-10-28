@@ -3,12 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { sendEmailVerification } from 'firebase/auth'
+import { RESEND_COOLDOWN, sendVerification, verificationStatus } from '@/lib/email-verification.mjs'
 import { useAuth } from '@/lib/auth-context'
 import Footer from '@/components/Footer'
 import Button from '@/components/ui/Button'
-
-const RESEND_COOLDOWN = 60
 
 const CubeIcon = () => (
   <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -35,6 +33,17 @@ export default function VerifyEmailPage() {
   const [sent, setSent] = useState(false)
 
   useEffect(() => {
+    if (!user) return
+    const status = verificationStatus(user.uid)
+    const timer = setTimeout(() => {
+      setSent(!!status.sentAt)
+      setError(status.error ?? '')
+      setCooldown(Math.max(0, Math.ceil(((status.sentAt ?? 0) + RESEND_COOLDOWN * 1000 - Date.now()) / 1000)))
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [user])
+
+  useEffect(() => {
     if (!loading && !user) router.replace('/login')
     else if (!loading && user?.emailVerified) router.replace('/dashboard')
   }, [user, loading, router])
@@ -50,11 +59,11 @@ export default function VerifyEmailPage() {
     setError('')
     setSending(true)
     try {
-      await sendEmailVerification(user)
+      await sendVerification(user)
       setSent(true)
       setCooldown(RESEND_COOLDOWN)
-    } catch {
-      setError('Could not send the email right now. Please try again in a moment.')
+    } catch (error) {
+      setError(error.message)
     } finally {
       setSending(false)
     }
@@ -63,7 +72,6 @@ export default function VerifyEmailPage() {
   const handleContinue = async () => {
     if (!user) return
     setError('')
-    setSent(false)
     setChecking(true)
     try {
       await user.reload()
@@ -110,11 +118,11 @@ export default function VerifyEmailPage() {
           <div className="w-16 h-16 rounded-full bg-primary/10 text-primary-dark flex items-center justify-center mx-auto mb-6">
             <MailIcon />
           </div>
-          <h1 className="text-2xl font-bold text-text-primary mb-2">Check your inbox</h1>
-          <p className="text-sm text-text-secondary mb-1">We sent a verification link to</p>
+          <h1 className="text-2xl font-bold text-text-primary mb-2">{sent ? 'Check your inbox' : 'Verify your university email'}</h1>
+          <p className="text-sm text-text-secondary mb-1">{sent ? 'We sent a verification link to' : 'Send a verification link to'}</p>
           <p className="text-sm font-semibold text-text-primary mb-6">{user.email}</p>
           <p className="text-sm text-text-secondary mb-8">
-            Click the link in that email to verify your account, then come back here and continue.
+            Open the link in your university inbox, then return here and continue. Check your spam or junk folder if the email has not arrived.
           </p>
 
           {error && (
@@ -140,7 +148,7 @@ export default function VerifyEmailPage() {
               disabled={cooldown > 0}
               className="w-full"
             >
-              {cooldown > 0 ? `Resend email (${cooldown}s)` : 'Resend email'}
+              {cooldown > 0 ? `Resend email (${cooldown}s)` : sent ? 'Resend email' : 'Send verification email'}
             </Button>
           </div>
         </div>

@@ -18,4 +18,5 @@ jobs:
       - run: npm ci
       - run: npm run test:credentials
       - run: npm run test:rules
+      - run: npm run test:uploads
       - run: npm run test:integration

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
+import ProtectedPhoto from '@/components/ProtectedPhoto'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { collection, doc, getDocs, query, updateDoc, where } from 'firebase/firestore'
@@ -193,7 +193,7 @@ export default function MyListingsPage() {
                   <Link href={`/listing/${listing.id}`} className="flex items-center gap-4 flex-1 min-w-0">
                     <div className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0">
                       {listing.images?.[0] ? (
-                        <Image src={listing.images[0]} alt={listing.title} fill unoptimized className="object-cover" />
+                        <ProtectedPhoto src={listing.images[0]} alt={listing.title} className="object-cover" />
                       ) : (
                         <CategoryPlaceholder category={listing.category} size="sm" />
                       )}

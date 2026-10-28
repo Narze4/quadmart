@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+import ProtectedPhoto from '@/components/ProtectedPhoto'
 import Badge from '@/components/ui/Badge'
 import CategoryPlaceholder from '@/components/CategoryPlaceholder'
 import { getUniversity, timeAgo, getListingStatus } from '@/lib/utils'
@@ -72,11 +72,9 @@ export default function ListingCard({ listing, showSeller = true }) {
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden bg-gray-50">
         {hasImage ? (
-          <Image
+          <ProtectedPhoto
             src={listing.images[0]}
             alt={listing.title}
-            fill
-            unoptimized
             onError={() => setImgError(true)}
             className="object-cover motion-safe:group-hover:scale-105 motion-safe:transition-transform motion-safe:duration-300"
           />

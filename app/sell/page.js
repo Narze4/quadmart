@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { getCampusId } from '@/lib/utils'
@@ -50,7 +50,11 @@ export default function SellPage() {
   const [step, setStep] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [uploadProgress, setUploadProgress] = useState('')
+  const [uploadsAvailable, setUploadsAvailable] = useState(false)
   const [error, setError] = useState('')
+  const uploadCache = useRef(new WeakMap())
+  const photoPreviews = useRef(new Set())
+  useEffect(() => () => { photoPreviews.current.forEach(url => URL.revokeObjectURL(url)) }, [])
   const [photos, setPhotos] = useState([]) // [{ file: File, preview: string }]
   const [form, setForm] = useState({
     category: '',
@@ -59,6 +63,14 @@ export default function SellPage() {
     price: '',
     condition: 'New',
   })
+
+  useEffect(() => {
+    let active = true
+    fetch('/api/upload').then(response => response.json()).then(data => {
+      if (active) setUploadsAvailable(data.enabled === true)
+    }).catch(() => {})
+    return () => { active = false }
+  }, [])
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
@@ -81,31 +93,48 @@ export default function SellPage() {
   }
 
   const handlePhotoSelect = (e) => {
-    const newFiles = Array.from(e.target.files ?? [])
-    setPhotos(prev => {
-      const combined = [
-        ...prev,
-        ...newFiles.map(f => ({ file: f, preview: URL.createObjectURL(f) })),
-      ]
-      return combined.slice(0, 5)
-    })
+    const files = Array.from(e.target.files ?? [])
     e.target.value = ''
+    if (photos.length + files.length > 5) { setError('Choose up to 5 photos.'); return }
+    if (files.some(file => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 3 * 1024 * 1024 || file.size === 0)) {
+      setError('Choose JPG, PNG, or WebP photos, up to 3 MB each.'); return
+    }
+    setError('')
+    const selected = files.map(file => {
+      const preview = URL.createObjectURL(file)
+      photoPreviews.current.add(preview)
+      return { file, preview }
+    })
+    setPhotos(prev => [...prev, ...selected])
   }
 
   const removePhoto = (index) => {
+    const preview = photos[index].preview
+    URL.revokeObjectURL(preview)
+    photoPreviews.current.delete(preview)
     setPhotos(prev => prev.filter((_, i) => i !== index))
   }
 
   const uploadImages = async () => {
-    if (photos.length === 0) return []
-    setUploadProgress(`Uploading ${photos.length} photo${photos.length > 1 ? 's' : ''}…`)
-    const formData = new FormData()
-    photos.forEach(({ file }) => formData.append('images', file))
-    const res = await fetch('/api/upload', { method: 'POST', body: formData })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error ?? 'Upload failed')
+    const assets = []
+    for (const [index, { file }] of photos.entries()) {
+      let cached = uploadCache.current.get(file)
+      if (!cached) { cached = { requestId: crypto.randomUUID() }; uploadCache.current.set(file, cached) }
+      if (!cached.asset) {
+        setUploadProgress(`Uploading photo ${index + 1} of ${photos.length}…`)
+        const token = await user.getIdToken()
+        const res = await fetch('/api/upload', {
+          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': file.type, 'X-Upload-Id': cached.requestId }, body: file,
+        })
+        let data
+        try { data = await res.json() } catch { throw new Error('Photo upload is temporarily unavailable. Please retry.') }
+        if (!res.ok) throw new Error(data.error ?? 'Photo upload failed. Please retry.')
+        cached.asset = data
+      }
+      assets.push(cached.asset)
+    }
     setUploadProgress('')
-    return data.urls
+    return assets
   }
 
   const handleNext = async () => {
@@ -113,14 +142,15 @@ export default function SellPage() {
     setError('')
     setSubmitting(true)
     try {
-      const images = await uploadImages()
+      const assets = await uploadImages()
       await addDoc(collection(db, 'listings'), {
         title: form.title.trim(),
         description: form.description.trim(),
         price: Number(form.price),
         category: form.category,
         condition: form.condition,
-        images,
+        images: assets.map(asset => asset.url),
+        imageIds: assets.map(asset => asset.id),
         sellerEmail: user.email,
         sellerUid: user.uid,
         campusId: getCampusId(user.email),
@@ -128,8 +158,8 @@ export default function SellPage() {
         createdAt: serverTimestamp(),
       })
       router.push('/my-listings')
-    } catch {
-      setError('Failed to post listing. Please try again.')
+    } catch (error) {
+      setError(error.message || 'Failed to post listing. Please try again.')
     } finally {
       setSubmitting(false)
       setUploadProgress('')
@@ -208,7 +238,8 @@ export default function SellPage() {
                 Listings with photos get more attention. Up to 5 images. (Optional)
               </p>
 
-              {photos.length < 5 && (
+              {!uploadsAvailable && <p className="text-sm text-text-secondary">Photos are temporarily unavailable. You can continue and publish without photos.</p>}
+              {uploadsAvailable && photos.length < 5 && (
                 <label
                   htmlFor="photo-upload"
                   className="flex flex-col items-center justify-center w-full h-52 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
@@ -219,12 +250,12 @@ export default function SellPage() {
                   </svg>
                   <p className="text-sm font-medium text-text-secondary">Upload photos</p>
                   <p className="text-xs text-gray-400 mt-1">
-                    {photos.length === 0 ? 'PNG, JPG up to 10MB each' : `${photos.length}/5 added — click to add more`}
+                    {photos.length === 0 ? 'JPG, PNG, or WebP up to 3 MB each' : `${photos.length}/5 added — click to add more`}
                   </p>
                   <input
                     id="photo-upload"
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     multiple
                     className="hidden"
                     onChange={handlePhotoSelect}

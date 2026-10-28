@@ -45,19 +45,26 @@ service cloud.firestore {
     match /listings/{listingId} {
       function validListing(d) {
         return d.keys().hasAll(['title','description','price','category','condition','images','sellerUid','sellerEmail','campusId','status','createdAt'])
-          && d.keys().hasOnly(['title','description','price','category','condition','images','sellerUid','sellerEmail','campusId','status','createdAt'])
+          && d.keys().hasOnly(['title','description','price','category','condition','images','sellerUid','sellerEmail','campusId','status','createdAt','imageIds'])
           && shortText(d.title, 120) && d.description is string && d.description.size() <= 5000
           && d.price is number && d.price >= 0 && d.price <= 100000
           && d.category in ['Product','Service','Sublease']
           && d.condition in ['New','Like New','Good','Fair']
           && d.images is list && d.images.size() <= 5
-          && (d.images.size() < 1 || validImage(d.images[0]))
-          && (d.images.size() < 2 || validImage(d.images[1]))
-          && (d.images.size() < 3 || validImage(d.images[2]))
-          && (d.images.size() < 4 || validImage(d.images[3]))
-          && (d.images.size() < 5 || validImage(d.images[4]));
+          && d.get('imageIds', []) is list && d.get('imageIds', []).size() == d.images.size()
+          && (d.images.size() < 1 || ownedImage(d, 0))
+          && (d.images.size() < 2 || ownedImage(d, 1))
+          && (d.images.size() < 3 || ownedImage(d, 2))
+          && (d.images.size() < 4 || ownedImage(d, 3))
+          && (d.images.size() < 5 || ownedImage(d, 4));
       }
-      function validImage(url) { return url is string && url.size() <= 2048 && url.matches('https://res[.]cloudinary[.]com/.*'); }
+      function ownedImage(d, index) {
+        let mediaId = d.imageIds[index];
+        let asset = get(/databases/$(database)/documents/media/$(mediaId)).data;
+        return mediaId is string && mediaId.matches('[a-f0-9]{64}')
+          && asset.status == 'ready' && asset.ownerUid == request.auth.uid
+          && asset.campusId == campus() && asset.url == d.images[index];
+      }
       allow read: if student() && resource.data.campusId == campus();
       allow create: if student() && validListing(request.resource.data)
         && request.resource.data.sellerUid == request.auth.uid
@@ -68,7 +75,7 @@ service cloud.firestore {
         && resource.data.campusId == campus() && validListing(request.resource.data)
         && resource.data.status in ['active','reserved']
         && request.resource.data.status in ['active','reserved']
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','description','price','category','condition','images','status']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','description','price','category','condition','images','imageIds','status']);
       allow delete: if student() && resource.data.sellerUid == request.auth.uid
         && resource.data.campusId == campus() && resource.data.status in ['active','reserved'];
     }
@@ -94,6 +101,10 @@ service cloud.firestore {
       allow read: if student() && (resource.data.sellerUid == request.auth.uid || resource.data.buyerUid == request.auth.uid);
       allow write: if false;
     }
+    // Upload registry and distributed budgets are backend-owned. Rules may read
+    // registry entries to validate listing photos; clients cannot forge them.
+    match /media/{id} { allow read, write: if false; }
+    match /uploadLimits/{id} { allow read, write: if false; }
     // All other paths (including legacy /messages) are denied by default.
   }
 }

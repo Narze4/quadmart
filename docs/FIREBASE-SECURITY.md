@@ -17,6 +17,8 @@ Local scripts force demo-quadmart and loopback Auth/Firestore endpoints. No prod
 
 ```sh
 npm run test:rules
+npm run test:uploads
+npm run test:credentials
 npm run test:integration
 ```
 
@@ -63,6 +65,28 @@ Deploy development rules with npm run deploy:rules:development. Always check dep
 
 Cloud test fixtures may be provisioned as explicitly verified synthetic development accounts without sending email. Such tests exercise hosted Auth, rules and the backend, but do not establish real student email delivery or ownership. Real email delivery remains a separate prelaunch check. Existing production data still needs a reviewed migration for campusId, UID-based identity and public profiles.
 
+## Photo upload and delivery controls
+
+The upload endpoint verifies a non-revoked Firebase ID token, supported university email verification and a provisioned profile before storing a photo. It accepts one JPG/PNG/WebP at a time, reads at most 3 MiB even without Content-Length, fully decodes at most 25 megapixels, rejects animation and mismatched file types, resizes to at most 1600 pixels, and re-encodes JPEG without EXIF/GPS metadata. Raw files and user-supplied file names are not uploaded.
+
+Firestore transactions enforce 10 attempts per minute and 20 per UTC day per account, plus 200 attempts per UTC day across development. Invalid images and provider failures count against the budget. Idempotent successful retries return the same asset; concurrent requests cannot create duplicate stored objects. These are conservative pilot limits, not a complete abuse-prevention system.
+
+Only the backend can write media registry and upload-budget records. Listing rules validate each image ID, exact app URL, ready status, owner and campus, up to five images. Legacy photo URLs need migration before production; existing no-photo listings remain valid.
+
+Cloudinary uploads use the authenticated delivery type and server-generated IDs under quadmart/<Firebase-project>/<hashed-owner>/. The app keeps signed Cloudinary URLs on the server. /api/photos/<id> verifies current campus membership and returns JPEG bytes with private/no-store caching; signed-out, unverified and other-campus requests cannot read photos. Authenticated viewers can still save or screenshot images they can view.
+
+Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET only in the Preview server environment, using a separate development Cloudinary product environment where available. After credentials are configured, enable QUADMART_ENABLE_UPLOADS in the protected Preview for the hosted upload/read test. Keep it disabled if configuration or validation is incomplete. The UI hides uploads while storage is disabled or unconfigured. Never expose the API secret via NEXT_PUBLIC_ variables or an unsigned upload preset. Failed/pending registry records retain their generated public IDs for reconciliation. Abandoned-upload and deleted-account asset cleanup still need an operational retention policy.
+
+References: https://cloudinary.com/documentation/control_access_to_media and https://sharp.pixelplumbing.com/api-output/.
+
+## Real email verification
+
+Signup sends a Firebase verification email with a fixed authorized return URL (NEXT_PUBLIC_APP_URL, ending in /verify-email). Account creation and email sending are treated separately: a delivery failure leads to the resend page instead of trapping the student in an already-created-account error. That page only says an email was sent after a confirmed send, preserves the one-minute UX cooldown across refresh, and refreshes the ID token after verification. Firebase enforces service-level sending limits; the client cooldown itself is not a security boundary.
+
+The actual mailbox test uses normal Firebase client signup with emailVerified=false. No administrator marks that account verified. The account is denied marketplace data until the recipient opens Firebase's emailed link. Synthetic accounts used in other development tests remain separate. University mailbox verification establishes email control, not current enrollment; the pilot must define eligibility for alumni/staff and eventual re-verification.
+
+Reference: https://firebase.google.com/docs/auth/web/passing-state-in-email-actions.
+
 ## Remaining launch work
 
-Photo uploads use Cloudinary and are disabled by default; the development preview explicitly sets QUADMART_ENABLE_UPLOADS=false. Photos are optional and were not exercised in the two-account test. Upload authentication, content validation, rate limits and asset ownership still need hardening before public deployment. Account deletion cleanup, blocking/reporting, suspension policy, abuse limits, pagination, backups and dependency security advisories also remain separate launch tasks. A development deployment is not a claim that the whole service is production-ready. npm audit currently reports unresolved dependency advisories, including Next.js; resolve or assess them before a public launch.
+Photo code and local security tests are implemented, but development Cloudinary credentials and the real inbox confirmation are still pending. Uploads remain disabled until hosted storage validation is complete. Account deletion/abandoned-photo cleanup, blocking/reporting, suspension policy, broader abuse limits, pagination and backups remain launch tasks. Next.js was upgraded to 16.4.3 and compatible dependency fixes removed critical npm audit findings. The production dependency audit still reports seven high findings from two underlying transitive families (gRPC in Firebase's Node client and Zod in Vercel's CLI-config dependency); assess or patch these before public launch, without blindly downgrading Firebase or the OIDC SDK. A development deployment is not a claim of launch readiness.
