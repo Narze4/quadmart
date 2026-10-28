@@ -16,5 +16,6 @@ jobs:
           distribution: temurin
           java-version: '21'
       - run: npm ci
+      - run: npm run test:credentials
       - run: npm run test:rules
       - run: npm run test:integration

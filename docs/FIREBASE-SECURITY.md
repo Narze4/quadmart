@@ -47,6 +47,8 @@ Vercel project narze4s-projects/quadmart uses development Firebase in its Previe
 
 The Preview environment contains the web-app NEXT_PUBLIC_FIREBASE_* configuration plus FIREBASE_ADMIN_PROJECT_ID=quadmart-development. Next.js embeds the public values at build time, so changing them requires a fresh deployment. Vercel builds reject emulator flags and a preview pointing at another Firebase project. Local emulator commands still use demo-quadmart.
 
+Vercel Preview also sets NODE_OPTIONS=--experimental-require-module, required for Firebase Admin 14 and its jwks-rsa/jose dependencies on Vercel. This is Vercel's documented runtime option: https://vercel.com/docs/functions/runtimes/node-js/advanced-node-configuration. Standard Protection keeps the preview restricted to Vercel team members.
+
 Server authentication uses Vercel OIDC and Google Workload Identity Federation:
 
 - Service account: quadmart-preview@quadmart-development.iam.gserviceaccount.com.
