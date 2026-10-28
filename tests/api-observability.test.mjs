@@ -51,3 +51,9 @@ test('photo/upload errors use the same safe projection; logger failure cannot ch
  }
  assert.equal(requestTrace('market',()=>{throw Error('logger unavailable')}).finish(new Response(null,{status:200})).status,200);
 });
+
+test('long waits are readable while exact retry seconds remain available',()=>{
+ const error=new RateLimitError(28196,'listingCreate');
+ assert.equal(error.message,'Listing limit reached. Try again in about 8 hours.');assert.equal(error.retryAfterSeconds,28196);
+ assert.equal(new RateLimitError(60,'message').message,'Messaging limit reached. Try again in about 1 minute.');
+});
