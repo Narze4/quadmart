@@ -22,4 +22,6 @@ jobs:
       - run: npm run test:rules
       - run: npm run test:uploads
       - run: npm run test:safety
+      - run: npm run test:abuse
+      - run: npm run test:observability
       - run: npm run test:integration

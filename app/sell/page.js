@@ -3,9 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { getCampusId } from '@/lib/utils'
-import { db } from '@/lib/firebase'
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { marketApi } from '@/lib/market-api'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 
@@ -52,6 +50,7 @@ export default function SellPage() {
   const [uploadProgress, setUploadProgress] = useState('')
   const [uploadsAvailable, setUploadsAvailable] = useState(false)
   const [error, setError] = useState('')
+  const pendingListing = useRef(null)
   const uploadCache = useRef(new WeakMap())
   const photoPreviews = useRef(new Set())
   useEffect(() => () => { photoPreviews.current.forEach(url => URL.revokeObjectURL(url)) }, [])
@@ -146,20 +145,14 @@ export default function SellPage() {
       let assets
       try { assets = await uploadImages() }
       catch (uploadError) { setStep(2); throw uploadError }
-      await addDoc(collection(db, 'listings'), {
-        title: form.title.trim(),
-        description: form.description.trim(),
-        price: Number(form.price),
-        category: form.category,
-        condition: form.condition,
-        images: assets.map(asset => asset.url),
+      const data = {
+        title: form.title.trim(), description: form.description.trim(),
+        price: Number(form.price), category: form.category, condition: form.condition,
         imageIds: assets.map(asset => asset.id),
-        sellerEmail: user.email,
-        sellerUid: user.uid,
-        campusId: getCampusId(user.email),
-        status: 'active',
-        createdAt: serverTimestamp(),
-      })
+      }
+      const signature = JSON.stringify(data)
+      if (pendingListing.current?.signature !== signature) pendingListing.current = { signature, requestId: crypto.randomUUID() }
+      await marketApi('listingCreate', { ...data, requestId: pendingListing.current.requestId })
       router.push('/my-listings')
     } catch (error) {
       setError(error.message || 'Failed to post listing. Please try again.')

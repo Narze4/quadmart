@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { limitId, LIMITS } from '../lib/server/limits.mjs';
 import { verificationSettings } from '../lib/email-verification.mjs';
 import { initializeApp,deleteApp } from 'firebase/app';
 import { getAuth,connectAuthEmulator,createUserWithEmailAndPassword,signInWithEmailAndPassword,sendEmailVerification } from 'firebase/auth';
@@ -13,7 +14,8 @@ const admin=adminApp({projectId:'demo-quadmart'},'flow-admin');
 const apps=[];let checks=0;
 async function api(user,action,data,expected=200){
  const response=await fetch(`${base}/api/market`,{method:'POST',headers:{'Content-Type':'application/json',...(user?{Authorization:`Bearer ${await user.getIdToken()}`}:{})},body:JSON.stringify({action,data})});
- const result=await response.json();assert.equal(response.status,expected,JSON.stringify(result));checks++;return result;
+ assert.match(response.headers.get('x-request-id'),/^[a-f0-9-]{36}$/);assert.equal(response.headers.get('cache-control'),'private, no-store');
+ const result=await response.json();assert.equal(result.requestId,response.headers.get('x-request-id'));assert.equal(response.status,expected,JSON.stringify(result));checks++;return result;
 }
 async function account(name,email){
  const app=initializeApp({apiKey:'demo-key',projectId:'demo-quadmart'},name);apps.push(app);
@@ -44,8 +46,9 @@ try {
  await api(seller.user,'profile',{}); // Retry does not reset profile.
  assert.equal((await getDoc(doc(seller.db,'publicProfiles',seller.user.uid))).data().sellerScore,null);
  await assert.rejects(getDoc(doc(buyer.db,'users',seller.user.uid)),e=>e.code==='permission-denied');checks++;
- const listingId=`desk-${Date.now()}`;
- await setDoc(doc(seller.db,'listings',listingId),{title:'Local test desk',description:'Good condition, pickup on campus',price:30,category:'Product',condition:'Good',images:[],sellerUid:seller.user.uid,sellerEmail:seller.user.email,campusId:'emory.edu',status:'active',createdAt:serverTimestamp()});
+ const {id:listingId}=await api(seller.user,'listingCreate',{title:'Local test desk',description:'Good condition, pickup on campus',price:30,category:'Product',condition:'Good',imageIds:[],requestId:crypto.randomUUID()});
+ await api(seller.user,'listingState',{listingId,status:'reserved',expectedVersion:0,requestId:crypto.randomUUID()});
+ await api(seller.user,'listingState',{listingId,status:'active',expectedVersion:1,requestId:crypto.randomUUID()});
  const browse=await getDocs(query(collection(buyer.db,'listings'),where('campusId','==','emory.edu')));assert.ok(browse.docs.some(d=>d.id===listingId));checks++;
  const [c,c2]=await Promise.all([api(buyer.user,'conversation',{listingId}),api(buyer.user,'conversation',{listingId})]);assert.equal(c.id,c2.id);
  await api(seller.user,'conversation',{listingId},400);
@@ -76,9 +79,8 @@ try {
  // Report -> moderator review -> enforcement -> restoration over the real HTTP boundary.
  const mod=await account('moderator','moderator@emory.edu');await adminAuth(admin).updateUser(mod.user.uid,{emailVerified:true});await mod.user.reload();await mod.user.getIdToken(true);await api(mod.user,'profile',{});
  const adb=adminFirestore(admin);await adb.doc(`moderators/${mod.user.uid}`).set({active:true,campusIds:['emory.edu']});
- const flaggedId=`flagged-${Date.now()}`;
  const flagged={title:'Synthetic moderation fixture',description:'Development moderation test only',price:0,category:'Product',condition:'Good',images:[],sellerUid:seller.user.uid,sellerEmail:seller.user.email,campusId:'emory.edu',status:'active',createdAt:serverTimestamp()};
- await setDoc(doc(seller.db,'listings',flaggedId),flagged);
+ const {id:flaggedId}=await api(seller.user,'listingCreate',{title:flagged.title,description:flagged.description,price:0,category:'Product',condition:'Good',imageIds:[],requestId:crypto.randomUUID()});
  const thread=await api(buyer.user,'conversation',{listingId:flaggedId});
  await api(buyer.user,'block',{targetUid:seller.user.uid,blocked:true});
  for(const user of [seller.user,buyer.user])await api(user,'message',{conversationId:thread.id,text:'Blocked message',requestId:crypto.randomUUID()},403);
@@ -106,5 +108,13 @@ try {
  await api(mod.user,'moderate',{...suspension,decision:'reinstate',version:1});await api(seller.user,'profile',{});
  for(const path of [`moderators/${buyer.user.uid}`,`reports/${report.id}`,`users/${buyer.user.uid}/blocks/${seller.user.uid}`])await assert.rejects(setDoc(doc(buyer.db,path),{active:true}),e=>e.code==='permission-denied');checks++;
  await adb.doc(`moderators/${mod.user.uid}`).delete();await api(mod.user,'moderationQueue',{},403);
+ // Real HTTP boundary: malformed attempts consume the shared quota; 429s expose a safe retry time.
+ const now=Date.now(), budget=adb.doc(`operationLimits/${limitId(buyer.user.uid,'api')}`);
+ await budget.set({minute:Math.floor(now/60000),day:Math.floor(now/86400000),minuteCount:0,dayCount:LIMITS.api.day-1});
+ const invalid=await fetch(`${base}/api/market`,{method:'POST',headers:{Authorization:`Bearer ${await buyer.user.getIdToken()}`},body:'{broken'});
+ assert.equal(invalid.status,400);checks++;
+ const limited=await fetch(`${base}/api/market`,{method:'POST',headers:{Authorization:`Bearer ${await buyer.user.getIdToken()}`},body:JSON.stringify({action:'profile',data:{}})});
+ const limitBody=await limited.json();assert.equal(limited.status,429);assert.equal(Number(limited.headers.get('retry-after')),limitBody.retryAfterSeconds);assert.ok(limitBody.retryAfterSeconds>0);checks++;
+ assert.equal((await budget.get()).data().dayCount,LIMITS.api.day);
  console.log(JSON.stringify({passed:true,checks,listingId,conversationId:c.id,seller:seller.user.uid,buyer:buyer.user.uid}));
 }finally{await Promise.all(apps.map(deleteApp));await deleteAdmin(admin)}

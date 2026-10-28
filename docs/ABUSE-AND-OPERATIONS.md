@@ -1,0 +1,53 @@
+# Abuse limits and operational logs
+
+Development implementation, October 28, 2026. These controls are preparation for a student pilot, not a launch-readiness or complete denial-of-service guarantee.
+
+## Enforced budgets
+
+Every verified, supported-university request to `/api/market` consumes an attempt before body parsing or business validation. Unauthenticated/unverified requests do not allocate quota documents. Per-operation budgets count only committed changes. Counters live in private Firestore documents shared by all server instances; the operation and its debit commit in one transaction.
+
+| Per-account operation | Per UTC minute | Per UTC day |
+| --- | ---: | ---: |
+| Market API attempts, including failed requests/retries | 120 | 2,000 |
+| New listings | 6 | 20 |
+| Reservation/availability changes | 30 | 300 |
+| New conversations | 10 | 50 |
+| New messages | 30 | 500 |
+| Actual profile changes/initialization | 10 | 50 |
+
+These are fixed windows, so adjacent-window bursts are possible. A 429 response includes `Retry-After`, `retryAfterSeconds`, and a readable wait time. Counts do not reset by deleting a listing, signing out, changing the client clock, or changing server instances. Separate accounts have separate limits. One document per account/bucket stores current counters; this does not create a new document every minute.
+
+Existing upload budgets (10/minute, 20/day/account, 200/day/development) and new-report budgets (5/day/account) remain in place with their own retry messages. Sales and reviews are bound to valid, unique trades and also consume the general API attempt budget. Safety actions consume that general budget too; students who hit it must wait before another API action. It does not block local sign-out.
+
+## Listing and retry contract
+
+`listingCreate` accepts only title, description, numeric price, supported category/condition, up to five distinct registered photo IDs, and a stable request ID. The backend derives seller, campus, status, time and photo URLs. It reads every photo inside the transaction, checking readiness, exact URL, owner and campus.
+
+A private retry record binds the request ID to normalized contents. Identical concurrent retries return one listing and debit once, including when the listing quota is exhausted. Reusing the ID with different contents is a conflict. Replaying a deleted or moderator-removed listing cannot recreate it. Retry records must not be removed by a future cleanup job while retries could resurrect a listing. The form retains the request ID for unchanged contents during retries in the same mounted form; refreshing/closing the tab loses that in-memory state.
+
+`listingState` accepts active/reserved, the version the seller saw, and a stable request ID. It checks ownership and campus, rejects sold/removed listings, and updates the version atomically. Identical completed retries succeed; stale tabs cannot overwrite a later status. Existing listings without a version start at zero. The UI shows errors and refreshes listings after a conflict.
+
+Rules deny direct listing creation/updates and profile-name edits, so direct SDK calls cannot bypass these server limits. Owners may still directly delete their own unsold listing; this grants no quota refund. Saved items and marking notifications read retain their narrow client write permissions.
+
+Unchanged profile initialization performs no profile writes or operation debit. Message and conversation retries preserve their existing deterministic IDs and skip the operation debit after validating access. Blocked/suspended accounts still cannot replay operations to escape enforcement.
+
+## Diagnosing a failure
+
+1. Ask for the displayed reference or the `X-Request-ID` from the failed response, plus the approximate time and action. Never request a password, token, full private chat or signed photo URL.
+2. In Vercel, select the QuadMart development Preview deployment and open runtime Logs. Search for the request ID. Each `quadmart_api` entry includes a generated request ID, route, allowlisted operation name, HTTP status and duration. Server failures include only an allowlisted dependency code or `internal`.
+3. Repeated 429s indicate a shared budget was reached. Do not raise or reset limits before checking the expected usage. Repeated 5xx responses require checking Firebase/Cloudinary availability and the deployment configuration, then reproducing with synthetic accounts locally.
+4. Verify a fix with the emulator tests and a development Preview check before considering production rollout.
+
+Application log records deliberately omit actor IDs, emails, message/listing/report text, request bodies, URLs, tokens, arbitrary exception messages and stacks. Response bodies and headers use private/no-store. Upload and photo routes use the same projection. Provider/platform access logs are separate and must be reviewed before launch; this projection does not control logs emitted by infrastructure or third-party libraries.
+
+No external alert service, notification recipient, billing change or automatic monitor was configured. Runtime logs provide diagnostics but nobody is automatically paged. Agree on support ownership, review cadence, retention, alert thresholds and a response process before invitations.
+
+## Test and rollout commands
+
+Run `npm run test:abuse`, `npm run test:observability`, `npm run test:rules`, `npm run test:uploads`, `npm run test:safety`, `npm run test:credentials`, `npm run test:integration`, and `npm run lint`. CI includes all these checks plus the production dependency audit. Server validation scenarios replaced obsolete client-creation tests; a smaller rules-test count reflects moving validation to the actual write boundary.
+
+Deploy Firestore rules explicitly to `quadmart-development` and deploy the matching Preview code. Old open browser tabs must reload; old clients using direct listing writes will be denied by the tightened rules. No index changes are needed for this milestone. Production `quadmart-4410f` and `main` remain outside this development rollout.
+
+## Remaining limits
+
+Verified attackers can still incur token-verification, rejected-request and Firestore quota-read costs. Direct authorized Firestore reads, saved-item updates, notification read markers, image downloads, account signup and multiple-account attacks are not governed by the new market budgets. Edge protection/App Check evaluation, read pagination, monitoring/alerts, backups with a restore drill, account/media cleanup and student eligibility/support policy remain launch work. Cloudinary and Firebase service quotas also apply.

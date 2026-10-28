@@ -21,13 +21,12 @@ service cloud.firestore {
       return student() && request.auth.uid in
         get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
     }
-    function shortText(value, max) { return value is string && value.size() > 0 && value.size() <= max; }
 
     // Private account data, including saved listings. Provisioned by trusted backend.
     match /users/{uid} {
       allow get: if student() && request.auth.uid == uid;
       allow update: if student() && request.auth.uid == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'savedListings'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['savedListings'])
         && request.resource.data.get('displayName', '') is string
         && request.resource.data.get('displayName', '').size() <= 80
         && request.resource.data.get('savedListings', []) is list
@@ -45,39 +44,9 @@ service cloud.firestore {
       }
     }
     match /listings/{listingId} {
-      function validListing(d) {
-        return d.keys().hasAll(['title','description','price','category','condition','images','sellerUid','sellerEmail','campusId','status','createdAt'])
-          && d.keys().hasOnly(['title','description','price','category','condition','images','sellerUid','sellerEmail','campusId','status','createdAt','imageIds'])
-          && shortText(d.title, 120) && d.description is string && d.description.size() <= 5000
-          && d.price is number && d.price >= 0 && d.price <= 100000
-          && d.category in ['Product','Service','Sublease']
-          && d.condition in ['New','Like New','Good','Fair']
-          && d.images is list && d.images.size() <= 5
-          && d.get('imageIds', []) is list && d.get('imageIds', []).size() == d.images.size()
-          && (d.images.size() < 1 || ownedImage(d, 0))
-          && (d.images.size() < 2 || ownedImage(d, 1))
-          && (d.images.size() < 3 || ownedImage(d, 2))
-          && (d.images.size() < 4 || ownedImage(d, 3))
-          && (d.images.size() < 5 || ownedImage(d, 4));
-      }
-      function ownedImage(d, index) {
-        let mediaId = d.imageIds[index];
-        let asset = get(/databases/$(database)/documents/media/$(mediaId)).data;
-        return mediaId is string && mediaId.matches('[a-f0-9]{64}')
-          && asset.status == 'ready' && asset.ownerUid == request.auth.uid
-          && asset.campusId == campus() && asset.url == d.images[index];
-      }
       allow read: if student() && resource.data.campusId == campus();
-      allow create: if student() && !exists(/databases/$(database)/documents/removedListings/$(listingId)) && validListing(request.resource.data)
-        && request.resource.data.sellerUid == request.auth.uid
-        && request.resource.data.sellerEmail == request.auth.token.email
-        && request.resource.data.campusId == campus()
-        && request.resource.data.status == 'active' && request.resource.data.createdAt == request.time;
-      allow update: if student() && resource.data.sellerUid == request.auth.uid
-        && resource.data.campusId == campus() && validListing(request.resource.data)
-        && resource.data.status in ['active','reserved']
-        && request.resource.data.status in ['active','reserved']
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','description','price','category','condition','images','imageIds','status']);
+      // Server validates photos/ownership and atomically applies publication quotas.
+      allow create, update: if false;
       allow delete: if student() && resource.data.sellerUid == request.auth.uid
         && resource.data.campusId == campus() && resource.data.status in ['active','reserved'];
     }
@@ -103,9 +72,10 @@ service cloud.firestore {
       allow read: if student() && (resource.data.sellerUid == request.auth.uid || resource.data.buyerUid == request.auth.uid);
       allow write: if false;
     }
-    // Upload registry and distributed budgets are backend-owned. Rules may read
-    // registry entries to validate listing photos; clients cannot forge them.
+    // Registries and distributed budgets are backend-owned.
     match /media/{id} { allow read, write: if false; }
+    match /operationLimits/{id} { allow read, write: if false; }
+    match /listingRequests/{id} { allow read, write: if false; }
     match /uploadLimits/{id} { allow read, write: if false; }
     match /moderationAccounts/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;

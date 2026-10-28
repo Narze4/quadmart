@@ -1,6 +1,6 @@
 # Backend and local testing
 
-The app now uses authenticated Next.js backend operations for profile provisioning, conversation creation, messages, sale completion and reviews. The browser reads campus-scoped public data and participant-only chats. Private account documents remain owner-only. Clients cannot write transactions, reputation, reviews, notifications or message previews.
+The app now uses authenticated Next.js backend operations for profile provisioning, listing publication/reservation, conversation creation, messages, sale completion and reviews. The browser reads campus-scoped public data and participant-only chats. Private account documents remain owner-only. Clients cannot write transactions, reputation, reviews, notifications or message previews.
 
 ## Local setup
 
@@ -19,6 +19,8 @@ Local scripts force demo-quadmart and loopback Auth/Firestore endpoints. No prod
 npm run test:rules
 npm run test:uploads
 npm run test:safety
+npm run test:abuse
+npm run test:observability
 npm run test:credentials
 npm run test:integration
 ```
@@ -35,7 +37,7 @@ XDG_CONFIG_HOME=/private/tmp/quadmart-config FIREBASE_EMULATORS_PATH=/private/tm
 
 - Verified supported university email is required by both the API and rules. Server-derived campusId handles supported subdomains.
 - Verification triggers idempotent private/public profile provisioning before protected screens receive the signed-in user. Profile names update through the API; public profiles omit email and saved items. New reputation displays New.
-- Listings are scoped by campusId and validated by rules. Dashboard and marketplace fetch up to 100 active campus listings; message views load the latest 100 messages. Further pagination remains future work.
+- Listings are scoped by campusId; publication and reservation updates are validated by the backend with transactional quotas, retry records and version checks. Rules deny direct client creation/updates. Dashboard and marketplace fetch up to 100 active campus listings; message views load the latest 100 messages. Further pagination remains future work.
 - Conversation IDs derive from listing and buyer, preventing duplicate chat creation on retries. The server verifies listing ownership, campus and availability.
 - Message IDs derive from sender and a per-send request ID. One transaction writes the message, preview and recipient notification. Browser retries reuse the request ID.
 - Sale IDs equal listing IDs. A transaction validates seller ownership and the contacted buyer, marks sold, records the trade, increments both profiles once and creates review notifications. Off-platform sales have no buyer or review eligibility. This records an exchange; it does not process payment or prove physical handoff.
@@ -72,7 +74,7 @@ The upload endpoint verifies a non-revoked Firebase ID token, supported universi
 
 Firestore transactions enforce 10 attempts per minute and 20 per UTC day per account, plus 200 attempts per UTC day across development. Invalid images and provider failures count against the budget. Idempotent successful retries return the same asset; concurrent requests cannot create duplicate stored objects. These are conservative pilot limits, not a complete abuse-prevention system.
 
-Only the backend can write media registry and upload-budget records. Listing rules validate each image ID, exact app URL, ready status, owner and campus, up to five images. Legacy photo URLs need migration before production; existing no-photo listings remain valid.
+Only the backend can write media registry and upload-budget records. The listing API validates each image ID, exact app URL, ready status, owner and campus inside its transaction, up to five distinct images. Legacy photo URLs need migration before production; existing no-photo listings remain valid.
 
 Cloudinary uploads use the authenticated delivery type and server-generated IDs under quadmart/<Firebase-project>/<hashed-owner>/. The dynamic asset_folder is explicitly set to quadmart/<Firebase-project> and checked in the provider response; public ID paths alone do not place assets in a Cloudinary folder. The app keeps signed Cloudinary URLs on the server. /api/photos/<id> verifies current campus membership and returns JPEG bytes with private/no-store caching; signed-out, unverified and other-campus requests cannot read photos. Authenticated viewers can still save or screenshot images they can view.
 
@@ -92,7 +94,7 @@ Reference: https://firebase.google.com/docs/auth/web/passing-state-in-email-acti
 
 ## Remaining launch work
 
-Development photo uploads are enabled and validated with real Cloudinary storage, seller publication, buyer image rendering and rejection of unauthenticated photo requests. Local security tests also cover unverified and cross-campus access, quotas and forged ownership. Real university mailbox verification is confirmed. See PHOTO-VERIFICATION-TEST-RESULTS.txt for the exact distinction between hosted and local checks. Reporting, bidirectional blocking, reversible listing removal, account suspension and the private moderation queue are implemented; see SAFETY-AND-MODERATION.md. Moderator operating policy, account deletion/abandoned-photo cleanup, broader abuse limits, pagination and backups remain launch tasks. A development deployment is not a claim of launch readiness.
+Development photo uploads are enabled and validated with real Cloudinary storage, seller publication, buyer image rendering and rejection of unauthenticated photo requests. Local security tests also cover unverified and cross-campus access, quotas and forged ownership. Real university mailbox verification is confirmed. See PHOTO-VERIFICATION-TEST-RESULTS.txt for the exact distinction between hosted and local checks. Reporting, bidirectional blocking, reversible listing removal, account suspension and the private moderation queue are implemented; see SAFETY-AND-MODERATION.md. Moderator operating policy, account deletion/abandoned-photo cleanup, edge abuse protection, read pagination, automated alerts and backups remain launch tasks. Server quotas and privacy-safe request logging are implemented; see ABUSE-AND-OPERATIONS.md. A development deployment is not a claim of launch readiness.
 
 Next.js is pinned to 16.4.3 and sharp is at 0.35.5. Scoped npm overrides replace Firebase's pinned Node gRPC dependency with @grpc/grpc-js 1.14.6 and Vercel CLI-config's pinned Zod with 4.6.7, without downgrading Firebase or the OIDC SDK. These overrides deliberately exceed the parent packages' old pins and must remain covered by rules, credential and integration checks; remove them once upstream dependencies select patched versions. The production audit reports zero findings on October 27, 2026. The full development dependency audit still has eight moderate findings through OpenTelemetry and uuid; the production-only audit excludes this tooling. CI runs the production audit at the high severity threshold so newly reported high/critical findings block changes. An audit result is a dependency snapshot, not a guarantee of application security.
 

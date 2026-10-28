@@ -2,6 +2,8 @@ import { v2 as cloudinary } from 'cloudinary'
 import { backend } from '@/lib/server/firebase-admin.mjs'
 import { uploadPhoto, UploadError } from '@/lib/server/uploads.mjs'
 
+import { requestTrace } from '@/lib/server/telemetry.mjs'
+
 export const runtime = 'nodejs'
 export const maxDuration = 30
 
@@ -12,8 +14,9 @@ export function GET() {
 }
 
 export async function POST(request) {
+  const trace = requestTrace('upload')
   if (process.env.QUADMART_ENABLE_UPLOADS !== 'true') {
-    return Response.json({ error: 'Photo uploads are not available yet. You can publish without photos.' }, { status: 503 })
+    return trace.finish(Response.json({ error: 'Photo uploads are not available yet. You can publish without photos.', requestId: trace.requestId }, { status: 503 }))
   }
   try {
     const services = backend()
@@ -33,10 +36,9 @@ export async function POST(request) {
       })
     }
     const result = await uploadPhoto(request, { ...services, storeImage, projectId })
-    return Response.json(result, { headers: { 'Cache-Control': 'no-store' } })
+    return trace.finish(Response.json({ ...result, requestId: trace.requestId }))
   } catch (error) {
-    if (error instanceof UploadError) return Response.json({ error: error.message }, { status: error.status })
-    console.error('Photo upload failed', error.code ?? error.name)
-    return Response.json({ error: 'Unable to upload this photo. Please try again.' }, { status: 500 })
+    const known = error instanceof UploadError
+    return trace.finish(Response.json({ error: known ? error.message : `Unable to upload this photo. Please try again. Reference: ${trace.requestId}`, requestId: trace.requestId }, { status: known ? error.status : 500 }), { error })
   }
 }

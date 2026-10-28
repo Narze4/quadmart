@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ProtectedPhoto from '@/components/ProtectedPhoto'
 import { useAuth } from '@/lib/auth-context'
+import { marketApi } from '@/lib/market-api'
 import { db } from '@/lib/firebase'
-import { collection, doc, getDocs, query, updateDoc, where } from 'firebase/firestore'
+import { collection, getDocs, query, where } from 'firebase/firestore'
 import { getListingStatus, getUsername, getCampusId } from '@/lib/utils'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
@@ -52,6 +53,8 @@ export default function MyListingsPage() {
   const [fetchError, setFetchError] = useState(false)
   const [activeTab, setActiveTab] = useState('Active')
   const [updatingId, setUpdatingId] = useState(null)
+  const pendingState = useRef(new Map())
+  const [actionError, setActionError] = useState('')
   const [soldModalListing, setSoldModalListing] = useState(null)
 
   useEffect(() => {
@@ -89,15 +92,23 @@ export default function MyListingsPage() {
     fetchListings()
   }
 
-  const setLocalStatus = (id, status) => {
-    setListings(prev => prev.map(l => (l.id === id ? { ...l, status } : l)))
+  const setLocalStatus = (id, status, version) => {
+    setListings(prev => prev.map(l => (l.id === id ? { ...l, status, version: version ?? l.version } : l)))
   }
 
   const handleSetStatus = async (listing, status) => {
     setUpdatingId(listing.id)
+    setActionError('')
+    const data = { listingId: listing.id, status, expectedVersion: listing.version ?? 0 }
+    const signature = JSON.stringify(data)
+    if (!pendingState.current.has(signature)) pendingState.current.set(signature, crypto.randomUUID())
     try {
-      await updateDoc(doc(db, 'listings', listing.id), { status })
-      setLocalStatus(listing.id, status)
+      const result = await marketApi('listingState', { ...data, requestId: pendingState.current.get(signature) })
+      setLocalStatus(listing.id, result.status, result.version)
+      pendingState.current.delete(signature)
+    } catch (error) {
+      setActionError(error.message)
+      if (error.status === 409) await fetchListings()
     } finally {
       setUpdatingId(null)
     }
@@ -161,6 +172,8 @@ export default function MyListingsPage() {
             </button>
           ))}
         </div>
+
+        {actionError && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{actionError}</p>}
 
         {/* Content */}
         {fetchLoading ? (

@@ -42,19 +42,12 @@ test('campus-scoped query works; broad query fails', async () => {
   await assertSucceeds(getDocs(query(collection(auth(),'listings'),where('campusId','==','emory.edu'))));
   await assertFails(getDocs(collection(auth(),'listings')));
 });
-test('legitimate listing creation works', async () => { await assertSucceeds(setDoc(doc(auth(),'listings/new'),listing())); });
-for (const [name, data] of [
-  ['forged seller',{sellerUid:'bob'}],['forged email',{sellerEmail:'bob@emory.edu'}],
-  ['wrong campus',{campusId:'uga.edu'}],['negative price',{price:-1}],['text price',{price:'30'}],
-  ['oversized title',{title:'x'.repeat(121)}],['unexpected field',{admin:true}],
-  ['invalid category',{category:'Anything'}],['untrusted image URL',{images:['javascript:alert(1)']}],
-  ['too many photos',{images:Array(6).fill('https://res.cloudinary.com/demo/x.jpg')}],
-  ['forged timestamp',{createdAt:Timestamp.fromMillis(0)}],['pre-sold listing',{status:'sold'}],
-]) test(`listing rejects ${name}`, async () => { await assertFails(setDoc(doc(auth(),'listings/invalid'),listing(data))); });
-test('seller can reserve; another user cannot edit or delete', async () => {
-  await assertSucceeds(updateDoc(doc(auth(),'listings/desk'),{status:'reserved'}));
+test('direct listing creation cannot bypass server quotas', async () => { await assertFails(setDoc(doc(auth(),'listings/new'),listing())); });
+test('status changes require the backend; only the owner may delete an unsold listing', async () => {
+  await assertFails(updateDoc(doc(auth(),'listings/desk'),{status:'reserved'}));
   await assertFails(updateDoc(doc(auth('bob','bob@emory.edu'),'listings/desk'),{price:0}));
   await assertFails(deleteDoc(doc(auth('bob','bob@emory.edu'),'listings/desk')));
+  await assertSucceeds(deleteDoc(doc(auth(),'listings/desk')));
 });
 test('seller cannot transfer ownership or complete sale from client', async () => {
   await assertFails(updateDoc(doc(auth(),'listings/desk'),{sellerUid:'bob'}));
@@ -67,8 +60,8 @@ test('private account data is owner-only; public profile is campus-only', async 
   await assertFails(getDoc(doc(auth('eve','eve@uga.edu'),'publicProfiles/alice')));
 });
 test('owner can save items but cannot forge campus, score, or transaction count', async () => {
-  await assertSucceeds(updateDoc(doc(auth(),'users/alice'),{savedListings:['desk'],displayName:'Alice'}));
-  for (const field of ['campusId','sellerScore','buyerScore','transactions','email']) await assertFails(updateDoc(doc(auth(),'users/alice'),{[field]:100}));
+  await assertSucceeds(updateDoc(doc(auth(),'users/alice'),{savedListings:['desk']}));
+  for (const field of ['campusId','sellerScore','buyerScore','transactions','email','displayName']) await assertFails(updateDoc(doc(auth(),'users/alice'),{[field]:100}));
   await assertFails(setDoc(doc(auth(),'users/new'),{uid:'new'}));
 });
 test('direct conversation creates require backend', async () => { await assertFails(setDoc(doc(auth('bob','bob@emory.edu'),'conversations/new'),conversation())); });
@@ -117,24 +110,6 @@ test('legacy and unknown paths stay denied', async () => {
 const photoId = 'a'.repeat(64);
 const photoUrl = `/api/photos/${photoId}`;
 const readyPhoto = (extra = {}) => ({ ownerUid: 'alice', campusId: 'emory.edu', status: 'ready', url: photoUrl, ...extra });
-test('five owned ready photos can be attached without exceeding rule lookup limits', async () => {
-  const ids = ['a','b','c','d','e'].map(x => x.repeat(64));
-  for (const id of ids) await seed(`media/${id}`,readyPhoto({url:`/api/photos/${id}`}));
-  await assertSucceeds(setDoc(doc(auth(),'listings/photos'),listing({images:ids.map(id=>`/api/photos/${id}`),imageIds:ids})));
-});
-for (const [name, change] of [['another owner',{ownerUid:'bob'}],['another campus',{campusId:'uga.edu'}],['pending upload',{status:'pending'}],['failed upload',{status:'failed'}]]) {
-  test(`listing cannot attach ${name}`,async()=>{
-    await seed(`media/${photoId}`,readyPhoto(change));
-    await assertFails(setDoc(doc(auth(),'listings/photos'),listing({images:[photoUrl],imageIds:[photoId]})));
-  });
-}
-test('listing rejects arbitrary URLs, unknown media and URL-ID mismatches',async()=>{
-  await assertFails(setDoc(doc(auth(),'listings/a'),listing({images:['https://res.cloudinary.com/other/photo.jpg']})));
-  await assertFails(setDoc(doc(auth(),'listings/b'),listing({images:[photoUrl],imageIds:[photoId]})));
-  await seed(`media/${photoId}`,readyPhoto());
-  await assertFails(setDoc(doc(auth(),'listings/c'),listing({images:['https://res.cloudinary.com/other/photo.jpg'],imageIds:[photoId]})));
-  await assertFails(setDoc(doc(auth(),'listings/d'),listing({images:[photoUrl],imageIds:[]})));
-});
 test('client cannot forge media registry or reset upload budgets',async()=>{
   await assertFails(setDoc(doc(auth(),`media/${photoId}`),readyPhoto()));
   await assertFails(setDoc(doc(auth(),'uploadLimits/global'),{daily:0}));
@@ -167,10 +142,11 @@ test('a removed listing cannot be recreated by its seller',async()=>{
   await seed('removedListings/new',{reportId:'r',listing:listing({createdAt:Timestamp.now()})});
   await assertFails(setDoc(doc(auth(),'listings/new'),listing()));
 });
-test('five owned photos still fit rule lookup budgets with suspension and removal checks',async()=>{
-  const ids=Array.from({length:5},(_,i)=>String(i).repeat(64));
-  for(const photoId of ids)await seed(`media/${photoId}`,{status:'ready',ownerUid:'alice',campusId:'emory.edu',url:`/api/photos/${photoId}`});
-  await assertSucceeds(setDoc(doc(auth(),'listings/photos'),listing({imageIds:ids,images:ids.map(i=>`/api/photos/${i}`)})));
-  await seed(`media/${ids[0]}`,{status:'blocked',ownerUid:'alice',campusId:'emory.edu',url:`/api/photos/${ids[0]}`});
-  await assertFails(setDoc(doc(auth(),'listings/blocked-photo'),listing({imageIds:[ids[0]],images:[`/api/photos/${ids[0]}`]})));
+test('operation budgets and listing retry records cannot be read, reset or deleted by clients',async()=>{
+  for(const path of ['operationLimits/private','listingRequests/private']) {
+    await seed(path,{dayCount:20});
+    await assertFails(getDoc(doc(auth(),path)));
+    await assertFails(setDoc(doc(auth(),path),{dayCount:0}));
+    await assertFails(deleteDoc(doc(auth(),path)));
+  }
 });
