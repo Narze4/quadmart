@@ -1,33 +1,37 @@
 QuadMart photo security and real-email verification - October 27, 2026
 
-PASS: 40 Firestore rules tests, including five owned photos, foreign owners,
-wrong campus, incomplete uploads, forged registry records and mismatched URLs.
-PASS: 11 photo/verification tests, including bounded streaming, invalid image
-content, metadata removal, resizing, idempotency, concurrent rate limits,
-failed-storage behavior and verified same-campus photo access.
-PASS: 2 development federation credential tests.
-PASS: Production-build integration with 33 checkpoints, including anonymous and
-unverified upload/photo denials and real emulator verification action links.
-PASS: ESLint and git diff checks.
+PASS: Clean npm ci, ESLint, 2 development federation credential tests,
+40 Firestore rules tests and 13 photo/verification tests.
+PASS: Production-build integration with 33 checkpoints covering signup,
+verification, profiles, listings, messaging, sales, reviews and access denials.
+PASS: npm audit --omit=dev reports zero findings. Scoped overrides use
+@grpc/grpc-js 1.14.6 under Firebase Firestore and Zod 4.6.7 under Vercel CLI-config.
+CI now checks production dependency security and lint before the test suites.
+The full development dependency audit still reports 8 moderate findings through
+OpenTelemetry and uuid. No forced major update or SDK downgrade was used.
 
-The upload storage adapter was mocked in local tests. Actual Cloudinary upload,
-private-delivery proxy and browser rendering require development credentials and
-remain unverified. Uploads stay disabled until that hosted test is completed.
+REAL UNIVERSITY MAILBOX TEST: COMPLETE
+The owner opened Firebase's emailed verification link. A fresh ordinary client
+sign-in and ID token both report email_verified=true for quadmart-development.
+No administrator marked this account verified. Hosted account setup provisioned
+private/public profiles. Ten readback checks passed: verified user and token,
+correct development project, both profiles, correct campus, email excluded from
+public profile, allowed Emory marketplace reads, denied other-campus reads,
+and denied access to another user's private account. The hosted dashboard loads
+for this account. The earlier unverified test correctly denied marketplace reads.
+Account credentials are local, ignored by Git and excluded from source archives.
 
-A normal Firebase client signup was made in quadmart-development for the owner's
-requested Emory mailbox. A real verification email was sent successfully with a
-return link to the stable protected preview. The unverified account was denied
-marketplace reads. Recipient inbox receipt/link completion is still pending;
-emailVerified was false at the last check. No administrator verified this account.
-The random development-only credential is local, ignored by Git, and excluded
-from downloadable source archives.
+PHOTO STORAGE: MANUAL ACCESS STILL NEEDED
+Local tests cover bounded streaming, decoding/metadata removal, resizing,
+transactional quotas, idempotency, concurrency, profile/campus checks, private
+photo access, and rejection of public or mismatched provider responses.
+The storage adapter is mocked in those tests. Actual Cloudinary upload,
+authenticated delivery and browser image rendering require development storage
+credentials and remain unverified. Uploads stay disabled until that hosted test
+is completed. Cloudinary's browser tab is waiting for owner sign-in.
 
-Next.js/eslint-config-next upgraded to 16.4.3; sharp 0.35.5 directly installed.
-Compatible lockfile updates removed all critical audit findings. The production
-audit still reports seven high findings inherited through gRPC/Firebase and
-Zod/Vercel CLI-config. These require assessment or compatible fixes before launch.
-No forced Firebase/OIDC downgrade or production deployment was performed.
-
-Local tests ran in a clean temporary checkout with identical edited sources
-because the main workspace's dependency files stalled during filesystem reads.
-No real payments, student invitations or production-data changes were made.
+Development Firestore ownership rules are deployed. The draft branch has a
+working protected Vercel Preview. Production quadmart-4410f and main are unchanged.
+No student invitations, real payments or production data changes were made.
+University mailbox verification establishes email control, not current enrollment.
+See docs/FIREBASE-SECURITY.md for remaining launch work and configuration.

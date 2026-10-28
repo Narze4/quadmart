@@ -38,6 +38,14 @@ test('auth, verified email and supported campus are required before storage', as
   }
   assert.equal(stored.length, 0);
 });
+test('missing or changed campus profiles cannot upload or consume storage', async () => {
+  await db.doc('users/photo-seller').delete();
+  await rejects(() => uploadPhoto(request(), deps()), 403);
+  await db.doc('users/photo-seller').set({ campusId: 'uga.edu' });
+  await rejects(() => uploadPhoto(request(), deps()), 403);
+  assert.equal(stored.length, 0);
+  assert.equal((await db.collection('media').get()).size, 0);
+});
 test('body limit is enforced even with a missing or lying content-length', async () => {
   await rejects(() => readPhoto(request(Buffer.alloc(MAX_PHOTO_BYTES + 1), { 'content-length': '1' })), 413);
   await rejects(() => readPhoto(request(png, { 'content-length': String(MAX_PHOTO_BYTES + 1) })), 413);
@@ -94,6 +102,19 @@ test('daily user and global caps reject before storage', async () => {
 test('failed storage never makes an attachable asset and does not expose provider errors', async () => {
   await assert.rejects(() => uploadPhoto(request(), { ...deps(), storeImage: async () => { throw Error('secret-provider-detail'); } }), error => error.status === 503 && !error.message.includes('secret'));
   const media = await db.collection('media').get(); assert.equal(media.size, 1); assert.equal(media.docs[0].data().status, 'failed');
+});
+test('unexpected or public storage responses never become attachable photos', async () => {
+  for (const change of [
+    { type: 'upload' }, { public_id: 'someone-elses-photo' },
+    { secure_url: 'https://untrusted.example/photo.jpg' }, { format: 'svg' },
+  ]) {
+    await rejects(() => uploadPhoto(request(), {
+      ...deps(), storeImage: async (bytes, publicId) => ({ ...await storeImage(bytes, publicId), ...change }),
+    }), 503);
+  }
+  const media = await db.collection('media').get();
+  assert.equal(media.size, 4);
+  assert.ok(media.docs.every(asset => asset.data().status === 'failed' && !asset.data().url));
 });
 test('photo reads require verified same-campus membership and ready status', async () => {
   const asset = await uploadPhoto(request(), deps());

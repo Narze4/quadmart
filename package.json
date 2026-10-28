@@ -37,5 +37,13 @@
     "firebase-tools": "^15.34.1",
     "playwright": "^1.60.0",
     "tailwindcss": "^4"
+  },
+  "overrides": {
+    "@firebase/firestore": {
+      "@grpc/grpc-js": "1.14.6"
+    },
+    "@vercel/cli-config": {
+      "zod": "4.6.7"
+    }
   }
 }
