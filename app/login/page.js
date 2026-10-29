@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
+import { authErrorMessage } from '@/lib/auth-errors.mjs'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -72,7 +73,7 @@ export default function LoginPage() {
       const { user } = await signInWithEmailAndPassword(auth, email, password)
       router.push(user.emailVerified ? '/dashboard' : '/verify-email')
     } catch (err) {
-      setError('Invalid email or password. Please try again.')
+      setError(authErrorMessage(err, 'login'))
     } finally {
       setLoading(false)
     }
@@ -80,13 +81,14 @@ export default function LoginPage() {
 
   const handleReset = async (e) => {
     e.preventDefault()
+    if (authLoading || resetSending) return
     setResetError('')
     setResetSending(true)
     try {
       await sendPasswordResetEmail(auth, resetEmail)
       setResetSent(true)
     } catch (err) {
-      setResetError('Could not send a reset email to that address. Please check it and try again.')
+      setResetError(authErrorMessage(err, 'reset'))
     } finally {
       setResetSending(false)
     }

@@ -30,7 +30,7 @@
     "@google-cloud/firestore": "^9.4.0",
     "@vercel/oidc": "^4.0.4",
     "cloudinary": "^2.10.0",
-    "firebase": "^12.14.0",
+    "firebase": "^12.19.0",
     "firebase-admin": "^14.5.0",
     "google-auth-library": "^11.3.1",
     "next": "16.4.3",

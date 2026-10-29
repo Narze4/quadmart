@@ -1,21 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { sendVerification } from '@/lib/email-verification.mjs'
 import { auth } from '@/lib/firebase'
+import { useAuth } from '@/lib/auth-context'
+import { authErrorMessage, MIN_PASSWORD_LENGTH } from '@/lib/auth-errors.mjs'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import PublicHeader from '@/components/PublicHeader'
 import Footer from '@/components/Footer'
 import Button from '@/components/ui/Button'
 import { UNIVERSITIES, getUniversityFromEmail } from '@/lib/universities'
-
-const FIREBASE_ERRORS = {
-  'auth/email-already-in-use': 'An account with this email already exists.',
-  'auth/weak-password': 'Password must be at least 6 characters.',
-  'auth/invalid-email': 'Please enter a valid email address.',
-}
 
 const BENEFITS = [
   'See listings only from your own campus',
@@ -62,6 +58,8 @@ const EyeOffIcon = () => (
 )
 
 export default function SignUpPage() {
+  const { loading: authLoading } = useAuth()
+  const pending = useRef(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -76,6 +74,7 @@ export default function SignUpPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (authLoading || pending.current) return
     setError('')
 
     if (!trimmedEmail.endsWith('.edu')) {
@@ -89,6 +88,11 @@ export default function SignUpPage() {
       return
     }
 
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setError('Use a password with at least 12 characters.')
+      return
+    }
+    pending.current = true
     setLoading(true)
     try {
       const { user } = await createUserWithEmailAndPassword(auth, trimmedEmail, password)
@@ -97,8 +101,9 @@ export default function SignUpPage() {
       try { await sendVerification(user) } catch { /* Delivery status is shown on the next page. */ }
       router.push('/verify-email')
     } catch (err) {
-      setError(FIREBASE_ERRORS[err.code] ?? 'Something went wrong. Please try again.')
+      setError(authErrorMessage(err))
     } finally {
+      pending.current = false
       setLoading(false)
     }
   }
@@ -166,10 +171,15 @@ export default function SignUpPage() {
               Use your university email — we&apos;ll figure out your campus from the domain.
             </p>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit}>
+              <fieldset disabled={authLoading || loading} aria-busy={authLoading || loading} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">University Email</label>
+                <label htmlFor="signup-email" className="block text-sm font-medium text-text-primary mb-1">University Email</label>
                 <input
+                  id="signup-email"
+                  name="email"
+                  autoComplete="email"
+                  autoCapitalize="none"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -202,13 +212,19 @@ export default function SignUpPage() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">Password</label>
+                <label htmlFor="signup-password" className="block text-sm font-medium text-text-primary mb-1">Password</label>
                 <div className="relative">
                   <input
+                    id="signup-password"
+                    name="password"
+                    autoComplete="new-password"
+                    minLength={MIN_PASSWORD_LENGTH}
+                    maxLength={4096}
+                    aria-describedby="signup-password-hint"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="At least 6 characters"
+                    placeholder="At least 12 characters"
                     required
                     className="input-field pr-11"
                   />
@@ -221,17 +237,19 @@ export default function SignUpPage() {
                     {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
                 </div>
+                <p id="signup-password-hint" className="mt-2 text-sm text-text-secondary">Use at least 12 characters. A few unrelated words work well.</p>
               </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+                <div role="alert" className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
                   {error}
                 </div>
               )}
 
-              <Button type="submit" variant="primary" loading={loading} disabled={!matchedUniversity} className="w-full">
+              <Button type="submit" variant="primary" loading={loading} disabled={authLoading || !matchedUniversity} className="w-full">
                 {loading ? 'Creating account…' : 'Create Account'}
               </Button>
+              </fieldset>
             </form>
 
             <p className="text-sm text-center text-text-secondary mt-6">

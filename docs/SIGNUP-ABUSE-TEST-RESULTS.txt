@@ -1,0 +1,36 @@
+QuadMart development firewall and signup checks — 2026-10-29
+
+LIVE DEVELOPMENT
+- Published Vercel rule: stable security/firestore-rules preview host, /api/*,
+  300 requests per 60 seconds per IP, HTTP 429.
+- Authenticated, read-only GET /api/upload test at temporary threshold 5:
+  requests 1-5 allowed, request 6 and subsequent requests rejected with 429,
+  later request succeeded after window reset. Restored/published/verified 300.
+- No Vercel deployment-auth bypass, production change or billing change.
+- Firebase password policy: ENFORCE, 12-4096 characters, existing sign-in
+  password upgrade not forced. Email privacy enabled.
+- Direct Firebase API rejected a synthetic 10-character password with HTTP 400
+  PASSWORD_DOES_NOT_MEET_REQUIREMENTS; no account created and no email sent.
+
+LOCAL VALIDATION
+- Production webpack build and lint passed; production audit: 0 vulnerabilities.
+- 3 auth/configuration guard tests passed.
+- Existing 95 HTTP checkpoints, 36 desktop scenarios and 28 mobile scenarios
+  passed with zero browser page errors.
+- 8 new signup scenarios passed in Android-sized Chromium/iPhone-sized WebKit:
+  delayed hydration, short password, unsupported campus, provider throttling,
+  generic duplicate-account errors, one submission during concurrent events,
+  one unverified account and the verification page, no horizontal overflow.
+- A selector in the first signup test run matched Next's route announcer too;
+  the test was corrected and all signup checks rerun successfully.
+- Local verification mail is intercepted by the Auth emulator, not sent.
+
+PENDING
+- App Check code is prepared but disabled. Owner approval is required for the
+  irreversible free Identity Platform upgrade (3,000 daily active users) and
+  reCAPTCHA Enterprise terms/provider registration.
+- After approval: register exact development host, configure Preview, redeploy,
+  validate real traffic/token refresh, enforce Auth, verify direct API rejects
+  missing/invalid attestation. No claim of live signup-bot rejection yet.
+- Physical phones, invitation-host firewall coverage, monitoring/support owner,
+  fresh recovery proof and production rollout review remain invitation gates.
