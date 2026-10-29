@@ -25,12 +25,41 @@ LOCAL VALIDATION
   the test was corrected and all signup checks rerun successfully.
 - Local verification mail is intercepted by the Auth emulator, not sent.
 
+APP CHECK SETUP FOLLOW-UP — 2026-10-29
+- Owner approved the development-only free Identity Platform upgrade and terms.
+- Auth configuration now reports IDENTITY_PLATFORM. Firebase displays Spark /
+  No-cost ($0/month); billing was not linked.
+- Enabled reCAPTCHA Enterprise API and registered the score-based provider for
+  QuadMart Development Web. Domain verification is on; only the stable branch
+  preview hostname is allowed. No localhost/wildcard or testing mode.
+- App Check provider risk threshold 0.5; token TTL 1 hour; Essentials tier.
+- Vercel saved the App Check enable flag and public site key as Config variables
+  only for Preview branch security/firestore-rules. Production was deselected.
+- Owner completed Vercel's authenticator verification. Redeployment of a00b662
+  succeeded: https://vercel.com/narze4s-projects/quadmart/5AkCWCPeVhCQUXWSb1s2Y9cCz8NK
+- Seller and buyer signed in through the stable development hostname; Firebase
+  showed 3/3 verified Auth requests before enabling enforcement.
+- Authentication App Check is ENFORCED (console and service API confirmed).
+  Firestore App Check remains in monitoring with existing rules unchanged.
+- During propagation, initial probes at 18:56:43Z and 19:00:30Z still reached
+  Auth. After propagation, all eight checks at 2026-10-29T19:05:00Z returned
+  HTTP 401 with an App Check rejection: signup and password signin, missing
+  and invalid tokens, with and without the public app identifier header.
+  Signup probes used a confirmed existing account; no accounts/mail created.
+- After rejection was confirmed, both browser logins succeeded and loaded
+  their dashboards. Buyer login at 390px had no horizontal overflow.
+- With the deployed client, seller listings, photo, conversation history,
+  profile and review loaded; buyer saved items, notifications, completed
+  purchase and protected photo loaded. The purchase page also fit at 390px.
+- No warning/error console logs were captured during the final browser checks.
+  Three local auth/configuration guard tests were rerun and passed.
+- This activation changed cloud configuration and documentation only. The
+  earlier full CI suite was on the same app source a00b662; it is separate
+  evidence, not a newly completed signup or trade under enforcement.
+
 PENDING
-- App Check code is prepared but disabled. Owner approval is required for the
-  irreversible free Identity Platform upgrade (3,000 daily active users) and
-  reCAPTCHA Enterprise terms/provider registration.
-- After approval: register exact development host, configure Preview, redeploy,
-  validate real traffic/token refresh, enforce Auth, verify direct API rejects
-  missing/invalid attestation. No claim of live signup-bot rejection yet.
+- New hosted signup/email-action completion, token-expiry/refresh and revoked
+  sessions still require verification after enforcement. Emulator checks do
+  not prove these; the automated browser width check is not a physical phone.
 - Physical phones, invitation-host firewall coverage, monitoring/support owner,
   fresh recovery proof and production rollout review remain invitation gates.

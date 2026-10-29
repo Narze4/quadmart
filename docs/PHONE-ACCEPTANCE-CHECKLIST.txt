@@ -40,7 +40,7 @@ _____________________________________________________________________
 Invitation gates still open
 - Both physical-phone runs completed, with failures fixed and retested.
 - Authenticated firewall rejection and recovery tested on the actual invitation hostname. The preview rule now passed authenticated 429/recovery testing at a temporary 5/minute threshold and was restored to 300/minute. It covers one alias only.
-- App Check Authentication enforcement and direct-API rejection validated. Client integration is prepared; the free Identity Platform upgrade and reCAPTCHA terms need owner approval.
+- Finish new-user signup and email verification/reset actions, token-expiry/refresh and revoked-session checks under App Check. Development Auth enforcement is active: eight direct signup/signin probes with missing/invalid attestation received HTTP 401, and both existing browser accounts signed in afterward. The buyer's 390px login passed; physical-phone results remain pending.
 - Fresh backup and restore evidence; available Mac; moderation/support ownership; eligibility policy; reviewed production migration.
 
 This checklist does not authorize production changes or public invitations.
