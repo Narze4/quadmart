@@ -71,6 +71,20 @@ try {
  assert.equal((await getDoc(doc(seller.db,'publicProfiles',buyer.user.uid))).data().buyerScore,80);
  assert.equal((await getDoc(doc(buyer.db,'transactions',listingId))).data().buyerReviewed,true);
  const notices=await getDocs(query(collection(buyer.db,'notifications'),where('userId','==',buyer.user.uid),limit(100)));assert.ok(notices.size>=2);
+ // Both preference operations use the authenticated, quota-counted HTTP boundary.
+ await api(buyer.user,'savedSet',{listingId,saved:true});
+ await api(buyer.user,'savedSet',{listingId,saved:true});
+ assert.deepEqual((await getDoc(doc(buyer.db,'users',buyer.user.uid))).data().savedListings,[listingId]);checks++;
+ await api(buyer.user,'savedSet',{listingId,saved:true,uid:seller.user.uid},400);
+ await api(buyer.user,'savedSet',{listingId:'missing',saved:true},404);
+ await api(buyer.user,'savedSet',{listingId,saved:false});
+ assert.deepEqual((await getDoc(doc(buyer.db,'users',buyer.user.uid))).data().savedListings,[]);checks++;
+ const noticeId=notices.docs[0].id;
+ await api(seller.user,'notificationsRead',{ids:[noticeId]},403);
+ await api(buyer.user,'notificationsRead',{ids:[noticeId]});
+ await api(buyer.user,'notificationsRead',{ids:[noticeId]});
+ assert.equal((await getDoc(doc(buyer.db,'notifications',noticeId))).data().read,true);checks++;
+ await api(buyer.user,'notificationsRead',{ids:[noticeId],read:false},400);
  const outsider=await account('outsider','outsider@uga.edu');await adminAuth(admin).updateUser(outsider.user.uid,{emailVerified:true});await outsider.user.reload();await outsider.user.getIdToken(true);await api(outsider.user,'profile',{});
  await api(outsider.user,'conversation',{listingId},404);
  await api(outsider.user,'message',{conversationId:c.id,text:'Intrusion',requestId:crypto.randomUUID()},403);

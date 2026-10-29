@@ -70,9 +70,9 @@ try {
   const saves = (await db.doc(`users/${seller}`).get()).data().savedListings; assert(!saves.includes('foreign')); assert(!saves.includes(owned(62))); pass(); await text(page, '24 saved items loaded so far'); await shot('saved');
   // Denied writes stay visible and retryable; they never silently change a heart.
   await page.goto(base + '/dashboard'); await text(page, 'Recently added'); const card = page.locator('main a[href^="/listing/"]').first(); const cardId = (await card.getAttribute('href')).split('/').at(-1);
-  await rules(originalRules.replace('allow update: if student() && request.auth.uid == uid', 'allow update: if false && student() && request.auth.uid == uid')); changedRules = true;
+  await page.route('**/api/market', route => route.request().postDataJSON()?.action === 'savedSet' ? route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Test write failure' }) }) : route.continue());
   await card.getByRole('button', { name: 'Save listing', exact: true }).click(); await text(page, 'Could not update saved items. Please try again.'); assert(!(await db.doc(`users/${seller}`).get()).data().savedListings.includes(cardId));
-  await rules(originalRules); changedRules = false; await card.getByRole('button', { name: 'Save listing', exact: true }).click(); await card.getByRole('button', { name: 'Remove from saved', exact: true }).waitFor(); pass();
+  await page.unroute('**/api/market'); await card.getByRole('button', { name: 'Save listing', exact: true }).click(); await card.getByRole('button', { name: 'Remove from saved', exact: true }).waitFor(); pass();
   // A private saved-list read error must not masquerade as an empty collection.
   await rules(originalRules.replace('allow get: if student() && request.auth.uid == uid;', 'allow get: if false && student() && request.auth.uid == uid;')); changedRules = true;
   await page.goto(base + '/saved'); await text(page, 'Could not load saved items. Please try again.'); assert.equal(await page.getByText('No saved items yet', { exact: true }).count(), 0);

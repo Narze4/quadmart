@@ -16,6 +16,8 @@ Every verified, supported-university request to `/api/market` consumes an attemp
 | New conversations | 10 | 50 |
 | New messages | 30 | 500 |
 | Actual profile changes/initialization | 10 | 50 |
+| Saved-item changes | 30 | 300 |
+| Notification acknowledgement batches (up to 30 IDs) | 20 | 200 |
 
 These are fixed windows, so adjacent-window bursts are possible. A 429 response includes `Retry-After`, `retryAfterSeconds`, and a readable wait time. Counts do not reset by deleting a listing, signing out, changing the client clock, or changing server instances. Separate accounts have separate limits, plus the shared development ceilings below. One document per account/bucket stores current counters; this does not create a new document every minute.
 
@@ -29,7 +31,7 @@ These ceilings protect expensive work after verification. They are not spending 
 
 Firestore list rules now require a positive limit and reject nonzero offsets: listings, profiles, reviews and transactions cap at 25; conversations and messages at 31; notifications at 100. Cursors preserve pagination. Single-document reads retain the same authorization. This prevents one unlimited query, not repeated authorized queries or scraping over many pages.
 
-Photo 429s retain a retry control that waits for Retry-After and requires an explicit click. There is no automatic retry loop. Message rate limits preserve the draft. See ABUSE-AND-PHONE-TEST-RESULTS.txt for browser coverage.
+Photo 429s retain a retry control that waits for Retry-After and requires an explicit click. There is no automatic retry loop. Message rate limits preserve the draft. See ABUSE-AND-PHONE-TEST-RESULTS.txt for earlier browser coverage and PHONE-ACCEPTANCE-CHECKLIST.txt for physical-device checks. The phone suite also tests interrupted saved requests, actual saved/notification quota rejection and recovery, and notification ownership isolation.
 
 A Vercel Hobby rule named "Development API burst limit" is saved and enabled: exact host `quadmart-git-security-firestore-rules-narze4s-projects.vercel.app`, request path starting `/api/`, 300 requests per IP per 60-second fixed window, returning 429. No upgrade or new paid service was enabled. It covers that alias only, not every immutable deployment URL. Two bounded external probes followed Vercel sign-in redirects and therefore did not test rate-limit enforcement. A direct no-redirect probe confirmed HTTP 302 to vercel.com. Keep preview access protection enabled and verify authenticated edge rejection before relying on this rule for invitations. Shared campus networks may need a different IP threshold for a pilot.
 
@@ -43,7 +45,7 @@ A private retry record binds the request ID to normalized contents. Identical co
 
 `listingState` accepts active/reserved, the version the seller saw, and a stable request ID. It checks ownership and campus, rejects sold/removed listings, and updates the version atomically. Identical completed retries succeed; stale tabs cannot overwrite a later status. Existing listings without a version start at zero. The UI shows errors and refreshes listings after a conflict.
 
-Rules deny direct listing creation/updates and profile-name edits, so direct SDK calls cannot bypass these server limits. Owners may still directly delete their own unsold listing; this grants no quota refund. Saved items and marking notifications read retain their narrow client write permissions.
+Rules deny direct listing creation/updates and profile-name edits, so direct SDK calls cannot bypass these server limits. Owners may still directly delete their own unsold listing; this grants no quota refund. Saved-item changes and notification acknowledgements are server-only too. Each uses the general API attempt budget, plus an atomic change budget. Saves accept only a listing ID and desired boolean state, validate same-campus availability on addition, cap membership at 200 even under concurrency, and permit removal of missing legacy entries. Acknowledgements validate ownership of every requested notification before changing any flag, reject more than 30 input IDs, and preserve all other fields. Identical unchanged actions do not rewrite records or consume their change budget; they still consume the general API attempt budget. The client scopes these actions to the account that initiated them and shows readable 429 feedback. This is desired-state idempotence, not an ordering guarantee between opposing actions from different tabs.
 
 Unchanged profile initialization performs no profile writes or operation debit. Message and conversation retries preserve their existing deterministic IDs and skip the operation debit after validating access. Blocked/suspended accounts still cannot replay operations to escape enforcement.
 
@@ -51,7 +53,7 @@ Unchanged profile initialization performs no profile writes or operation debit. 
 
 1. Ask for the displayed reference or the `X-Request-ID` from the failed response, plus the approximate time and action. Never request a password, token, full private chat or signed photo URL.
 2. In Vercel, select the QuadMart development Preview deployment and open runtime Logs. Search for the request ID. Each `quadmart_api` entry includes a generated request ID, route, allowlisted operation name, HTTP status and duration. Server failures include only an allowlisted dependency code or `internal`.
-3. Repeated 429s indicate a shared budget was reached. Do not raise or reset limits before checking the expected usage. Repeated 5xx responses require checking Firebase/Cloudinary availability and the deployment configuration, then reproducing with synthetic accounts locally.
+3. Repeated 429s indicate an account or shared budget was reached. Do not raise or reset limits before checking the expected usage. Repeated 5xx responses require checking Firebase/Cloudinary availability and the deployment configuration, then reproducing with synthetic accounts locally.
 4. Verify a fix with the emulator tests and a development Preview check before considering production rollout.
 
 Application log records deliberately omit actor IDs, emails, message/listing/report text, request bodies, URLs, tokens, arbitrary exception messages and stacks. Response bodies and headers use private/no-store. Upload and photo routes use the same projection. Provider/platform access logs are separate and must be reviewed before launch; this projection does not control logs emitted by infrastructure or third-party libraries.
@@ -66,4 +68,4 @@ Deploy Firestore rules explicitly to `quadmart-development` and deploy the match
 
 ## Remaining limits
 
-Verified attackers can still incur token-verification, rejected-request and Firestore quota-read costs. Saved-item updates, notification read markers and signup are outside the API attempt budgets. Direct authorized reads are size-bounded but not frequency-limited. App Check/CAPTCHA evaluation, authenticated edge enforcement testing, monitoring/alerts, physical-phone testing and the student eligibility/support policy remain invitation gates. Pagination and encrypted backup/restore plus Mac-hosted maintenance have separate implemented workflows; their latest receipts and drill results must be checked before launch. The Mac must be awake and available. The deletion and cleanup tools are documented in ACCOUNT-AND-PHOTO-CLEANUP.md. Cloudinary and Firebase service quotas also apply.
+Verified attackers can still incur token-verification, rejected-request and Firestore quota-read costs. Signup and direct authorized reads are outside the API attempt budgets. Saved-item updates and notification read markers now pass through the protected API. Direct authorized reads are size-bounded but not frequency-limited. App Check/CAPTCHA evaluation, authenticated edge enforcement testing, monitoring/alerts, physical-phone testing and the student eligibility/support policy remain invitation gates. Pagination and encrypted backup/restore plus Mac-hosted maintenance have separate implemented workflows; their latest receipts and drill results must be checked before launch. The Mac must be awake and available. The deletion and cleanup tools are documented in ACCOUNT-AND-PHOTO-CLEANUP.md. Cloudinary and Firebase service quotas also apply.

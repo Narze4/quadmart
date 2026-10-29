@@ -1,0 +1,46 @@
+QuadMart physical-phone acceptance checklist
+Prepared October 29, 2026 — all physical-device results are PENDING
+
+Development preview
+https://quadmart-git-security-firestore-rules-narze4s-projects.vercel.app
+
+Use the existing development seller and buyer accounts and disposable test listings only. This preview requires Vercel team sign-in before QuadMart sign-in. Keep that protection enabled. If a phone cannot access it, record the blocker; do not share the owner login or remove access protection. Do not place a real payment or invite students for this test. Account closure is not part of this checklist.
+
+Test once on an actual iPhone with Safari and once on an Android phone with Chrome. Browser emulation passed separately; it does not establish camera, keyboard, cellular or background behavior. The buyer can use the other phone or a separate authenticated browser. Record versions and results without passwords, tokens, private messages or personal photos.
+
+Device: __________________  OS: __________  Browser/version: __________
+Date/time: _______________  Tested preview/commit: _____________________
+Seller/buyer test-account labels only: ________________________________
+
+[ ] 1. Sign in from a fresh tab. Wait for fields to become enabled. Verify the correct account and campus, then load Dashboard, Marketplace, My Listings, Saved, Notifications, Purchases and Profile. No endless loading or horizontal scrolling. Open the menu on a short/landscape screen and reach Log out without using it yet.
+
+[ ] 2. Create a clearly labeled development listing. Select a non-personal JPG/PNG/WebP from the gallery, then try a camera photo. Current accepted types are JPG, PNG and WebP up to 3 MB. iPhone HEIC or a larger original should receive a clear rejection and keep the listing details; HEIC support is not claimed. Record the actual camera file type/size and whether the chooser supplies a supported image. Successful upload must show a preview.
+
+[ ] 3. Enter a long title/description and decimal price. Open the actual keyboard, rotate the device and scroll. Inputs, errors, Next and Post Listing must remain reachable. Publish once; confirm exactly one listing appears in My Listings and that the buyer can see its photo.
+
+[ ] 4. Save the listing as buyer. Visit Saved, return to the listing and remove/re-save it. The seller's saved items must stay unchanged. Turn airplane mode on before a save attempt: the app should show an error rather than silently claim success. Turn it off and retry once. Confirm the resulting saved state is correct.
+
+[ ] 5. Buyer contacts seller. Send a long message, hide/show the keyboard and rotate the phone. The composer and Send button must remain reachable. In airplane mode, try sending a unique test message: retain the draft. Reconnect and retry; confirm exactly one copy reaches the seller. Leave the app in the background, then resume and check new messages load.
+
+[ ] 6. Seller marks the listing reserved and then sold to the actual buyer. Confirm the correct buyer is selected in the phone dialog. Buyer sees the purchase and submits one review. A second attempt must not create another sale or review.
+
+[ ] 7. Read the resulting notifications one at a time and in a batch. The unread badge updates; the other account's notifications remain unchanged. Test one interrupted acknowledgement with airplane mode: the error is visible, then retry after reconnecting. An unchanged retry must not duplicate anything.
+
+[ ] 8. Repeat browsing and one photo view on cellular or a weak connection. Background/resume the app while loading. Content should recover or show a useful retry option; private data must not switch between accounts. Note unusually long loading, dropped inputs, clipped buttons or photo failures.
+
+[ ] 9. Log out. Open a protected page using the app's link and confirm it returns to sign-in. Sign in as the other development account in the same browser; Saved, notifications, listings and purchases must belong to that account.
+
+Result per step: PASS / FAIL / BLOCKED. Screenshots should show synthetic content only.
+For a failure record: step, device/browser, network, approximate time, expected/actual behavior and the app's request reference if shown. Do not record credentials or signed URLs.
+
+Failures/blockers:
+_____________________________________________________________________
+_____________________________________________________________________
+
+Invitation gates still open
+- Both physical-phone runs completed, with failures fixed and retested.
+- Authenticated firewall rejection and recovery tested on the actual invitation hostname. The enabled preview rule covers one alias only; prior external probes reached Vercel sign-in instead of the app.
+- App Check/signup-abuse protection reviewed and validated without enabling paid services automatically.
+- Fresh backup and restore evidence; available Mac; moderation/support ownership; eligibility policy; reviewed production migration.
+
+This checklist does not authorize production changes or public invitations.

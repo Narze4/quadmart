@@ -32,12 +32,7 @@ service cloud.firestore {
     // Private account data, including saved listings. Provisioned by trusted backend.
     match /users/{uid} {
       allow get: if student() && request.auth.uid == uid;
-      allow update: if student() && request.auth.uid == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['savedListings'])
-        && request.resource.data.get('displayName', '') is string
-        && request.resource.data.get('displayName', '').size() <= 80
-        && request.resource.data.get('savedListings', []) is list
-        && request.resource.data.get('savedListings', []).size() <= 200;
+      allow write: if false; // Backend validates saved items and limits changes.
       // Legacy reviews are denied; transaction-validated reviews use publicProfiles.
       match /reviews/{reviewId} { allow read, write: if false; }
     }
@@ -76,10 +71,7 @@ service cloud.firestore {
     match /notifications/{notificationId} {
       allow get: if student() && resource.data.userId == request.auth.uid;
       allow list: if bounded(100) && student() && resource.data.userId == request.auth.uid;
-      allow update: if student() && resource.data.userId == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
-        && request.resource.data.read == true;
-      allow create, delete: if false;
+      allow write: if false; // Backend validates and limits read acknowledgements.
     }
     match /transactions/{transactionId} {
       allow get: if student() && (resource.data.sellerUid == request.auth.uid || resource.data.buyerUid == request.auth.uid);

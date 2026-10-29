@@ -20,7 +20,7 @@ function SavedToggle({ listingId, compact = false, removeOnly = false }) {
     if (savedError) { retrySaved(); setError('Reloading your saved items. Please try again once loaded.'); return }
     setPending(true); setError('')
     try { await setListingSaved(listingId, !saved) }
-    catch (failure) { if (active.current) setError(failure.message?.startsWith('You can save up to') ? failure.message : 'Could not update saved items. Please try again.') }
+    catch (failure) { if (active.current) setError(failure.status === 429 || failure.message?.startsWith('You can save up to') ? failure.message : 'Could not update saved items. Please try again.') }
     finally { if (active.current) setPending(false) }
   }
   return <div className={compact ? 'absolute top-3 left-3 z-10' : 'space-y-2'}>

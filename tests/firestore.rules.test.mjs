@@ -61,8 +61,8 @@ test('private account data is owner-only; public profile is campus-only', async 
   await assertSucceeds(getDoc(doc(auth('bob','bob@emory.edu'),'publicProfiles/alice')));
   await assertFails(getDoc(doc(auth('eve','eve@uga.edu'),'publicProfiles/alice')));
 });
-test('owner can save items but cannot forge campus, score, or transaction count', async () => {
-  await assertSucceeds(updateDoc(doc(auth(),'users/alice'),{savedListings:['desk']}));
+test('direct saved writes and forged private profile changes require the backend', async () => {
+  await assertFails(updateDoc(doc(auth(),'users/alice'),{savedListings:['desk']}));
   for (const field of ['campusId','sellerScore','buyerScore','transactions','email','displayName']) await assertFails(updateDoc(doc(auth(),'users/alice'),{[field]:100}));
   await assertFails(setDoc(doc(auth(),'users/new'),{uid:'new'}));
 });
@@ -90,8 +90,8 @@ test('cannot spoof message sender or send oversized messages', async () => {
   const db=auth('bob','bob@emory.edu');
   for (const data of [{text:'Hi',senderUid:'alice'},{text:'x'.repeat(4001),senderUid:'bob'},{text:'',senderUid:'bob'}]) await assertFails(setDoc(doc(db,'conversations/chat/messages/bad'),{...data,createdAt:serverTimestamp()}));
 });
-test('notification owner can mark read but cannot change content or recipient', async () => {
-  await assertSucceeds(updateDoc(doc(auth(),'notifications/n'),{read:true}));
+test('notification read acknowledgements and content changes require the backend', async () => {
+  await assertFails(updateDoc(doc(auth(),'notifications/n'),{read:true}));
   await assertFails(updateDoc(doc(auth(),'notifications/n'),{title:'Forged'}));
   await assertFails(updateDoc(doc(auth(),'notifications/n'),{userId:'bob'}));
   await assertFails(getDoc(doc(auth('bob','bob@emory.edu'),'notifications/n')));

@@ -127,3 +127,108 @@ test('account attempt rejection does not consume the shared budget',async()=>{
  await assert.rejects(consumeQuota(db,'blocked','photo',now),e=>e.status===429&&e.retryAfterSeconds===50);
  assert.equal((await db.doc('operationLimits/global-photo').get()).exists,false);
 });
+
+async function savedFixtures() {
+  for (const id of ['first', 'second', 'third']) await db.doc(`listings/${id}`).set({ campusId: 'emory.edu', status: 'active', sellerUid: seller.uid });
+}
+test('saved changes are atomic, preserve private profile fields and isolate accounts', async () => {
+  await savedFixtures();
+  await Promise.all(['first', 'second'].map(listingId => api(buyer, 'savedSet', { listingId, saved: true })));
+  const profile = (await db.doc('users/buyer').get()).data();
+  assert.deepEqual([...profile.savedListings].sort(), ['first', 'second']); assert.equal(profile.email, buyer.email); assert.equal(profile.transactions, 0);
+  assert.equal((await db.doc('users/seller').get()).data().savedListings, undefined);
+  await api(buyer, 'savedSet', { listingId: 'first', saved: false });
+  assert.deepEqual((await db.doc('users/buyer').get()).data().savedListings, ['second']);
+});
+test('duplicate saved requests write and debit once; unchanged retries succeed at the operation limit', async () => {
+  await savedFixtures(); const data = { listingId: 'first', saved: true };
+  await Promise.all([api(buyer, 'savedSet', data), api(buyer, 'savedSet', data)]);
+  assert.equal((await quota(buyer, 'savedSet').get()).data().dayCount, 1);
+  const ref = db.doc('users/buyer'), before = await ref.get();
+  await nearLimit(buyer, 'savedSet', { dayCount: LIMITS.savedSet.day });
+  await api(buyer, 'savedSet', data);
+  assert.equal((await ref.get()).updateTime.toMillis(), before.updateTime.toMillis());
+  await assert.rejects(api(buyer, 'savedSet', { ...data, saved: false }), denied(429));
+});
+test('saved items enforce the 200-item cap under concurrent requests and allow removal at capacity', async () => {
+  await savedFixtures(); await db.doc('users/buyer').update({ savedListings: Array.from({ length: 199 }, (_, i) => `old-${i}`) });
+  const result = await Promise.allSettled(['first', 'second'].map(listingId => api(buyer, 'savedSet', { listingId, saved: true })));
+  assert.equal(result.filter(r => r.status === 'fulfilled').length, 1); assert.equal(result.find(r => r.status === 'rejected').reason.status, 409);
+  assert.equal((await db.doc('users/buyer').get()).data().savedListings.length, 200);
+  await api(buyer, 'savedSet', { listingId: 'old-0', saved: false });
+  assert.equal((await db.doc('users/buyer').get()).data().savedListings.length, 199);
+});
+test('saving rejects inaccessible listings but removing missing or foreign legacy entries succeeds', async () => {
+  await db.doc('listings/foreign').set({ campusId: 'uga.edu', status: 'active' });
+  await db.doc('listings/removed').set({ campusId: 'emory.edu', status: 'removed' });
+  for (const listingId of ['missing', 'foreign', 'removed']) await assert.rejects(api(buyer, 'savedSet', { listingId, saved: true }), denied(404));
+  assert.equal((await quota(buyer, 'savedSet').get()).exists, false);
+  await db.doc('users/buyer').update({ savedListings: ['missing', 'foreign'] });
+  for (const listingId of ['missing', 'foreign']) await api(buyer, 'savedSet', { listingId, saved: false });
+  assert.deepEqual((await db.doc('users/buyer').get()).data().savedListings, []);
+});
+test('saved API rejects path injection, non-booleans and forged recipients or fields', async () => {
+  for (const data of [{ listingId: '../first', saved: true }, { listingId: 'first', saved: 'true' }, { listingId: 'first', saved: true, uid: seller.uid }, { savedListings: ['first'] }]) await assert.rejects(api(buyer, 'savedSet', data), denied(400));
+  assert.equal((await quota(buyer, 'savedSet').get()).exists, false);
+});
+test('concurrent saved changes cannot exceed quota and rejected changes leave data unchanged', async () => {
+  await savedFixtures(); await nearLimit(buyer, 'savedSet', { dayCount: LIMITS.savedSet.day - 1 });
+  const results = await Promise.allSettled(['first', 'second'].map(listingId => api(buyer, 'savedSet', { listingId, saved: true })));
+  assert.equal(results.filter(r => r.status === 'fulfilled').length, 1); assert.equal(results.find(r => r.status === 'rejected').reason.status, 429);
+  assert.equal((await db.doc('users/buyer').get()).data().savedListings.length, 1);
+  await api(seller, 'savedSet', { listingId: 'third', saved: true });
+});
+async function notificationFixtures() {
+  const batch = db.batch();
+  for (let i = 0; i < 31; i++) batch.set(db.doc(`notifications/notice-${i}`), { userId: buyer.uid, read: false, title: `Notice ${i}`, description: 'Preserve this', linkTo: '/saved' });
+  batch.set(db.doc('notifications/foreign'), { userId: seller.uid, read: false, title: 'Private' });
+  await batch.commit();
+}
+test('notification API changes exactly 30 selected owned flags and preserves content', async () => {
+  await notificationFixtures(); const ids = Array.from({ length: 30 }, (_, i) => `notice-${i}`);
+  assert.deepEqual((await api(buyer, 'notificationsRead', { ids })).ids, ids);
+  for (const id of ids) assert.deepEqual((await db.doc(`notifications/${id}`).get()).data(), { userId: buyer.uid, read: true, title: `Notice ${id.split('-')[1]}`, description: 'Preserve this', linkTo: '/saved' });
+  assert.equal((await db.doc('notifications/notice-30').get()).data().read, false);
+  assert.equal((await quota(buyer, 'notificationsRead').get()).data().dayCount, 1);
+});
+test('mixed-recipient or missing notification batches fail atomically without quota or partial reads', async () => {
+  await notificationFixtures();
+  for (const id of ['foreign', 'missing']) await assert.rejects(api(buyer, 'notificationsRead', { ids: ['notice-0', id] }), denied(403));
+  assert.equal((await db.doc('notifications/notice-0').get()).data().read, false);
+  assert.equal((await quota(buyer, 'notificationsRead').get()).exists, false);
+});
+test('duplicate and concurrent notification retries debit once and do not rewrite acknowledged records', async () => {
+  await notificationFixtures(); const data = { ids: ['notice-0', 'notice-0'] };
+  await Promise.all([api(buyer, 'notificationsRead', data), api(buyer, 'notificationsRead', data)]);
+  assert.equal((await quota(buyer, 'notificationsRead').get()).data().dayCount, 1);
+  const ref = db.doc('notifications/notice-0'), before = await ref.get();
+  await nearLimit(buyer, 'notificationsRead', { dayCount: LIMITS.notificationsRead.day });
+  assert.deepEqual((await api(buyer, 'notificationsRead', data)).ids, ['notice-0']);
+  assert.equal((await ref.get()).updateTime.toMillis(), before.updateTime.toMillis());
+  await assert.rejects(api(buyer, 'notificationsRead', { ids: ['notice-0', 'notice-1'] }), denied(429));
+  assert.equal((await db.doc('notifications/notice-1').get()).data().read, false);
+});
+test('notification API rejects oversized or malformed requests and forged ownership/read values', async () => {
+  await notificationFixtures();
+  for (const data of [{ ids: Array.from({ length: 31 }, (_, i) => `notice-${i}`) }, { ids: [] }, { ids: ['../notice'] }, { ids: 'notice-0' }, { ids: ['notice-0'], userId: seller.uid }, { ids: ['notice-0'], read: false }]) await assert.rejects(api(buyer, 'notificationsRead', data), denied(400));
+  assert.equal((await quota(buyer, 'notificationsRead').get()).exists, false);
+});
+test('notification quota is atomic across concurrent batches and separate across accounts', async () => {
+  await notificationFixtures(); await nearLimit(buyer, 'notificationsRead', { dayCount: LIMITS.notificationsRead.day - 1 });
+  const results = await Promise.allSettled(['notice-0', 'notice-1'].map(id => api(buyer, 'notificationsRead', { ids: [id] })));
+  assert.equal(results.filter(r => r.status === 'fulfilled').length, 1); assert.equal(results.find(r => r.status === 'rejected').reason.status, 429);
+  assert.equal((await db.collection('notifications').where('userId', '==', buyer.uid).where('read', '==', true).get()).size, 1);
+  await api(seller, 'notificationsRead', { ids: ['foreign'] });
+});
+test('closed, suspended, unverified and wrong-campus accounts cannot change saves or acknowledgements', async () => {
+  await savedFixtures(); await notificationFixtures();
+  for (const [action, data] of [['savedSet', { listingId: 'first', saved: true }], ['notificationsRead', { ids: ['notice-0'] }]]) {
+    await assert.rejects(api({ ...buyer, email_verified: false }, action, data), denied(403));
+    await assert.rejects(api({ ...buyer, email: 'buyer@uga.edu' }, action, data), denied(403));
+    for (const [collection, field] of [['accountLifecycle', 'closed'], ['moderationAccounts', 'suspended']]) {
+      const ref = db.doc(`${collection}/${buyer.uid}`); await ref.set({ [field]: true }); await assert.rejects(api(buyer, action, data), denied(403)); await ref.delete();
+    }
+  }
+  assert.equal((await db.doc('notifications/notice-0').get()).data().read, false);
+  assert.equal((await quota(buyer, 'savedSet').get()).exists, false); assert.equal((await quota(buyer, 'notificationsRead').get()).exists, false);
+});

@@ -63,14 +63,13 @@ test('notification history and unread badge are bounded and restricted to the cu
  assert.equal((await getDocs(unreadNotificationsQuery(db,'pager'))).size,100);
  await assertFails(notificationFeed(db,'other').loadPage(null));await assertFails(getDocs(unreadNotificationsQuery(db,'other')));
 });
-test('notification actions mark at most 30 selected owned rows and preserve all other fields',async()=>{
- const page=await notificationFeed(db,'pager').loadPage(null);await markNotificationsRead(db,page.items);
- assert.equal((await getDoc(doc(db,'notifications',page.items[0].id))).data().read,true);
- assert.equal((await getDoc(doc(db,'notifications/n0000'))).data().read,false);
- const rows=await allPages(notificationFeed(db,'pager').loadPage);await assert.rejects(markNotificationsRead(db,rows));
- await assertFails(markNotificationsRead(db,[{id:'n0134',read:false}]));
+test('notification actions send bounded selected IDs to the backend and direct acknowledgements fail',async()=>{
+ const page=await notificationFeed(db,'pager').loadPage(null);let call;
+ const ids=await markNotificationsRead(async(...args)=>{call=args},page.items,'pager');
+ assert.deepEqual(call,['notificationsRead',{ids:page.items.map(item=>item.id)},{expectedUid:'pager'}]);assert.deepEqual(ids,page.items.map(item=>item.id));
+ const rows=await allPages(notificationFeed(db,'pager').loadPage);await assert.rejects(markNotificationsRead(()=>assert.fail('Oversized request sent'),rows,'pager'));
  await assertFails(updateDoc(doc(db,'notifications/n0000'),{title:'forged'}));
- await assertFails(updateDoc(doc(db,'notifications',page.items[0].id),{read:false}));
+ await assertFails(updateDoc(doc(db,'notifications',page.items[0].id),{read:true}));
 });
 test('purchases paginate complete receipts even with a missing seller profile',async()=>{
  const first=await purchaseFeed(db,'pager').loadPage(null);assert.equal(first.items.length,24);assert.equal(first.items[0].sellerName,'Seller unavailable');assert.equal(first.items[0].sellerAvailable,false);assert.equal(first.items[1].sellerAvailable,true);assert.equal(first.items[1].buyerReviewed,true);

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
+import { marketApi } from '@/lib/market-api'
 import { notificationFeed } from '@/lib/feed-queries.mjs'
 import { useCursorFeed } from '@/lib/use-cursor-feed'
 import { markNotificationsRead, NOTIFICATION_WRITE_LIMIT } from '@/lib/notification-actions.mjs'
@@ -74,11 +75,11 @@ function NotificationList({ user }) {
     if (saving || feed.denied) return
     setSaving(true); setActionError('')
     try {
-      const ids = await markNotificationsRead(db, items)
+      const ids = await markNotificationsRead(marketApi, items, user.uid)
       if (!active.current) return
       feed.updateItems(new Map(ids.map(id => [id, { read: true }])))
       if (typeof linkTo === 'string' && /^\/(?!\/)/.test(linkTo)) router.push(linkTo)
-    } catch { if (active.current) setActionError('Could not mark these notifications as read. Please try again.') }
+    } catch (error) { if (active.current) setActionError(error.status === 429 ? error.message : 'Could not mark these notifications as read. Please try again.') }
     finally { if (active.current) setSaving(false) }
   }
 
@@ -88,7 +89,7 @@ function NotificationList({ user }) {
     <div className="min-h-screen flex flex-col bg-bg">
       <AuthenticatedHeader />
       <main className="flex-1 max-w-2xl mx-auto px-4 sm:px-6 py-12 w-full">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-text-primary">Notifications</h1>
             {unreadCount > 0 && (
@@ -148,7 +149,7 @@ function NotificationList({ user }) {
                   <NotifIcon type={notif.type} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-semibold ${notif.read ? 'text-text-secondary' : 'text-text-primary'}`}>
+                  <p className={`text-sm font-semibold [overflow-wrap:anywhere] ${notif.read ? 'text-text-secondary' : 'text-text-primary'}`}>
                     {notif.title}
                   </p>
                   {notif.description && (

@@ -2,9 +2,9 @@ import fs from 'node:fs/promises';
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment, assertFails } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, writeBatch, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, writeBatch, Timestamp } from 'firebase/firestore';
 import { recentListingsFeed, marketplaceFeed, sellerListingsFeed, savedListingsFeed, listingBuyersFeed } from '../lib/feed-queries.mjs';
-import { savedItemIds, writeSavedItem } from '../lib/saved-items.mjs';
+import { savedItemIds } from '../lib/saved-items.mjs';
 let env, db;
 const id = n => `owned-${String(n).padStart(3, '0')}`;
 before(async () => {
@@ -50,14 +50,10 @@ test('saved pages preserve newest-save order and unavailable slots across all pa
   const all = await allPages(savedListingsFeed(db, 'owner', 'emory.edu', ids)); assert.deepEqual(all.map(x => x.id), [...ids].reverse()); assert.equal(all.filter(x => x.unavailable).length, 2); assert(all.some(x => x.status === 'sold'));
   assert.deepEqual((await savedListingsFeed(db, 'owner', 'emory.edu', []).loadPage(null)).items, []);
 });
-test('saved writes are idempotent, owned, capped and reject malformed identifiers', async () => {
-  await Promise.all([writeSavedItem(db, 'owner', id(0), true), writeSavedItem(db, 'owner', id(0), true)]);
-  assert.deepEqual((await getDoc(doc(db, 'users/owner'))).data().savedListings, [id(0)]);
-  await writeSavedItem(db, 'owner', id(0), false); assert.deepEqual((await getDoc(doc(db, 'users/owner'))).data().savedListings, []);
+test('direct saved writes cannot bypass the backend, and saved identifiers are bounded', async () => {
+  await assertFails(updateDoc(doc(db, 'users/owner'), { savedListings: [id(0)] }));
   const other = env.authenticatedContext('other', { email: 'other@emory.edu', email_verified: true }).firestore();
-  await assertFails(writeSavedItem(other, 'owner', id(0), true)); await assertFails(getDoc(doc(other, 'users/owner')));
-  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/owner'), { savedListings: Array.from({ length: 200 }, (_, i) => `saved-${i}`) }, { merge: true }));
-  await assertFails(writeSavedItem(db, 'owner', 'overflow', true));
+  await assertFails(updateDoc(doc(other, 'users/owner'), { savedListings: [id(0)] })); await assertFails(getDoc(doc(other, 'users/owner')));
   assert.throws(() => savedItemIds(['path/escape'])); assert.throws(() => savedItemIds('not-an-array')); assert.throws(() => savedItemIds(Array(201).fill('x'))); assert.deepEqual(savedItemIds(['a', 'a', 'b']), ['a', 'b']);
 });
 test('buyer choices paginate with participant authorization and skip foreign profiles', async () => {
@@ -67,5 +63,5 @@ test('buyer choices paginate with participant authorization and skip foreign pro
 });
 test('unverified accounts cannot read any new collection feed or write saves', async () => {
   const unverified = env.authenticatedContext('owner', { email: 'owner@emory.edu', email_verified: false }).firestore();
-  await assertFails(recentListingsFeed(unverified, 'emory.edu').loadPage(null)); await assertFails(sellerListingsFeed(unverified, 'owner', 'emory.edu', 'sold').loadPage(null)); await assertFails(savedListingsFeed(unverified, 'owner', 'emory.edu', [id(0)]).loadPage(null)); await assertFails(writeSavedItem(unverified, 'owner', id(0), false));
+  await assertFails(recentListingsFeed(unverified, 'emory.edu').loadPage(null)); await assertFails(sellerListingsFeed(unverified, 'owner', 'emory.edu', 'sold').loadPage(null)); await assertFails(savedListingsFeed(unverified, 'owner', 'emory.edu', [id(0)]).loadPage(null)); await assertFails(updateDoc(doc(unverified, 'users/owner'), { savedListings: [] }));
 });
