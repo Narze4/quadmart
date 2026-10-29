@@ -25,3 +25,11 @@ test('auth failures never echo SDK diagnostics or identify existing accounts', (
   assert.match(authErrorMessage({ code: 'auth/password-does-not-meet-requirements' }), /12 characters/);
   assert.match(authErrorMessage({ code: 'auth/network-request-failed' }, 'login'), /connection/);
 });
+
+test('live App Check rejection gives security retry guidance for every auth action', () => {
+  for (const action of ['signup', 'login', 'reset']) {
+    const message = authErrorMessage({ code: 'auth/firebase-app-check-token-is-invalid.', message: 'private diagnostic' }, action);
+    assert.equal(message, 'The security check could not finish. Reload this page and try again.');
+    assert(!message.includes('password'));
+  }
+});

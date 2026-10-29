@@ -51,11 +51,15 @@ APP CHECK SETUP FOLLOW-UP — 2026-10-29
 - With the deployed client, seller listings, photo, conversation history,
   profile and review loaded; buyer saved items, notifications, completed
   purchase and protected photo loaded. The purchase page also fit at 390px.
-- No warning/error console logs were captured during the final browser checks.
-  Three local auth/configuration guard tests were rerun and passed.
-- This activation changed cloud configuration and documentation only. The
-  earlier full CI suite was on the same app source a00b662; it is separate
-  evidence, not a newly completed signup or trade under enforcement.
+- No warning/error console logs were captured during the allowed-host browser
+  checks. A separate invalid-host test correctly failed attestation, but
+  exposed a misleading password error: the SDK's live rejection code retains
+  a trailing period. The error mapping now recognizes that exact code and
+  gives security-check retry guidance for signup, login and password reset.
+- Four local auth/configuration guard tests passed, including the regression
+  for that live provider error. Hosted display validation and CI are recorded
+  in the PR. The earlier full suite on a00b662 is separate evidence, not a
+  newly completed signup or trade under enforcement.
 
 PENDING
 - New hosted signup/email-action completion, token-expiry/refresh and revoked
