@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ProtectedPhoto from '@/components/ProtectedPhoto'
 import { useAuth } from '@/lib/auth-context'
 import { marketApi } from '@/lib/market-api'
 import { db } from '@/lib/firebase'
-import { collection, getDocs, query, where } from 'firebase/firestore'
+import { sellerListingsFeed } from '@/lib/feed-queries.mjs'
+import { useCursorFeed } from '@/lib/use-cursor-feed'
+import FeedStatus from '@/components/FeedStatus'
 import { getListingStatus, getUsername, getCampusId } from '@/lib/utils'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
@@ -33,12 +35,6 @@ const STATUS_TONE = {
   sold: 'neutral',
 }
 
-const AlertIcon = () => (
-  <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-  </svg>
-)
-
 const BoxIcon = () => (
   <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
@@ -48,76 +44,10 @@ const BoxIcon = () => (
 export default function MyListingsPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [listings, setListings] = useState([])
-  const [fetchLoading, setFetchLoading] = useState(true)
-  const [fetchError, setFetchError] = useState(false)
-  const [activeTab, setActiveTab] = useState('Active')
-  const [updatingId, setUpdatingId] = useState(null)
-  const pendingState = useRef(new Map())
-  const [actionError, setActionError] = useState('')
-  const [soldModalListing, setSoldModalListing] = useState(null)
-
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
     else if (!loading && user && !user.emailVerified) router.replace('/verify-email')
   }, [user, loading, router])
-
-  const fetchListings = async () => {
-    if (!user) return
-    try {
-      const q = query(collection(db, 'listings'), where('sellerUid', '==', user.uid), where('campusId', '==', getCampusId(user.email)))
-      const snap = await getDocs(q)
-      setListings(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => {
-        return (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0)
-      }))
-    } catch {
-      setFetchError(true)
-    } finally {
-      setFetchLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    // fetchListings is also called directly by the retry button (a plain
-    // event handler), which is what trips this rule — the state updates
-    // inside it only ever happen after an await, never synchronously here.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchListings()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
-
-  const handleRetry = () => {
-    setFetchLoading(true)
-    setFetchError(false)
-    fetchListings()
-  }
-
-  const setLocalStatus = (id, status, version) => {
-    setListings(prev => prev.map(l => (l.id === id ? { ...l, status, version: version ?? l.version } : l)))
-  }
-
-  const handleSetStatus = async (listing, status) => {
-    setUpdatingId(listing.id)
-    setActionError('')
-    const data = { listingId: listing.id, status, expectedVersion: listing.version ?? 0 }
-    const signature = JSON.stringify(data)
-    if (!pendingState.current.has(signature)) pendingState.current.set(signature, crypto.randomUUID())
-    try {
-      const result = await marketApi('listingState', { ...data, requestId: pendingState.current.get(signature) })
-      setLocalStatus(listing.id, result.status, result.version)
-      pendingState.current.delete(signature)
-    } catch (error) {
-      setActionError(error.message)
-      if (error.status === 409) await fetchListings()
-    } finally {
-      setUpdatingId(null)
-    }
-  }
-
-  const handleSold = () => {
-    setLocalStatus(soldModalListing.id, 'sold')
-    setSoldModalListing(null)
-  }
 
   if (loading || !user || !user.emailVerified) {
     return (
@@ -127,13 +57,55 @@ export default function MyListingsPage() {
     )
   }
 
-  const byStatus = {
-    Active: listings.filter(l => getListingStatus(l) === 'active'),
-    Reserved: listings.filter(l => getListingStatus(l) === 'reserved'),
-    Sold: listings.filter(l => getListingStatus(l) === 'sold'),
-  }
-  const currentListings = byStatus[activeTab]
+  return <SellerListings key={`${user.uid}:${user.email}`} user={user} />
+}
+
+function SellerListings({ user }) {
+  const [activeTab, setActiveTab] = useState('Active')
+  const [updatingId, setUpdatingId] = useState(null)
+  const pendingState = useRef(new Map())
+  const [actionError, setActionError] = useState('')
+  const [soldModalListing, setSoldModalListing] = useState(null)
+
+  const [retryKey, setRetryKey] = useState(0)
+  const active = useRef(true)
+  useEffect(() => { active.current = true; return () => { active.current = false } }, [])
+  const configuration = useMemo(() => ({ ...sellerListingsFeed(db, user.uid, getCampusId(user.email), activeTab.toLowerCase()), retryKey }), [user.uid, user.email, activeTab, retryKey])
+  const feed = useCursorFeed(configuration)
+  const currentListings = feed.items.filter(listing => getListingStatus(listing) === activeTab.toLowerCase())
+  const fetchLoading = feed.loading
+  const handleRetry = () => setRetryKey(k => k + 1)
   const sellerUsername = getUsername(user)
+  const setLocalStatus = (id, status, version) => {
+    feed.updateItems(new Map([[id, { status, ...(version === undefined ? {} : { version }) }]]))
+  }
+
+  const handleSetStatus = async (listing, status) => {
+    if (updatingId) return
+    setUpdatingId(listing.id)
+    setActionError('')
+    const data = { listingId: listing.id, status, expectedVersion: listing.version ?? 0 }
+    const signature = JSON.stringify(data)
+    if (!pendingState.current.has(signature)) pendingState.current.set(signature, crypto.randomUUID())
+    try {
+      const result = await marketApi('listingState', { ...data, requestId: pendingState.current.get(signature) })
+      if (!active.current) return
+      setLocalStatus(listing.id, result.status, result.version)
+      pendingState.current.delete(signature)
+    } catch (error) {
+      if (!active.current) return
+      setActionError(error.message)
+      if (error.status === 409) setRetryKey(k => k + 1)
+    } finally {
+      if (active.current) setUpdatingId(null)
+    }
+  }
+
+  const handleSold = () => {
+    if (!active.current) return
+    setLocalStatus(soldModalListing.id, 'sold')
+    setSoldModalListing(null)
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-bg">
@@ -161,14 +133,15 @@ export default function MyListingsPage() {
           {TABS.map(tab => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => { setActionError(''); setActiveTab(tab) }}
+              disabled={!!updatingId}
               className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab
                   ? 'border-primary text-primary-dark'
                   : 'border-transparent text-text-secondary hover:text-text-primary'
               }`}
             >
-              {tab} ({byStatus[tab].length})
+              {tab}
             </button>
           ))}
         </div>
@@ -188,19 +161,10 @@ export default function MyListingsPage() {
               </div>
             ))}
           </div>
-        ) : fetchError ? (
-          <EmptyState
-            tone="error"
-            icon={<AlertIcon />}
-            title="Something went wrong"
-            description="We couldn't load your listings right now."
-            action={<Button onClick={handleRetry}>Try again</Button>}
-          />
         ) : currentListings.length > 0 ? (
           <div className="flex flex-col gap-3">
             {currentListings.map(listing => {
               const status = getListingStatus(listing)
-              const isUpdating = updatingId === listing.id
               return (
                 <div key={listing.id} className="bg-surface rounded-2xl border border-border p-4 flex flex-col sm:flex-row sm:items-center gap-4 shadow-sm hover:shadow-md transition-all duration-200">
                   <Link href={`/listing/${listing.id}`} className="flex items-center gap-4 flex-1 min-w-0">
@@ -228,7 +192,7 @@ export default function MyListingsPage() {
                       {status === 'active' && (
                         <button
                           onClick={() => handleSetStatus(listing, 'reserved')}
-                          disabled={isUpdating}
+                          disabled={!!updatingId}
                           className="px-3 py-2 border border-border text-text-primary text-xs font-semibold rounded-xl hover:bg-bg transition-all duration-200 active:scale-95 disabled:opacity-50"
                         >
                           Mark as Reserved
@@ -237,7 +201,7 @@ export default function MyListingsPage() {
                       {status === 'reserved' && (
                         <button
                           onClick={() => handleSetStatus(listing, 'active')}
-                          disabled={isUpdating}
+                          disabled={!!updatingId}
                           className="px-3 py-2 border border-border text-text-primary text-xs font-semibold rounded-xl hover:bg-bg transition-all duration-200 active:scale-95 disabled:opacity-50"
                         >
                           Back to Active
@@ -245,7 +209,7 @@ export default function MyListingsPage() {
                       )}
                       <button
                         onClick={() => setSoldModalListing(listing)}
-                        disabled={isUpdating}
+                        disabled={!!updatingId}
                         className="px-3 py-2 bg-primary-dark hover:bg-primary-dark-hover text-white text-xs font-semibold rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-50"
                       >
                         Mark as Sold
@@ -256,19 +220,21 @@ export default function MyListingsPage() {
               )
             })}
           </div>
-        ) : (
+        ) : !feed.error && !feed.hasMore ? (
           <EmptyState
             icon={<BoxIcon />}
             title={`No ${activeTab.toLowerCase()} listings`}
             description={activeTab === 'Active' ? 'Create your first listing to start selling' : `You don't have any ${activeTab.toLowerCase()} listings right now.`}
             action={<Button href="/sell">Create Listing</Button>}
           />
-        )}
+        ) : null}
+        <FeedStatus feed={{ ...feed, items: currentListings }} noun={`${activeTab.toLowerCase()} listings`} moreLabel="Load older listings" onRestart={handleRetry} />
       </main>
       <Footer />
 
       {soldModalListing && (
         <MarkAsSoldModal
+          key={soldModalListing.id}
           listing={soldModalListing}
           sellerUsername={sellerUsername}
           onClose={() => setSoldModalListing(null)}

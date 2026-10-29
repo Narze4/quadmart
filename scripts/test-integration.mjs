@@ -6,12 +6,9 @@ try {
  let ready=false;
  for(let i=0;i<60;i++){try{if((await fetch(env.QUADMART_TEST_BASE+'/login')).ok){ready=true;break}}catch{}await setTimeout(500)}
  if(!ready)throw Error('Local Next server did not start');
- const run=spawn(process.execPath,['tests/backend-flow.mjs'],{env,stdio:'inherit'});
- const code=await new Promise(resolve=>run.on('exit',resolve));
- if(code!==0)process.exitCode=1;
- else {
-  const browser=spawn(process.execPath,['tests/pagination-browser.mjs'],{env,stdio:'inherit'});
-  const browserCode=await new Promise(resolve=>browser.on('exit',resolve));
-  if(browserCode!==0)process.exitCode=1;
+ for (const file of ['tests/backend-flow.mjs', 'tests/pagination-browser.mjs', 'tests/collections-browser.mjs']) {
+  const run = spawn(process.execPath, [file], { env, stdio: 'inherit' });
+  const code = await new Promise(resolve => run.on('exit', resolve));
+  if (code !== 0) { process.exitCode = 1; break; }
  }
 }finally{server.kill('SIGTERM')}

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import SafetyActions from '@/components/SafetyActions'
 import ProtectedPhoto from '@/components/ProtectedPhoto'
 import { marketApi } from '@/lib/market-api'
+import SaveListingButton from '@/components/SaveListingButton'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { doc, getDoc } from 'firebase/firestore'
@@ -29,7 +30,7 @@ const CATEGORY_TONE = {
 }
 
 export default function ListingDetailPage() {
-  const { user, loading, savedListings, toggleSaved } = useAuth()
+  const { user, loading } = useAuth()
   const router = useRouter()
   const { id } = useParams()
   const [listing, setListing] = useState(null)
@@ -84,7 +85,6 @@ export default function ListingDetailPage() {
   const sellerUsername = listing.sellerEmail?.split('@')[0] ?? 'unknown'
   const isOwnListing = listing.sellerEmail === user.email
   const status = getListingStatus(listing)
-  const saved = savedListings?.includes(listing.id) ?? false
 
   return (
     <div className="min-h-screen flex flex-col bg-bg">
@@ -227,15 +227,7 @@ export default function ListingDetailPage() {
                 {messageError && (
                   <p className="text-sm text-red-600 text-center -mt-2">{messageError}</p>
                 )}
-                <button
-                  onClick={() => toggleSaved(listing.id)}
-                  className="w-full flex items-center justify-center gap-2 px-6 py-3 border-2 border-primary text-primary-dark font-semibold rounded-xl hover:bg-primary/10 transition-all duration-200 active:scale-[0.98]"
-                >
-                  <svg className={`w-4 h-4 ${saved ? 'fill-primary text-primary' : 'fill-none'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                  </svg>
-                  {saved ? 'Saved' : 'Save'}
-                </button>
+                <SaveListingButton listingId={listing.id} />
               </div>
             )}
           </div>

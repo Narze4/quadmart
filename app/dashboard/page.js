@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { collection, doc, getDoc, getDocs, orderBy, query, where, limit } from 'firebase/firestore'
-import { getUniversity, getUsername, getDomain, getCampusId, getListingStatus } from '@/lib/utils'
+import { recentListingsFeed, marketplaceFeed } from '@/lib/feed-queries.mjs'
+import { useCursorFeed } from '@/lib/use-cursor-feed'
+import FeedStatus from '@/components/FeedStatus'
+import { getUniversity, getUsername, getCampusId } from '@/lib/utils'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
@@ -43,48 +45,10 @@ const BoxIcon = () => (
 export default function DashboardPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [listings, setListings] = useState([])
-  const [fetchLoading, setFetchLoading] = useState(true)
-  const [fetchError, setFetchError] = useState(false)
-  const [userUniversity, setUserUniversity] = useState(null)
-  const [search, setSearch] = useState('')
-
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
     else if (!loading && user && !user.emailVerified) router.replace('/verify-email')
   }, [user, loading, router])
-
-  const fetchAll = async () => {
-    if (!user) return
-    try {
-      // Fetch user profile for university
-      const profileSnap = await getDoc(doc(db, 'users', user.uid))
-      if (profileSnap.exists()) setUserUniversity(profileSnap.data().university)
-
-      const q = query(collection(db, 'listings'), where('campusId', '==', getCampusId(user.email)), where('status', '==', 'active'), orderBy('createdAt', 'desc'), limit(100))
-      const snap = await getDocs(q)
-      setListings(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    } catch {
-      setFetchError(true)
-    } finally {
-      setFetchLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    // fetchAll is also called directly by the retry button (a plain event
-    // handler), which is what trips this rule — the state updates inside
-    // it only ever happen after an await, never synchronously here.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchAll()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
-
-  const handleRetry = () => {
-    setFetchLoading(true)
-    setFetchError(false)
-    fetchAll()
-  }
 
   if (loading || !user || !user.emailVerified) {
     return (
@@ -94,24 +58,30 @@ export default function DashboardPage() {
     )
   }
 
-  const university = userUniversity ?? getUniversity(user.email)
+  return <CampusDashboard key={`${user.uid}:${user.email}`} user={user} />
+}
+
+function CampusDashboard({ user }) {
+  const [search, setSearch] = useState('')
+  const [category, setCategory] = useState('All')
+  const [settledSearch, setSettledSearch] = useState('')
+  const [retryKey, setRetryKey] = useState(0)
+  useEffect(() => { const timer = setTimeout(() => setSettledSearch(search.trim()), 300); return () => clearTimeout(timer) }, [search])
+  const searching = !!settledSearch || category !== 'All'
+  const pending = settledSearch !== search.trim()
+  const campusId = getCampusId(user.email)
+  const configuration = useMemo(() => ({
+    ...(searching ? { loadPage: marketplaceFeed(db, campusId, { category, search: settledSearch, condition: '', sort: 'newest', minPrice: '', maxPrice: '' }) } : recentListingsFeed(db, campusId)), retryKey,
+  }), [campusId, category, settledSearch, searching, retryKey])
+  const feed = useCursorFeed(configuration)
+  const source = feed.items
+  const recent = source
+  const searchResults = searching ? source : null
+  const fetchLoading = feed.loading || pending
+  const fetchError = !!feed.error && !source.length
+  const handleRetry = () => setRetryKey(k => k + 1)
+  const university = getUniversity(user.email)
   const username = getUsername(user)
-  const activeListings = listings.filter(l => getListingStatus(l) === 'active')
-  const userDomain = getDomain(user.email)
-  const campusListings = activeListings.filter(l => l.campusId === getCampusId(user.email))
-  const source = campusListings.length > 0 ? campusListings : activeListings
-
-  const searchQuery = search.trim().toLowerCase()
-  const searchResults = searchQuery
-    ? source.filter(l => l.title?.toLowerCase().includes(searchQuery))
-    : null
-
-  const recent = source.slice(0, 8)
-  const categoryCounts = source.reduce((acc, l) => {
-    if (l.category) acc[l.category] = (acc[l.category] ?? 0) + 1
-    return acc
-  }, {})
-  const popularCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])
 
   return (
     <div className="min-h-screen flex flex-col bg-bg">
@@ -188,20 +158,21 @@ export default function DashboardPage() {
         ) : searchResults !== null ? (
           <section>
             <h2 className="text-xl font-semibold text-text-primary mb-4">
-              Results for &ldquo;{search}&rdquo;
+              {settledSearch ? `Results for “${settledSearch}”` : category}
             </h2>
             {searchResults.length === 0 ? (
               <EmptyState
                 icon={<SearchIcon />}
-                title="No matches"
-                description="Try a different search, or browse the full marketplace."
-                action={<Button href="/marketplace" variant="secondary">Browse marketplace</Button>}
+                title={feed.hasMore ? "No matches in this batch" : "No matches"}
+                description={feed.hasMore ? "More campus listings remain to search." : "Try another search or category."}
               />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {searchResults.map(listing => <ListingCard key={listing.id} listing={listing} />)}
               </div>
             )}
+            <FeedStatus feed={feed} noun="listings" moreLabel={source.length ? 'Load more matches' : 'Continue searching'} onRestart={handleRetry} />
+            <Button className="mt-3" variant="ghost" onClick={() => { setSearch(''); setCategory('All') }}>Clear search</Button>
           </section>
         ) : source.length === 0 ? (
           <EmptyState
@@ -221,30 +192,14 @@ export default function DashboardPage() {
               </section>
             )}
 
-            {popularCategories.length > 0 && (
-              <section>
-                <h2 className="text-xl font-semibold text-text-primary mb-4">Popular categories</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {popularCategories.map(([category, count]) => (
-                    <Link
-                      key={category}
-                      href="/marketplace"
-                      className="flex items-center gap-4 bg-surface border border-border rounded-2xl p-5 shadow-sm hover:shadow-md motion-safe:hover:-translate-y-0.5 motion-safe:transition-all motion-safe:duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                    >
-                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-2xl shrink-0">
-                        {CATEGORY_META[category]?.icon ?? '🛍️'}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-text-primary">{category}</p>
-                        <p className="text-sm text-text-secondary">{count} listing{count === 1 ? '' : 's'}</p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            )}
           </>
         )}
+        {!searching && !fetchLoading && !fetchError && <section aria-label="Browse by category">
+          <h2 className="text-xl font-semibold text-text-primary mb-4">Browse by category</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">{Object.entries(CATEGORY_META).map(([name, meta]) => <button key={name} onClick={() => setCategory(name)} className="flex items-center gap-4 text-left bg-surface border border-border rounded-2xl p-5 shadow-sm hover:shadow-md">
+            <span className="text-2xl" aria-hidden="true">{meta.icon}</span><span className="font-semibold text-text-primary">{name}</span>
+          </button>)}</div>
+        </section>}
       </main>
 
       <Footer />

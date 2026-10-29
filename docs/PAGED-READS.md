@@ -1,4 +1,4 @@
-# Marketplace, messages and account-page loading
+# Marketplace and account-page loading
 
 The marketplace previously read only the newest 100 active campus listings and applied all filters to that truncated set. Chat detail also stopped at the newest 100 messages; the inbox listened to every conversation.
 
@@ -22,6 +22,14 @@ Public profiles fetch their public header separately from 24-item listing and re
 
 Additional-page failures retain rows and cursor for retry. Access denial invalidates any in-flight history response before clearing private rows, so a late success cannot refill a denied view. New query shapes reuse existing development indexes; verify native cloud queries because the emulator does not enforce composite indexes.
 
-Dashboard search, My Listings, saved-listing reads and seller buyer-selection still need their own scaling review; do not claim that all application reads are bounded. Read budgets are per query/action here, not a server-enforced global rate limit. Historical pages are point-in-time reads: changes outside a live head require a fresh visit/reload. Existing write quotas and the full buying/selling checks remain in place.
+The dashboard fetches eight recent campus listings plus one lookahead. Search and category selection switch to the same bounded marketplace feed, so older matches remain reachable after the first 100 scanned records. The previous sample-derived popular-category counts were removed; category navigation does not invent campus totals.
+
+My Listings queries seller, campus and status in Firestore, fetching 24 listings plus one lookahead. Active, Reserved and Sold each have a fresh cursor. Status writes preserve version checks and idempotent retry IDs, remove a changed row from the current tab after confirmation, and refresh on stale-version conflicts. One pending status operation disables competing row actions. Counts describe the loaded status rows.
+
+Saved membership remains capped at 200 IDs in the owner-only private profile. It is loaded from server-confirmed snapshots with a timeout, explicit failure/retry and identity scoping. Saves/removals use atomic array operations and expose rejected writes without silently changing a heart. Each page resolves at most 24 saved IDs, newest save first, followed by one server read to verify current account access. Individual missing or inaccessible listings become removable, generic unavailable slots without revealing their contents. Network failures retain the previous page and cursor. An account-access denial clears the page. Direct document reads preserve the existing rules for missing/foreign entries; no access rule was relaxed. A membership change deliberately resets the saved feed to avoid skipping or reintroducing items after offsets shift. Sold/reserved cards can still be removed.
+
+The sale buyer picker now pages 24 listing conversations plus one lookahead, and fetches at most 24 candidate public profiles per page. Missing/inaccessible candidates are skipped, other errors are retryable, and the user must explicitly choose a buyer or an off-platform sale. A failed or still-loading candidate list cannot silently become an off-platform sale. The new seller/status query needs a listings composite index on campusId, sellerUid, status and createdAt descending; deployment now has 21 development indexes. Native cloud query probes verify index readiness because emulators do not enforce indexes.
+
+The collection browser regression uses two isolated accounts, 223 same-campus listings, 65 initial saved slots and 65 candidate conversations. It covers all three seller statuses, pagination, old search matches, offline retries, denied saved writes/reads, unavailable saves, same-browser account switching, the 200-save cap and a seller-to-buyer sale/purchase/review. The query suite serializes files that reset the same emulator. These are per-query/action bounds, not a server-enforced global read quota. Historical pages are point-in-time reads: changes outside a live head require a fresh visit/reload. Existing write quotas and the full buying/selling checks remain in place.
 
 Reference: [Firestore document-snapshot cursors](https://firebase.google.com/docs/firestore/query-data/query-cursors), [ordering and limits](https://firebase.google.com/docs/firestore/query-data/order-limit-data).

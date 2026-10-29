@@ -1,65 +1,40 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { db } from '@/lib/firebase'
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-} from 'firebase/firestore'
+import { listingBuyersFeed } from '@/lib/feed-queries.mjs'
+import { useCursorFeed } from '@/lib/use-cursor-feed'
+import FeedStatus from '@/components/FeedStatus'
 import { marketApi } from '@/lib/market-api'
 
 const OFF_PLATFORM = 'off-platform'
 
 export default function MarkAsSoldModal({ listing, onClose, onSold }) {
-  const [buyers, setBuyers] = useState([])
-  const [loadingBuyers, setLoadingBuyers] = useState(true)
-  const [selected, setSelected] = useState(OFF_PLATFORM)
+  const [retryKey, setRetryKey] = useState(0)
+  const configuration = useMemo(() => ({ ...listingBuyersFeed(db, listing.id, listing.sellerUid), retryKey }), [listing.id, listing.sellerUid, retryKey])
+  const feed = useCursorFeed(configuration)
+  const buyers = feed.items
+  const loadingBuyers = feed.loading
+  const active = useRef(true)
+  useEffect(() => { active.current = true; return () => { active.current = false } }, [])
+  const [selected, setSelected] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    let cancelled = false
-    const loadBuyers = async () => {
-      try {
-        const convoSnap = await getDocs(
-          query(collection(db, 'conversations'), where('listingId', '==', listing.id), where('participants', 'array-contains', listing.sellerUid))
-        )
-        const seen = new Set()
-        const candidates = []
-        for (const convoDoc of convoSnap.docs) {
-          const convo = convoDoc.data()
-          const otherUid = convo.participants?.find(p => p !== listing.sellerUid)
-          if (!otherUid || seen.has(otherUid)) continue
-          seen.add(otherUid)
-          const userSnap = await getDoc(doc(db, 'publicProfiles', otherUid))
-          if (!userSnap.exists()) continue
-          candidates.push({ uid: otherUid, username: userSnap.data().displayName ?? 'Student' })
-        }
-        if (!cancelled) setBuyers(candidates)
-      } catch { if (!cancelled) setError('Could not load buyers. Close this dialog and try again.')
-      } finally {
-        if (!cancelled) setLoadingBuyers(false)
-      }
-    }
-    loadBuyers()
-    return () => { cancelled = true }
-  }, [listing.id, listing.sellerUid])
-
   const handleConfirm = async () => {
+    if (submitting || !selected || feed.error) return
     setSubmitting(true)
     setError('')
     try {
       const buyer = selected === OFF_PLATFORM ? null : buyers.find(b => b.uid === selected)
-      const buyerUid = buyer?.uid ?? null
+      const buyerUid = selected === OFF_PLATFORM ? null : buyer?.uid
+      if (buyerUid === undefined) throw Error('Choose an available buyer')
 
       await marketApi('sale', { listingId: listing.id, buyerUid })
 
-      onSold()
+      if (active.current) onSold()
     } catch {
+      if (!active.current) return
       setError('Something went wrong marking this as sold. Please try again.')
       setSubmitting(false)
     }
@@ -68,7 +43,7 @@ export default function MarkAsSoldModal({ listing, onClose, onSold }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/40" onClick={submitting ? undefined : onClose} aria-hidden="true" />
-      <div className="relative w-full max-w-sm bg-surface rounded-2xl p-6 shadow-lg animate-fade-in">
+      <div className="relative w-full max-w-sm max-h-[90vh] overflow-y-auto bg-surface rounded-2xl p-6 shadow-lg animate-fade-in">
         <h2 className="text-lg font-bold text-text-primary mb-1">Who bought this?</h2>
         <p className="text-sm text-text-secondary mb-4">{listing.title}</p>
 
@@ -86,6 +61,7 @@ export default function MarkAsSoldModal({ listing, onClose, onSold }) {
                 }`}
               >
                 <input
+                  disabled={submitting}
                   type="radio"
                   name="buyer"
                   value={buyer.uid}
@@ -106,6 +82,7 @@ export default function MarkAsSoldModal({ listing, onClose, onSold }) {
               }`}
             >
               <input
+                disabled={submitting}
                 type="radio"
                 name="buyer"
                 value={OFF_PLATFORM}
@@ -118,6 +95,7 @@ export default function MarkAsSoldModal({ listing, onClose, onSold }) {
           </div>
         )}
 
+        <FeedStatus feed={feed} noun="buyers" moreLabel="Load more buyers" onRestart={() => setRetryKey(k => k + 1)} />
         {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
 
         <div className="flex gap-3">
@@ -130,7 +108,7 @@ export default function MarkAsSoldModal({ listing, onClose, onSold }) {
           </button>
           <button
             onClick={handleConfirm}
-            disabled={submitting || loadingBuyers}
+            disabled={submitting || loadingBuyers || !selected || !!feed.error || (selected !== OFF_PLATFORM && !buyers.some(b => b.uid === selected))}
             className="flex-1 px-4 py-2.5 bg-primary-dark hover:bg-primary-dark-hover text-white text-sm font-semibold rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-50"
           >
             {submitting ? 'Confirming…' : 'Confirm'}

@@ -7,7 +7,7 @@ import Badge from '@/components/ui/Badge'
 import CategoryPlaceholder from '@/components/CategoryPlaceholder'
 import { getUniversity, timeAgo, getListingStatus } from '@/lib/utils'
 import { isSampleSeller } from '@/lib/sellers'
-import { useAuth } from '@/lib/auth-context'
+import SaveListingButton from '@/components/SaveListingButton'
 
 const CONDITION_TONE = {
   New: 'green',
@@ -21,12 +21,6 @@ const CATEGORY_TONE = {
   Service: 'cyan',
   Sublease: 'amber',
 }
-
-const HeartIcon = ({ filled }) => (
-  <svg className={`w-4 h-4 ${filled ? 'fill-primary text-primary' : 'fill-none text-gray-400'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-  </svg>
-)
 
 const CheckBadgeIcon = () => (
   <svg className="w-2 h-2" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -49,14 +43,12 @@ const ArrowIcon = () => (
 )
 
 export default function ListingCard({ listing, showSeller = true }) {
-  const { savedListings, toggleSaved } = useAuth()
   const [imgError, setImgError] = useState(false)
   const [isSample, setIsSample] = useState(false)
   const sellerUsername = listing.sellerEmail?.split('@')[0] ?? 'unknown'
   const hasImage = listing.images?.[0] && !imgError
   const imageCount = listing.images?.length ?? 0
   const status = getListingStatus(listing)
-  const saved = savedListings?.includes(listing.id) ?? false
 
   useEffect(() => {
     let cancelled = false
@@ -88,13 +80,7 @@ export default function ListingCard({ listing, showSeller = true }) {
           </Badge>
         )}
 
-        <button
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleSaved(listing.id) }}
-          aria-label={saved ? 'Remove from saved' : 'Save listing'}
-          className="absolute top-3 left-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow motion-safe:hover:scale-110 motion-safe:transition-transform"
-        >
-          <HeartIcon filled={saved} />
-        </button>
+        <SaveListingButton listingId={listing.id} compact />
 
         {imageCount > 1 && (
           <span className="absolute bottom-3 right-3 flex items-center gap-1 bg-black/60 text-white text-[10px] font-medium px-2 py-1 rounded-full">
@@ -104,7 +90,7 @@ export default function ListingCard({ listing, showSeller = true }) {
         )}
 
         {status !== 'active' && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+          <div className="pointer-events-none absolute inset-0 bg-black/40 flex items-center justify-center">
             <span className="px-4 py-1.5 rounded-full bg-white/90 text-text-primary text-xs font-bold uppercase tracking-wide">
               {status}
             </span>
