@@ -9,4 +9,9 @@ try {
  const run=spawn(process.execPath,['tests/backend-flow.mjs'],{env,stdio:'inherit'});
  const code=await new Promise(resolve=>run.on('exit',resolve));
  if(code!==0)process.exitCode=1;
+ else {
+  const browser=spawn(process.execPath,['tests/pagination-browser.mjs'],{env,stdio:'inherit'});
+  const browserCode=await new Promise(resolve=>browser.on('exit',resolve));
+  if(browserCode!==0)process.exitCode=1;
+ }
 }finally{server.kill('SIGTERM')}

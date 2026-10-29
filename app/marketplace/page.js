@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { collection, doc, getDoc, getDocs, orderBy, query, where, limit } from 'firebase/firestore'
-import { getUniversity, getDomain, getCampusId, getListingStatus } from '@/lib/utils'
+import { marketplaceFeed } from '@/lib/feed-queries.mjs'
+import { useCursorFeed } from '@/lib/use-cursor-feed'
+import { getUniversity, getCampusId } from '@/lib/utils'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
@@ -87,10 +88,6 @@ function FilterFields({ sort, setSort, condition, setCondition, minPrice, setMin
 export default function MarketplacePage() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [listings, setListings] = useState([])
-  const [fetchLoading, setFetchLoading] = useState(true)
-  const [fetchError, setFetchError] = useState(false)
-  const [userUniversity, setUserUniversity] = useState(null)
   const [activeTab, setActiveTab] = useState('All')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('newest')
@@ -104,54 +101,26 @@ export default function MarketplacePage() {
     else if (!loading && user && !user.emailVerified) router.replace('/verify-email')
   }, [user, loading, router])
 
-  const fetchAll = async () => {
-    if (!user) return
-    try {
-      // Fetch user profile for university
-      const profileSnap = await getDoc(doc(db, 'users', user.uid))
-      if (profileSnap.exists()) setUserUniversity(profileSnap.data().university)
-
-      const q = query(collection(db, 'listings'), where('campusId', '==', getCampusId(user.email)), where('status', '==', 'active'), orderBy('createdAt', 'desc'), limit(100))
-      const snap = await getDocs(q)
-      setListings(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    } catch {
-      setFetchError(true)
-    } finally {
-      setFetchLoading(false)
-    }
-  }
-
+  const [retryKey, setRetryKey] = useState(0)
+  const [settledFilters, setSettledFilters] = useState(null)
   useEffect(() => {
-    // fetchAll is also called directly by the retry button (a plain event
-    // handler), which is what trips this rule — the state updates inside
-    // it only ever happen after an await, never synchronously here.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchAll()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
-
-  const handleRetry = () => {
-    setFetchLoading(true)
-    setFetchError(false)
-    fetchAll()
-  }
-
-  const userDomain = getDomain(user?.email)
-  const campusListings = listings.filter(l => l.campusId === getCampusId(user.email) && getListingStatus(l) === 'active')
-
-  let filtered = listings.filter(l => {
-    if (l.campusId !== getCampusId(user.email)) return false
-    if (getListingStatus(l) !== 'active') return false
-    if (activeTab !== 'All' && l.category !== activeTab) return false
-    if (search && !l.title?.toLowerCase().includes(search.toLowerCase())) return false
-    if (condition && l.condition !== condition) return false
-    if (minPrice !== '' && l.price < Number(minPrice)) return false
-    if (maxPrice !== '' && l.price > Number(maxPrice)) return false
-    return true
-  })
-
-  if (sort === 'price-asc') filtered = [...filtered].sort((a, b) => a.price - b.price)
-  if (sort === 'price-desc') filtered = [...filtered].sort((a, b) => b.price - a.price)
+    const timer = setTimeout(() => setSettledFilters({ category: activeTab, search, sort, condition, minPrice, maxPrice }), 300)
+    return () => clearTimeout(timer)
+  }, [activeTab, search, sort, condition, minPrice, maxPrice])
+  const enabled = !!user?.emailVerified && !!settledFilters
+  const configuration = useMemo(() => ({
+    enabled,
+    loadPage: enabled ? marketplaceFeed(db, getCampusId(user.email), settledFilters) : async () => ({ items: [], hasMore: false }),
+    // A new feed discards in-flight results from another identity/filter/retry.
+    identity: `${user?.uid ?? ''}:${retryKey}`,
+  }), [enabled, user, settledFilters, retryKey])
+  const feed = useCursorFeed(configuration)
+  const filtered = feed.items
+  const filtersPending = !settledFilters || settledFilters.category !== activeTab || settledFilters.search !== search || settledFilters.sort !== sort || settledFilters.condition !== condition || settledFilters.minPrice !== minPrice || settledFilters.maxPrice !== maxPrice
+  const invalidPrice = (minPrice !== '' && (!Number.isFinite(Number(minPrice)) || Number(minPrice) < 0)) || (maxPrice !== '' && (!Number.isFinite(Number(maxPrice)) || Number(maxPrice) < 0)) || (minPrice !== '' && maxPrice !== '' && Number(minPrice) > Number(maxPrice))
+  const fetchLoading = feed.loading || filtersPending
+  const fetchError = !!feed.error && !filtered.length
+  const handleRetry = () => setRetryKey(k => k + 1)
 
   const activeFilterCount = [
     activeTab !== 'All',
@@ -177,7 +146,7 @@ export default function MarketplacePage() {
     )
   }
 
-  const university = userUniversity ?? getUniversity(user.email)
+  const university = getUniversity(user.email)
 
   return (
     <div className="min-h-screen flex flex-col bg-bg">
@@ -186,7 +155,7 @@ export default function MarketplacePage() {
         <h1 className="text-3xl font-bold text-text-primary mb-1">{university} Marketplace</h1>
         {!fetchLoading && !fetchError && (
           <p className="text-sm text-text-secondary mb-6">
-            Showing {filtered.length} of {campusListings.length} listing{campusListings.length === 1 ? '' : 's'}
+            {filtered.length} listing{filtered.length === 1 ? '' : 's'}{feed.hasMore ? ' shown so far' : ' found'}
           </p>
         )}
 
@@ -300,7 +269,7 @@ export default function MarketplacePage() {
         )}
 
         {/* Listings */}
-        {fetchLoading ? (
+        {invalidPrice ? <p role="alert" className="text-sm text-red-700">Enter a valid price range. Minimum must not exceed maximum.</p> : fetchLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm">
@@ -321,7 +290,7 @@ export default function MarketplacePage() {
             action={<Button onClick={handleRetry}>Try again</Button>}
           />
         ) : filtered.length === 0 ? (
-          listings.length === 0 ? (
+          activeFilterCount === 0 && !feed.hasMore ? (
             <EmptyState
               icon={<BoxIcon />}
               title="No listings yet"
@@ -331,14 +300,22 @@ export default function MarketplacePage() {
           ) : (
             <EmptyState
               icon={<SearchIcon className="w-9 h-9" />}
-              title="No matches"
-              description="Try adjusting your filters, or browse a different category."
+              title={feed.hasMore ? 'No matches in this batch' : 'No matches'}
+              description={feed.hasMore ? 'Continue searching older listings, or adjust your filters.' : 'Try adjusting your filters, or browse a different category.'}
               action={<Button variant="secondary" onClick={clearAll}>Clear filters</Button>}
             />
           )
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map(listing => <ListingCard key={listing.id} listing={listing} />)}
+          </div>
+        )}
+        {!fetchLoading && !invalidPrice && !feed.denied && (feed.hasMore || feed.error) && (
+          <div className="mt-6 text-center">
+            {feed.error && filtered.length > 0 && <p role="alert" className="mb-3 text-sm text-red-700">{feed.error}</p>}
+            <Button onClick={feed.loadMore} disabled={feed.loadingMore}>
+              {feed.loadingMore ? 'Loading…' : feed.error ? 'Retry loading more' : activeFilterCount ? 'Continue searching' : 'Load more listings'}
+            </Button>
           </div>
         )}
       </main>

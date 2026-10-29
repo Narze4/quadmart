@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { collection, onSnapshot, query, where } from 'firebase/firestore'
+import { conversationFeed } from '@/lib/feed-queries.mjs'
+import { useCursorFeed } from '@/lib/use-cursor-feed'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
@@ -21,9 +22,6 @@ const AlertIcon = () => (
 export default function MessagesPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [conversations, setConversations] = useState([])
-  const [fetchLoading, setFetchLoading] = useState(true)
-  const [fetchError, setFetchError] = useState(false)
   const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
@@ -31,25 +29,13 @@ export default function MessagesPage() {
     else if (!loading && user && !user.emailVerified) router.replace('/verify-email')
   }, [user, loading, router])
 
-  useEffect(() => {
-    if (!user) return
-    const q = query(collection(db, 'conversations'), where('participants', 'array-contains', user.uid))
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .sort((a, b) => {
-          const aTime = a.lastMessageAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0
-          const bTime = b.lastMessageAt?.toMillis?.() ?? b.createdAt?.toMillis?.() ?? 0
-          return bTime - aTime
-        })
-      setConversations(docs)
-      setFetchLoading(false)
-    }, () => {
-      setFetchError(true)
-      setFetchLoading(false)
-    })
-    return unsubscribe
-  }, [user, retryKey])
+  const configuration = useMemo(() => ({
+    ...conversationFeed(db, user?.uid ?? 'signed-out'), enabled: !!user?.emailVerified, retryKey,
+  }), [user?.uid, user?.emailVerified, retryKey])
+  const feed = useCursorFeed(configuration)
+  const conversations = feed.items
+  const fetchLoading = feed.loading
+  const fetchError = !!feed.error && !conversations.length
 
   const otherParticipant = (conv) => {
     const idx = conv.participants?.findIndex((p) => p !== user.uid) ?? -1
@@ -88,7 +74,7 @@ export default function MessagesPage() {
             icon={<AlertIcon />}
             title="Something went wrong"
             description="We couldn't load your messages right now."
-            action={<Button onClick={() => { setFetchLoading(true); setFetchError(false); setRetryKey(k => k + 1) }}>Try again</Button>}
+            action={<Button onClick={() => { setRetryKey(k => k + 1) }}>Try again</Button>}
           />
         ) : conversations.length === 0 ? (
           <EmptyState
@@ -121,6 +107,12 @@ export default function MessagesPage() {
                 </div>
               </Link>
             ))}
+          </div>
+        )}
+        {!fetchLoading && !feed.denied && conversations.length > 0 && (feed.hasMore || feed.error) && (
+          <div className="mt-5 text-center">
+            {feed.error && <p role="alert" className="mb-3 text-sm text-red-700">{feed.error}</p>}
+            <Button onClick={feed.loadMore} disabled={feed.loadingMore}>{feed.loadingMore ? 'Loading…' : feed.error ? 'Retry loading more' : 'Load older conversations'}</Button>
           </div>
         )}
       </main>
