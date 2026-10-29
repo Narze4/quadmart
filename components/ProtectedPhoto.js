@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
+import { authenticatedRequest } from '@/lib/authenticated-request'
 
 export default function ProtectedPhoto({ src, alt, className = '', onError }) {
   const { user } = useAuth()
@@ -17,8 +18,7 @@ export default function ProtectedPhoto({ src, alt, className = '', onError }) {
     async function load() {
       try {
         if (!user || !/^\/api\/photos\/[a-f0-9]{64}$/.test(src)) throw new Error('Unavailable photo')
-        const token = await user.getIdToken()
-        const response = await fetch(src, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })
+        const response = await authenticatedRequest(src, { signal: controller.signal }, { expectedUid: user.uid })
         if (response.status === 429) {
           const seconds = Number(response.headers.get('retry-after'))
           const delay = Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds, 86400) : 60

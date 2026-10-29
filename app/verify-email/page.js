@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { RESEND_COOLDOWN, sendVerification, verificationStatus } from '@/lib/email-verification.mjs'
 import { useAuth } from '@/lib/auth-context'
+import { authErrorMessage } from '@/lib/auth-errors.mjs'
 import Footer from '@/components/Footer'
 import Button from '@/components/ui/Button'
 
@@ -31,6 +32,7 @@ export default function VerifyEmailPage() {
   const [cooldown, setCooldown] = useState(0)
   const [error, setError] = useState('')
   const [sent, setSent] = useState(false)
+  const pending = useRef(false)
 
   useEffect(() => {
     if (!user) return
@@ -45,8 +47,8 @@ export default function VerifyEmailPage() {
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
-    else if (!loading && user?.emailVerified) router.replace('/dashboard')
-  }, [user, loading, router])
+    else if (!loading && user?.emailVerified && !checking && !error) router.replace('/dashboard')
+  }, [user, loading, checking, error, router])
 
   useEffect(() => {
     if (cooldown === 0) return
@@ -55,7 +57,8 @@ export default function VerifyEmailPage() {
   }, [cooldown])
 
   const handleResend = async () => {
-    if (!user || cooldown > 0) return
+    if (!user || cooldown > 0 || pending.current) return
+    pending.current = true
     setError('')
     setSending(true)
     try {
@@ -65,12 +68,14 @@ export default function VerifyEmailPage() {
     } catch (error) {
       setError(error.message)
     } finally {
+      pending.current = false
       setSending(false)
     }
   }
 
   const handleContinue = async () => {
-    if (!user) return
+    if (!user || pending.current) return
+    pending.current = true
     setError('')
     setChecking(true)
     try {
@@ -81,14 +86,15 @@ export default function VerifyEmailPage() {
       } else {
         setError("Still not verified — click the link in the email, then try again.")
       }
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (error) {
+      setError(authErrorMessage(error, 'verification'))
     } finally {
+      pending.current = false
       setChecking(false)
     }
   }
 
-  if (loading || !user || user.emailVerified) {
+  if (loading || !user || (user.emailVerified && !error && !checking)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
@@ -126,7 +132,7 @@ export default function VerifyEmailPage() {
           </p>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-4 text-left">
+            <div role="alert" className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-4 text-left">
               {error}
             </div>
           )}
@@ -138,14 +144,14 @@ export default function VerifyEmailPage() {
           )}
 
           <div className="flex flex-col gap-3">
-            <Button onClick={handleContinue} loading={checking} className="w-full">
+            <Button onClick={handleContinue} loading={checking} disabled={sending} className="w-full">
               {checking ? 'Checking…' : "I've verified, continue"}
             </Button>
             <Button
               onClick={handleResend}
               variant="secondary"
               loading={sending}
-              disabled={cooldown > 0}
+              disabled={cooldown > 0 || checking}
               className="w-full"
             >
               {cooldown > 0 ? `Resend email (${cooldown}s)` : sent ? 'Resend email' : 'Send verification email'}

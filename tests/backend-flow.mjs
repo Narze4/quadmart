@@ -143,5 +143,19 @@ try {
  const sellerUid=seller.user.uid;await deleteUser(seller.user);
  const oldResponse=await fetch(`${base}/api/market`,{method:'POST',headers:{Authorization:`Bearer ${oldToken}`},body:JSON.stringify({action:'accountCloseStep',data:{}})});assert.equal(oldResponse.status,401);checks++;
  await assert.rejects(adminAuth(admin).getUser(sellerUid),e=>e.code==='auth/user-not-found');checks++;
+ // Existing signed-in tokens must lose all authenticated HTTP access after revocation.
+ const revokedToken=await buyer.user.getIdToken();
+ await new Promise(resolve=>setTimeout(resolve,1100));
+ await adminAuth(admin).revokeRefreshTokens(buyer.user.uid);
+ for(const path of ['/api/market','/api/upload','/api/photos/'+'a'.repeat(64)]){
+  const response=await fetch(base+path,{method:path.startsWith('/api/photos/')?'GET':'POST',headers:{Authorization:`Bearer ${revokedToken}`},...(path==='/api/market'?{body:JSON.stringify({action:'profile',data:{}})}:{})});
+  assert.equal(response.status,401);checks++;
+ }
+ // The Auth emulator can renew a revoked refresh token; its old auth_time must
+ // still be rejected by the server. Cloud refresh rejection is a separate check.
+ await buyer.user.getIdToken(true);
+ await api(buyer.user,'profile',{},401);
+ const recovered=await signInWithEmailAndPassword(buyer.auth,buyer.user.email,'Local-test-only-123!');
+ await api(recovered.user,'profile',{});
  console.log(JSON.stringify({passed:true,checks,listingId,conversationId:c.id,seller:sellerUid,buyer:buyer.user.uid}));
 }finally{await Promise.all(apps.map(deleteApp));await deleteAdmin(admin)}

@@ -4,9 +4,11 @@ import path from 'node:path';
 import { chromium, webkit, devices } from 'playwright';
 import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 if (process.env.FIREBASE_AUTH_EMULATOR_HOST !== '127.0.0.1:9099' || process.env.FIRESTORE_EMULATOR_HOST !== '127.0.0.1:8080') throw Error('Isolated emulators required');
 const app = initializeApp({ projectId: 'demo-quadmart' }, 'signup-browser');
 const auth = getAuth(app), base = 'http://127.0.0.1:3100';
+const db = getFirestore(app);
 const endpoint = '**/identitytoolkit.googleapis.com/v1/accounts:signUp*';
 let checks = 0;
 const errors = [];
@@ -82,6 +84,18 @@ try {
         await page.screenshot({ path: path.join(process.env.QUADMART_SCREENSHOT_DIRECTORY, `${name}-signup-verification.png`) });
       }
       pass(name, 'duplicate submit creates one unverified account and opens verification');
+      const codes = await (await fetch('http://127.0.0.1:9099/emulator/v1/projects/demo-quadmart/oobCodes')).json();
+      const code = codes.oobCodes.filter(entry => entry.email === user.email && entry.requestType === 'VERIFY_EMAIL').at(-1);
+      assert(code);
+      const verified = await fetch('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:update?key=demo-key', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oobCode: code.oobCode }) });
+      assert.equal(verified.status, 200);
+      await page.getByRole('button', { name: "I've verified, continue", exact: true }).click();
+      await page.getByRole('heading', { name: /Welcome back,/ }).waitFor();
+      await db.doc(`moderationAccounts/${user.uid}`).set({ suspended: true });
+      await page.getByRole('alert').filter({ hasText: 'Your account is suspended.' }).waitFor();
+      await db.doc(`moderationAccounts/${user.uid}`).set({ suspended: false });
+      await page.getByRole('heading', { name: /Welcome back,/ }).waitFor();
+      pass(name, 'uninterrupted verification refreshes claims and starts account-safety listeners without reload');
     } finally {
       page.removeAllListeners('pageerror');
       await context.close(); await browser.close();
@@ -89,4 +103,4 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ ok: true, signupChecks: checks, pageErrors: errors.length }));
-} finally { await deleteApp(app); }
+} finally { await db.terminate(); await deleteApp(app); }

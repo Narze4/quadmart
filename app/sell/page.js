@@ -1,5 +1,7 @@
 'use client'
 
+import { authenticatedRequest } from '@/lib/authenticated-request'
+
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
@@ -122,10 +124,9 @@ export default function SellPage() {
       if (!cached) { cached = { requestId: crypto.randomUUID() }; uploadCache.current.set(file, cached) }
       if (!cached.asset) {
         setUploadProgress(`Uploading photo ${index + 1} of ${photos.length}…`)
-        const token = await user.getIdToken()
-        const res = await fetch('/api/upload', {
-          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': file.type, 'X-Upload-Id': cached.requestId }, body: file,
-        })
+        const res = await authenticatedRequest('/api/upload', {
+          method: 'POST', headers: { 'Content-Type': file.type, 'X-Upload-Id': cached.requestId }, body: file,
+        }, { expectedUid: user.uid })
         let data
         try { data = await res.json() } catch { throw new Error('Photo upload is temporarily unavailable. Please retry.') }
         if (!res.ok) throw new Error(data.error ?? 'Photo upload failed. Please retry.')
