@@ -45,7 +45,7 @@ export default function MarkAsSoldModal({ listing, onClose, onSold }) {
       <div className="absolute inset-0 bg-black/40" onClick={submitting ? undefined : onClose} aria-hidden="true" />
       <div className="relative w-full max-w-sm max-h-[90vh] overflow-y-auto bg-surface rounded-2xl p-6 shadow-lg animate-fade-in">
         <h2 className="text-lg font-bold text-text-primary mb-1">Who bought this?</h2>
-        <p className="text-sm text-text-secondary mb-4">{listing.title}</p>
+        <p className="text-sm text-text-secondary mb-4 [overflow-wrap:anywhere]">{listing.title}</p>
 
         {loadingBuyers ? (
           <div className="flex justify-center py-6">

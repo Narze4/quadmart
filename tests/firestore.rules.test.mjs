@@ -1,7 +1,9 @@
+import assert from 'node:assert/strict';
+import { createMockUserToken } from '@firebase/util';
 import { readFile } from 'node:fs/promises';
 import { before, after, beforeEach, test } from 'node:test';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { doc, collection, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { doc, collection, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, limit, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 const projectId = 'demo-quadmart';
 if (!process.env.FIRESTORE_EMULATOR_HOST?.startsWith('127.0.0.1:')) throw new Error('Tests require the local Firestore emulator');
@@ -39,7 +41,7 @@ test('verified student can read own campus; subdomains share campus', async () =
 });
 test('cross campus reads fail', async () => { await assertFails(getDoc(doc(auth('eve','eve@uga.edu'),'listings/desk'))); });
 test('campus-scoped query works; broad query fails', async () => {
-  await assertSucceeds(getDocs(query(collection(auth(),'listings'),where('campusId','==','emory.edu'))));
+  await assertSucceeds(getDocs(query(collection(auth(),'listings'),where('campusId','==','emory.edu'),limit(25))));
   await assertFails(getDocs(collection(auth(),'listings')));
 });
 test('direct listing creation cannot bypass server quotas', async () => { await assertFails(setDoc(doc(auth(),'listings/new'),listing())); });
@@ -74,7 +76,7 @@ test('cannot forge participants, listing, or campus in a conversation', async ()
 });
 test('participants can query inbox and send messages; outsiders cannot', async () => {
   const db=auth('bob','bob@emory.edu');
-  await assertSucceeds(getDocs(query(collection(db,'conversations'),where('participants','array-contains','bob'))));
+  await assertSucceeds(getDocs(query(collection(db,'conversations'),where('participants','array-contains','bob'),limit(31))));
   const path='conversations/chat/messages/m';
   await assertFails(setDoc(doc(db,path),{text:'Hello',senderUid:'bob',createdAt:serverTimestamp()}));
   await seed(path,{text:'Hello',senderUid:'bob',createdAt:Timestamp.now()});
@@ -158,4 +160,27 @@ test('closed accounts lose existing-session access and cannot reopen or expose d
  await assertFails(getDoc(doc(auth('bob','bob@emory.edu'),'accountLifecycle/alice')));
  await assertFails(setDoc(doc(db,'accountLifecycle/alice'),{closed:false}));
  await assertFails(getDoc(doc(db,'accountDeletions/alice')));await assertFails(setDoc(doc(db,'accountDeletions/alice'),{phase:'complete'}));
+});
+
+for (const [name, maximum, clauses] of [
+ ['listings',25,[where('campusId','==','emory.edu')]],
+ ['publicProfiles',25,[where('campusId','==','emory.edu')]],
+ ['publicProfiles/alice/reviews',25,[where('campusId','==','emory.edu')]],
+ ['conversations',31,[where('participants','array-contains','alice')]],
+ ['conversations/chat/messages',31,[]],
+ ['notifications',100,[where('userId','==','alice')]],
+ ['transactions',25,[where('sellerUid','==','alice')]],
+]) test(`${name} requires a bounded query even for an authorized student`,async()=>{
+ const base=collection(auth(),name);
+ await assertSucceeds(getDocs(query(base,...clauses,limit(maximum))));
+ await assertFails(getDocs(query(base,...clauses)));
+ await assertFails(getDocs(query(base,...clauses,limit(maximum+1))));
+});
+test('REST offset scans are denied while cursor-sized reads remain available',async()=>{
+ const token=createMockUserToken({sub:'alice',email:'alice@emory.edu',email_verified:true},projectId);
+ const run=offset=>fetch('http://127.0.0.1:8080/v1/projects/demo-quadmart/databases/(default)/documents:runQuery',{
+  method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify({structuredQuery:{from:[{collectionId:'listings'}],where:{fieldFilter:{field:{fieldPath:'campusId'},op:'EQUAL',value:{stringValue:'emory.edu'}}},limit:25,offset}})
+ });
+ assert.equal((await run(0)).status,200);
+ assert.equal((await run(1)).status,403);
 });

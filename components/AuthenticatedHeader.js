@@ -69,6 +69,7 @@ export default function AuthenticatedHeader() {
   const unsubNotificationsRef = useRef(null)
   const menuRef = useRef(null)
   const menuTriggerRef = useRef(null)
+  const mobileTriggerRef = useRef(null)
 
   useEffect(() => {
     if (!user?.emailVerified) return
@@ -113,10 +114,10 @@ export default function AuthenticatedHeader() {
   }, [menuOpen])
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') setMobileOpen(false) }
+    const onKey = (e) => { if (e.key === 'Escape' && mobileOpen) { setMobileOpen(false); mobileTriggerRef.current?.focus() } }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [mobileOpen])
 
   const isActive = (href) =>
     pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
@@ -248,8 +249,9 @@ export default function AuthenticatedHeader() {
               )}
             </Link>
             <button
+              ref={mobileTriggerRef}
               onClick={() => setMobileOpen(o => !o)}
-              className="p-2 rounded-lg text-text-secondary hover:bg-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="min-h-11 min-w-11 p-2 rounded-lg text-text-secondary hover:bg-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={mobileOpen}
             >
@@ -261,7 +263,7 @@ export default function AuthenticatedHeader() {
 
       {/* Mobile drawer */}
       {mobileOpen && (
-        <div className="lg:hidden border-t border-border bg-surface px-4 py-4 flex flex-col gap-1">
+        <nav aria-label="Mobile navigation" className="lg:hidden max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain border-t border-border bg-surface px-4 py-4 flex flex-col gap-1">
           {NAV_LINKS.map(link => (
             <Link
               key={link.href}
@@ -305,7 +307,7 @@ export default function AuthenticatedHeader() {
               Log out
             </button>
           </div>
-        </div>
+        </nav>
       )}
     </header>
   )

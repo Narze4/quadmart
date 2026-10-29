@@ -2,6 +2,7 @@ import { v2 as cloudinary } from 'cloudinary'
 import { backend } from '@/lib/server/firebase-admin.mjs'
 import { uploadPhoto, UploadError } from '@/lib/server/uploads.mjs'
 
+import { RateLimitError } from '@/lib/server/limits.mjs'
 import { requestTrace } from '@/lib/server/telemetry.mjs'
 
 export const runtime = 'nodejs'
@@ -38,7 +39,7 @@ export async function POST(request) {
     const result = await uploadPhoto(request, { ...services, storeImage, projectId })
     return trace.finish(Response.json({ ...result, requestId: trace.requestId }))
   } catch (error) {
-    const known = error instanceof UploadError
-    return trace.finish(Response.json({ error: known ? error.message : `Unable to upload this photo. Please try again. Reference: ${trace.requestId}`, requestId: trace.requestId }, { status: known ? error.status : 500 }), { error })
+    const known = error instanceof UploadError || error instanceof RateLimitError
+    return trace.finish(Response.json({ error: known ? error.message : `Unable to upload this photo. Please try again. Reference: ${trace.requestId}`, requestId: trace.requestId, ...(error instanceof RateLimitError ? { retryAfterSeconds: error.retryAfterSeconds } : {}) }, { status: known ? error.status : 500, headers: error instanceof RateLimitError ? { 'Retry-After': String(error.retryAfterSeconds) } : {} }), { error })
   }
 }

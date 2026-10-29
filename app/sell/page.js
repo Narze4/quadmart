@@ -303,6 +303,8 @@ export default function SellPage() {
               <p className="text-sm text-text-secondary mb-6">Give your listing a clear, descriptive name.</p>
               <input
                 type="text"
+                maxLength={120}
+                aria-label="Listing title"
                 value={form.title}
                 onChange={e => set('title', e.target.value)}
                 placeholder="e.g. Calculus Textbook, Guitar Lessons, 1BR Sublease"
@@ -318,6 +320,8 @@ export default function SellPage() {
               <h2 className="text-xl font-semibold text-text-primary mb-2">Add a description</h2>
               <p className="text-sm text-text-secondary mb-6">Tell buyers more about what you&apos;re offering.</p>
               <textarea
+                maxLength={5000}
+                aria-label="Listing description"
                 value={form.description}
                 onChange={e => set('description', e.target.value)}
                 placeholder="Describe your item, its condition, what's included..."
@@ -337,6 +341,7 @@ export default function SellPage() {
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary font-medium">$</span>
                 <input
                   type="number"
+                  inputMode="decimal"
                   value={form.price}
                   onChange={e => set('price', e.target.value)}
                   placeholder="0.00"

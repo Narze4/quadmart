@@ -115,7 +115,7 @@ function CampusDashboard({ user }) {
                   className="w-full sm:w-64 pl-9 pr-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/60 text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Link
                   href="/marketplace"
                   className="inline-flex items-center justify-center px-4 py-2.5 border-2 border-white text-white text-sm font-semibold rounded-xl hover:bg-white hover:text-primary-dark transition-all duration-200 active:scale-95 whitespace-nowrap"

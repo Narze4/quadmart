@@ -1,0 +1,52 @@
+QuadMart development abuse and phone validation — October 29, 2026
+
+Scope
+- Isolated demo-quadmart Auth/Firestore emulators and production Next.js build.
+- Two synthetic verified Emory accounts per browser: seller and buyer.
+- Chromium with Pixel 7 settings and WebKit with iPhone 13 settings; both also exercised at 320 x 360 CSS pixels.
+- This is browser/device emulation on the Mac, not physical iPhone/Android, camera, touch keyboard or cellular testing.
+
+Implemented
+- Firestore list queries require bounded limits and reject offsets; campus/member restrictions remain enforced.
+- Atomic per-account and shared development attempt budgets for market API, uploads and protected photo requests. Rejection occurs before expensive upload/body/storage and photo lookup/download work.
+- Photo 429 responses include Retry-After and preserve a manual retry control; message quota rejection preserves the draft.
+- Scrollable small-screen menu, wrapped dashboard actions, smaller chat viewport, safe-area composer, long-text wrapping in chat/listings/report history/sale dialog, accessible listing inputs and decimal price keyboard hint.
+- WebKit-specific Firestore long-polling fixed an observed dashboard loading stall. Other engines retain the SDK default. Upstream investigation: https://github.com/firebase/firebase-js-sdk/issues/9789 ; documented setting and performance tradeoff: https://firebase.google.com/docs/reference/js/firestore.firestoresettings .
+
+Local results
+- 82 focused rules/abuse/upload tests passed: 35 rules, 31 abuse and 16 upload checks. Includes seven collection limit contracts, REST offset rejection, concurrent shared-budget exhaustion and account isolation.
+- 83 HTTP buying/selling checkpoints passed under the new rules.
+- 36 existing desktop browser checks passed: 21 pagination/account and 15 collection-page scenarios.
+- 24 phone browser checks passed, 12 in each engine, with zero page errors during the exercised flows. Page-error listeners detach before closing the test browsers; no runtime errors are filtered.
+- Full ESLint and production webpack build passed locally. The normal Turbopack build and all suites run again in GitHub CI.
+
+Phone scenarios in each engine
+1. Short-screen navigation, reachable logout and Escape focus return.
+2. Six-step publication, max-size photo rejection, readable input font and decimal input mode.
+3. Marketplace search, listing detail and saved-item navigation.
+4. Long chat messages, narrow layout and reduced-height composer.
+5. Actual message quota rejection, preserved draft and single successful retry.
+6. Reserve listing, select the actual buyer and confirm the sale.
+7. Purchase receipt and completed-trade review.
+8. Private report submission and block/unblock controls.
+9. Safety, Settings and private-profile navigation.
+10. Actual photo/upload HTTP 429s with Retry-After and private/no-store headers.
+11. Photo retry UI without automatic re-fetch loops.
+12. Logout and protected-page redirection.
+
+Fixtures and limits
+- Upload availability is enabled in the browser fixture so the oversized-file control can be exercised; no external storage is invoked by this test.
+- HTTP quota rejection uses the real local routes. Successful image bytes in the retry UI are a generated JPEG intercepted by Playwright. This does not retest real camera uploads or Cloudinary delivery.
+- Browser pages are exercised through app links. Hard reloads in Mac WebKit can emit cancelled localhost emulator-channel warnings; they were observed during diagnosis and are not an assertion bypass.
+
+Development rollout
+- Firestore rules compiled and deployed explicitly to quadmart-development.
+- Only the private maintenance runtime's rules reference and matching manifest hash changed; all 24 pinned file hashes verified. Maintenance code and credentials remain unchanged.
+- Vercel Hobby rule "Development API burst limit" is saved and enabled for the exact branch-preview host and /api/ prefix: 300 requests per IP per 60 seconds, action 429.
+- External burst probes followed Vercel's sign-in redirect, so they did not validate edge rejection. A no-redirect probe confirmed HTTP 302 to vercel.com. Existing deployment access protection remains enabled. Treat edge enforcement as pending an authenticated test, and cover the chosen invitation hostname before launch.
+- Production, main, billing and IAM were not changed.
+
+Still required before student invitations
+- Physical iPhone and Android checks: camera/gallery uploads, actual keyboard, small screen/zoom, background/resume and weak cellular connection.
+- Authenticated firewall rejection/recovery on the selected invitation host, App Check/CAPTCHA decision, and monitoring ownership. App budgets do not bound every direct read or signup request, and shared ceilings can also deny legitimate users.
+- Existing operational gates still apply: available Mac, current offsite backup/restore receipt, moderation/support ownership, eligibility and re-verification policy, and reviewed production migration.

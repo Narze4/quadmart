@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { before, after, beforeEach, test } from 'node:test';
 import { randomUUID, createHash } from 'node:crypto';
 import sharp from 'sharp';
+import { LIMITS, limitId } from '../lib/server/limits.mjs';
 import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { uploadPhoto, sanitizePhoto, readPhoto, authorizePhoto, MAX_PHOTO_BYTES } from '../lib/server/uploads.mjs';
@@ -131,4 +132,27 @@ test('verification links return to the app without exposing email in the URL', (
   assert.throws(() => verificationSettings('javascript:alert(1)'));
   assert.throws(() => verificationSettings('http://untrusted.example'));
   assert.throws(() => verificationSettings('https://user:secret@example.com'));
+});
+
+test('upload attempt quota stops repeated invalid requests before reading their bodies',async()=>{
+ await db.doc(`operationLimits/${limitId(actor.uid,'uploadAttempt')}`).set({minute:Math.floor(now/60000),minuteCount:LIMITS.uploadAttempt.minute,day:Math.floor(now/86400000),dayCount:LIMITS.uploadAttempt.minute});
+ let read=false;
+ const incoming=request();Object.defineProperty(incoming,'body',{get(){read=true;throw Error('Body must not be consumed');}});
+ await rejects(()=>uploadPhoto(incoming,deps()),429);assert.equal(read,false);assert.equal(stored.length,0);
+ assert.equal((await db.collection('media').get()).size,0);
+});
+test('invalid verified upload attempts consume their request budget without storage',async()=>{
+ await rejects(()=>uploadPhoto(request(png,{'content-type':'text/plain'}),deps()),415);
+ assert.equal((await db.doc(`operationLimits/${limitId(actor.uid,'uploadAttempt')}`).get()).data().dayCount,1);
+ assert.equal((await db.doc('operationLimits/global-uploadAttempt').get()).data().dayCount,1);
+ assert.equal(stored.length,0);
+});
+test('photo requests consume viewer limits before asset lookup and retain campus checks',async()=>{
+ const asset=await uploadPhoto(request(),deps());
+ await authorizePhoto(request(),asset.id,deps());
+ const ref=db.doc(`operationLimits/${limitId(actor.uid,'photo')}`);
+ assert.equal((await ref.get()).data().dayCount,1);
+ await ref.set({minute:Math.floor(now/60000),minuteCount:LIMITS.photo.minute,day:Math.floor(now/86400000),dayCount:LIMITS.photo.minute});
+ await rejects(()=>authorizePhoto(request(),asset.id,deps()),429);
+ await rejects(()=>authorizePhoto(request(),asset.id,{...deps(),now:now+60000,auth:{verifyIdToken:async()=>({...actor,email:'other@uga.edu'})}}),404);
 });

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { operate } from '../lib/server/market.mjs';
-import { LIMITS, limitId, consumeQuota } from '../lib/server/limits.mjs';
+import { LIMITS, GLOBAL_LIMITS, limitId, consumeQuota } from '../lib/server/limits.mjs';
 if (process.env.FIRESTORE_EMULATOR_HOST !== '127.0.0.1:8080') throw Error('Local emulator required');
 const app=initializeApp({projectId:'demo-quadmart'},'abuse-tests'),db=getFirestore(app);
 const seller={uid:'seller',email:'seller@emory.edu',email_verified:true},buyer={uid:'buyer',email:'buyer@emory.edu',email_verified:true};
@@ -107,4 +107,23 @@ test('suspended and unverified users cannot publish or consume business quotas',
  await assert.rejects(api({...seller,email_verified:false},'listingCreate',input()),denied(403));
  await db.doc('moderationAccounts/seller').set({suspended:true});await assert.rejects(api(seller,'listingCreate',input()),denied(403));
  assert.equal((await quota(seller,'listingCreate').get()).exists,false);
+});
+
+for(const bucket of ['api','uploadAttempt','photo'])test(`${bucket} shared budget is atomic across accounts and resumes next day`,async()=>{
+ const now=Date.UTC(2026,9,29,12,0,10),ref=db.doc(`operationLimits/global-${bucket}`);
+ await ref.set({minute:Math.floor(now/60000),day:Math.floor(now/86400000),minuteCount:0,dayCount:GLOBAL_LIMITS[bucket].day-2});
+ const ids=['one','two','three','four'];
+ const results=await Promise.allSettled(ids.map(uid=>consumeQuota(db,uid,bucket,now)));
+ assert.equal(results.filter(r=>r.status==='fulfilled').length,2);
+ assert(results.filter(r=>r.status==='rejected').every(r=>r.reason.status===429&&r.reason.retryAfterSeconds===43190));
+ assert.equal((await ref.get()).data().dayCount,GLOBAL_LIMITS[bucket].day);
+ for(let i=0;i<ids.length;i++)assert.equal((await db.doc(`operationLimits/${limitId(ids[i],bucket)}`).get()).exists,results[i].status==='fulfilled');
+ await consumeQuota(db,'new-account',bucket,now+86400000);
+ assert.equal((await ref.get()).data().dayCount,1);
+});
+test('account attempt rejection does not consume the shared budget',async()=>{
+ const now=Date.UTC(2026,9,29,12,0,10);
+ await db.doc(`operationLimits/${limitId('blocked','photo')}`).set({minute:Math.floor(now/60000),minuteCount:LIMITS.photo.minute,day:Math.floor(now/86400000),dayCount:LIMITS.photo.minute});
+ await assert.rejects(consumeQuota(db,'blocked','photo',now),e=>e.status===429&&e.retryAfterSeconds===50);
+ assert.equal((await db.doc('operationLimits/global-photo').get()).exists,false);
 });

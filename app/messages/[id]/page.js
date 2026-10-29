@@ -90,22 +90,22 @@ function Conversation({ user, loading, id }) {
       <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full px-4 sm:px-6 py-8 gap-4">
         <div className="flex items-center gap-3">
           <Link href="/messages" className="text-sm text-primary-dark hover:underline">← Back</Link>
-          <div><p className="text-sm font-semibold text-text-primary">{name ?? 'Conversation'}</p>{conversation?.listingTitle && <p className="text-xs text-text-secondary">Re: {conversation.listingTitle}</p>}</div>
+          <div className="min-w-0 [overflow-wrap:anywhere]"><p className="text-sm font-semibold text-text-primary">{name ?? 'Conversation'}</p>{conversation?.listingTitle && <p className="text-xs text-text-secondary">Re: {conversation.listingTitle}</p>}</div>
         </div>
         {conversationError && <p role="alert" className="text-sm text-red-700">{conversationError}</p>}
-        <div ref={scrollRef} onScroll={e => { const n = e.currentTarget; following.current = n.scrollHeight - n.scrollTop - n.clientHeight < 80 }} className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-[400px] max-h-[60vh] bg-surface rounded-2xl border border-border shadow-sm p-4">
+        <div ref={scrollRef} onScroll={e => { const n = e.currentTarget; following.current = n.scrollHeight - n.scrollTop - n.clientHeight < 80 }} className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-40 h-[40dvh] max-h-[32rem] bg-surface rounded-2xl border border-border shadow-sm p-4">
           {feed.historyReset && <p className="text-sm text-text-secondary">New activity refreshed this conversation. Load older messages again to continue.</p>}
           {!feed.loading && feed.hasMore && !feed.denied && <button type="button" onClick={loadOlder} disabled={feed.loadingMore} className="text-sm text-primary-dark hover:underline disabled:opacity-50">{feed.loadingMore ? 'Loading…' : 'Load older messages'}</button>}
           {feed.loading && <p role="status" className="text-center text-sm text-text-secondary">Loading messages…</p>}
           {feed.error && <p role="alert" className="text-sm text-red-700">{feed.error}</p>}
           {(feed.error || conversationError) && <button type="button" onClick={() => setRetryKey(k => k + 1)} className="text-sm text-primary-dark hover:underline">Retry messages</button>}
           {!feed.loading && !feed.error && !conversationError && messages.length === 0 && <p className="text-center text-sm text-text-secondary my-auto">No messages yet. Say hello!</p>}
-          {messages.map(msg => <div key={msg.id} className={`flex ${msg.senderUid === user.uid ? 'justify-end' : 'justify-start'}`}><div className={`max-w-xs sm:max-w-sm px-4 py-2.5 rounded-2xl text-sm ${msg.senderUid === user.uid ? 'bg-primary-dark text-white rounded-br-sm' : 'bg-gray-100 text-text-primary rounded-bl-sm'}`}>{msg.text}</div></div>)}
+          {messages.map(msg => <div key={msg.id} className={`flex ${msg.senderUid === user.uid ? 'justify-end' : 'justify-start'}`}><div className={`min-w-0 max-w-[85%] sm:max-w-sm [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-sm ${msg.senderUid === user.uid ? 'bg-primary-dark text-white rounded-br-sm' : 'bg-gray-100 text-text-primary rounded-bl-sm'}`}>{msg.text}</div></div>)}
         </div>
         <SafetyActions targetUid={otherIdx > -1 ? conversation.participants[otherIdx] : null} conversationId={id} />
         {sendError && <p role="alert">{sendError}</p>}
-        <form onSubmit={handleSend} className="flex gap-2">
-          <input type="text" value={text} onChange={e => setText(e.target.value)} placeholder="Type a message…" className="input-field flex-1 rounded-full" />
+        <form onSubmit={handleSend} className="sticky bottom-0 flex gap-2 bg-bg py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          <input type="text" value={text} onChange={e => setText(e.target.value)} placeholder="Type a message…" maxLength={4000} aria-label="Message" className="input-field min-w-0 flex-1 rounded-full" />
           <button type="submit" disabled={!text.trim() || sending || !conversation || feed.denied} className="px-5 py-2.5 bg-primary-dark text-white text-sm font-medium rounded-full hover:bg-primary-dark-hover transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">Send</button>
         </form>
       </div>

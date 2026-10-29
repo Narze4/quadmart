@@ -19,6 +19,11 @@ service cloud.firestore {
         && (!exists(/databases/$(database)/documents/moderationAccounts/$(request.auth.uid))
           || get(/databases/$(database)/documents/moderationAccounts/$(request.auth.uid)).data.suspended != true);
     }
+    // Client cursors must stay bounded even when callers bypass the UI.
+    function bounded(maximum) {
+      return request.query.limit > 0 && request.query.limit <= maximum
+        && request.query.get('offset', 0) == 0;
+    }
     function member(conversationId) {
       return student() && request.auth.uid in
         get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
@@ -38,40 +43,47 @@ service cloud.firestore {
     }
     // Public-facing fields must be explicitly projected by the trusted backend.
     match /publicProfiles/{uid} {
-      allow read: if student() && resource.data.campusId == campus();
+      allow get: if student() && resource.data.campusId == campus();
+      allow list: if bounded(25) && student() && resource.data.campusId == campus();
       allow write: if false;
       match /reviews/{reviewId} {
-        allow read: if student() && resource.data.campusId == campus();
+        allow get: if student() && resource.data.campusId == campus();
+        allow list: if bounded(25) && student() && resource.data.campusId == campus();
         allow write: if false;
       }
     }
     match /listings/{listingId} {
-      allow read: if student() && resource.data.campusId == campus();
+      allow get: if student() && resource.data.campusId == campus();
+      allow list: if bounded(25) && student() && resource.data.campusId == campus();
       // Server validates photos/ownership and atomically applies publication quotas.
       allow create, update: if false;
       allow delete: if student() && resource.data.sellerUid == request.auth.uid
         && resource.data.campusId == campus() && resource.data.status in ['active','reserved'];
     }
     match /conversations/{conversationId} {
-      allow read: if student() && request.auth.uid in resource.data.participants;
+      allow get: if student() && request.auth.uid in resource.data.participants;
+      allow list: if bounded(31) && student() && request.auth.uid in resource.data.participants;
       allow create: if false; // Authenticated backend validates and deduplicates conversations.
       // Message previews/notifications are backend-owned to prevent forged events.
       allow update, delete: if false;
       match /messages/{messageId} {
-        allow read: if member(conversationId);
+        allow get: if member(conversationId);
+        allow list: if bounded(31) && member(conversationId);
         allow create: if false; // Backend atomically writes message, preview and notification.
         allow update, delete: if false;
       }
     }
     match /notifications/{notificationId} {
-      allow read: if student() && resource.data.userId == request.auth.uid;
+      allow get: if student() && resource.data.userId == request.auth.uid;
+      allow list: if bounded(100) && student() && resource.data.userId == request.auth.uid;
       allow update: if student() && resource.data.userId == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
         && request.resource.data.read == true;
       allow create, delete: if false;
     }
     match /transactions/{transactionId} {
-      allow read: if student() && (resource.data.sellerUid == request.auth.uid || resource.data.buyerUid == request.auth.uid);
+      allow get: if student() && (resource.data.sellerUid == request.auth.uid || resource.data.buyerUid == request.auth.uid);
+      allow list: if bounded(25) && student() && (resource.data.sellerUid == request.auth.uid || resource.data.buyerUid == request.auth.uid);
       allow write: if false;
     }
     // Registries and distributed budgets are backend-owned.

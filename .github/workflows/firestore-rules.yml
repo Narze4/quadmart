@@ -29,5 +29,5 @@ jobs:
       - run: npm run test:operations
       - run: npm run test:restore
       - run: npm run test:pagination
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:integration

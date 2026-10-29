@@ -1,6 +1,6 @@
 # Abuse limits and operational logs
 
-Development implementation, October 28, 2026. These controls are preparation for a student pilot, not a launch-readiness or complete denial-of-service guarantee.
+Development implementation, October 29, 2026. These controls are preparation for a student pilot, not a launch-readiness or complete denial-of-service guarantee.
 
 ## Enforced budgets
 
@@ -9,15 +9,31 @@ Every verified, supported-university request to `/api/market` consumes an attemp
 | Per-account operation | Per UTC minute | Per UTC day |
 | --- | ---: | ---: |
 | Market API attempts, including failed requests/retries | 120 | 2,000 |
+| Photo upload attempts, including invalid files/retries | 20 | 80 |
+| Authenticated photo requests | 120 | 1,000 |
 | New listings | 6 | 20 |
 | Reservation/availability changes | 30 | 300 |
 | New conversations | 10 | 50 |
 | New messages | 30 | 500 |
 | Actual profile changes/initialization | 10 | 50 |
 
-These are fixed windows, so adjacent-window bursts are possible. A 429 response includes `Retry-After`, `retryAfterSeconds`, and a readable wait time. Counts do not reset by deleting a listing, signing out, changing the client clock, or changing server instances. Separate accounts have separate limits. One document per account/bucket stores current counters; this does not create a new document every minute.
+These are fixed windows, so adjacent-window bursts are possible. A 429 response includes `Retry-After`, `retryAfterSeconds`, and a readable wait time. Counts do not reset by deleting a listing, signing out, changing the client clock, or changing server instances. Separate accounts have separate limits, plus the shared development ceilings below. One document per account/bucket stores current counters; this does not create a new document every minute.
 
 Existing upload budgets (10/minute, 20/day/account, 200/day/development) and new-report budgets (5/day/account) remain in place with their own retry messages. Sales and reviews are bound to valid, unique trades and also consume the general API attempt budget. Safety actions consume that general budget too; students who hit it must wait before another API action. It does not block local sign-out.
+
+## Shared development ceilings and bounded reads
+
+Market API attempts also share 600/minute and 6,000/day across accounts. Upload attempts share 60/minute and 400/day; photo requests share 600/minute and 6,000/day. Account and shared counters are checked and committed atomically. If either is exhausted neither counter is debited. Upload attempts are counted before MIME validation/body reads/decoding/storage. Photo requests are counted before asset lookup and Cloudinary download. Invalid photo IDs and unverified callers are rejected before creating a counter.
+
+These ceilings protect expensive work after verification. They are not spending guarantees: failed token checks, rejected counter reads and authorized direct Firestore reads still consume resources. An attacker can exhaust a shared ceiling and deny legitimate users until the next window; these conservative values are for development and require pilot traffic review.
+
+Firestore list rules now require a positive limit and reject nonzero offsets: listings, profiles, reviews and transactions cap at 25; conversations and messages at 31; notifications at 100. Cursors preserve pagination. Single-document reads retain the same authorization. This prevents one unlimited query, not repeated authorized queries or scraping over many pages.
+
+Photo 429s retain a retry control that waits for Retry-After and requires an explicit click. There is no automatic retry loop. Message rate limits preserve the draft. See ABUSE-AND-PHONE-TEST-RESULTS.txt for browser coverage.
+
+A Vercel Hobby rule named "Development API burst limit" is saved and enabled: exact host `quadmart-git-security-firestore-rules-narze4s-projects.vercel.app`, request path starting `/api/`, 300 requests per IP per 60-second fixed window, returning 429. No upgrade or new paid service was enabled. It covers that alias only, not every immutable deployment URL. Two bounded external probes followed Vercel sign-in redirects and therefore did not test rate-limit enforcement. A direct no-redirect probe confirmed HTTP 302 to vercel.com. Keep preview access protection enabled and verify authenticated edge rejection before relying on this rule for invitations. Shared campus networks may need a different IP threshold for a pilot.
+
+References: [Firestore query rules](https://firebase.google.com/docs/firestore/security/rules-query), [Vercel rate limiting](https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting).
 
 ## Listing and retry contract
 
@@ -50,4 +66,4 @@ Deploy Firestore rules explicitly to `quadmart-development` and deploy the match
 
 ## Remaining limits
 
-Verified attackers can still incur token-verification, rejected-request and Firestore quota-read costs. Direct authorized Firestore reads, saved-item updates, notification read markers, image downloads, account signup and multiple-account attacks are not governed by the new market budgets. Edge protection/App Check evaluation, read pagination, monitoring/alerts, backups with a restore drill, automatic cleanup scheduling and student eligibility/support policy remain launch work. The deletion and cleanup tools are documented in ACCOUNT-AND-PHOTO-CLEANUP.md. Cloudinary and Firebase service quotas also apply.
+Verified attackers can still incur token-verification, rejected-request and Firestore quota-read costs. Saved-item updates, notification read markers and signup are outside the API attempt budgets. Direct authorized reads are size-bounded but not frequency-limited. App Check/CAPTCHA evaluation, authenticated edge enforcement testing, monitoring/alerts, physical-phone testing and the student eligibility/support policy remain invitation gates. Pagination and encrypted backup/restore plus Mac-hosted maintenance have separate implemented workflows; their latest receipts and drill results must be checked before launch. The Mac must be awake and available. The deletion and cleanup tools are documented in ACCOUNT-AND-PHOTO-CLEANUP.md. Cloudinary and Firebase service quotas also apply.

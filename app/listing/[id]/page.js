@@ -167,7 +167,7 @@ export default function ListingDetailPage() {
 
             {/* Title & price */}
             <div>
-              <h1 className="text-3xl font-bold text-text-primary mb-2">{listing.title}</h1>
+              <h1 className="[overflow-wrap:anywhere] text-3xl font-bold text-text-primary mb-2">{listing.title}</h1>
               <p className="text-3xl font-bold text-primary-dark">${Number(listing.price).toFixed(2)}</p>
             </div>
 

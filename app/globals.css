@@ -72,3 +72,8 @@ body {
 .animate-fade-in {
   animation: fade-in-up 0.25s ease-out;
 }
+
+/* Keep phone text entry readable without iOS focus zoom. */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]), textarea, select { font-size: 16px; }
+}
