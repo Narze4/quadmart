@@ -11,6 +11,7 @@ Implemented
 - Atomic per-account and shared development attempt budgets for market API, uploads and protected photo requests. Rejection occurs before expensive upload/body/storage and photo lookup/download work.
 - Photo 429 responses include Retry-After and preserve a manual retry control; message quota rejection preserves the draft.
 - Scrollable small-screen menu, wrapped dashboard actions, smaller chat viewport, safe-area composer, long-text wrapping in chat/listings/report history/sale dialog, accessible listing inputs and decimal price keyboard hint.
+- Login fields remain disabled until initial Auth state is ready, preventing pre-hydration input/click loss on cold or slow phone loads. The browser suite holds JavaScript responses to test this state before signing both accounts in.
 - WebKit-specific Firestore long-polling fixed an observed dashboard loading stall. Other engines retain the SDK default. Upstream investigation: https://github.com/firebase/firebase-js-sdk/issues/9789 ; documented setting and performance tradeoff: https://firebase.google.com/docs/reference/js/firestore.firestoresettings .
 
 Local results

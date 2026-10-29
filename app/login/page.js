@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
+import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import PublicHeader from '@/components/PublicHeader'
@@ -48,6 +49,7 @@ const EyeOffIcon = () => (
 const GRADIENT = 'linear-gradient(135deg, #2d8a5e 0%, #1a5c3a 55%, #123d27 100%)'
 
 export default function LoginPage() {
+  const { loading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -63,6 +65,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (authLoading || loading) return
     setError('')
     setLoading(true)
     try {
@@ -152,7 +155,8 @@ export default function LoginPage() {
               Log in to your QuadMart account.
             </p>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} aria-busy={authLoading || loading}>
+              <fieldset disabled={authLoading || loading} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1">
                   Email
@@ -236,6 +240,7 @@ export default function LoginPage() {
               <Button type="submit" variant="primary" loading={loading} className="w-full">
                 {loading ? 'Logging in…' : 'Log In'}
               </Button>
+              </fieldset>
             </form>
 
             <p className="text-sm text-center text-text-secondary mt-6">

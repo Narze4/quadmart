@@ -18,7 +18,24 @@ const text=(page,value)=>page.getByText(value,{exact:true}).waitFor();
 async function fit(page,label){assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${label}: horizontal overflow`);}
 async function shot(page,name){if(process.env.QUADMART_SCREENSHOT_DIRECTORY){await fs.mkdir(process.env.QUADMART_SCREENSHOT_DIRECTORY,{recursive:true});await page.screenshot({path:path.join(process.env.QUADMART_SCREENSHOT_DIRECTORY,`${name}.png`),animations:'disabled'});}}
 async function navigate(page,name){await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('navigation',{name:'Mobile navigation'}).getByRole('link',{name,exact:true}).click();}
-async function login(page,email){await page.goto(base+'/login');await page.locator('input[type=email]').fill(email);await page.locator('input[type=password]').fill(password);await page.getByRole('button',{name:/log in/i}).click();await page.waitForURL('**/dashboard');await text(page,'Browse by category');}
+async function login(page,email){
+ // Exercise a cold, slow-JavaScript load: form fields must not accept values
+ // before React and the initial Auth state are ready to handle their events.
+ const scripts='**/_next/static/**/*.js';let release;
+ const ready=new Promise(resolve=>{release=resolve;});
+ await page.route(scripts,async route=>{await ready;await route.continue();});
+ try{
+  await page.goto(base+'/login',{waitUntil:'commit'});
+  const input=page.locator('input[type=email]');await input.waitFor();
+  assert(await input.isDisabled(),'Login is disabled before hydration');
+  assert(await page.getByRole('button',{name:'Log In',exact:true}).isDisabled());
+ }finally{release();}
+ await page.waitForLoadState('load');await page.unroute(scripts);
+ await page.locator('input[type=email]').fill(email);
+ await page.locator('input[type=password]').fill(password);
+ await page.getByRole('button',{name:'Log In',exact:true}).click();
+ await page.waitForURL('**/dashboard');await text(page,'Browse by category');
+}
 try{
  for(const [engine,device,name] of [[chromium,'Pixel 7','chromium-android'],[webkit,'iPhone 13','webkit-iphone']]){
   await fetch('http://127.0.0.1:8080/emulator/v1/projects/demo-quadmart/databases/(default)/documents',{method:'DELETE'});
@@ -71,7 +88,7 @@ try{
    const photoId='b'.repeat(64);await db.doc(`listings/${listingId}`).update({images:[`/api/photos/${photoId}`]});let imageRequests=0,throttled=false;
    await bp.route(`**/api/photos/${photoId}`,async route=>{imageRequests++;const reject=!throttled&&new URL(bp.url()).pathname===`/listing/${listingId}`;if(reject)throttled=true;await route.fulfill(reject?{status:429,headers:{'retry-after':'1'},contentType:'application/json',body:'{"error":"limit"}'}:{status:200,contentType:'image/jpeg',body:jpeg});});
    await navigate(bp,'Saved');await text(bp,title);await bp.locator(`a[href="/listing/${listingId}"]`).first().click();await bp.getByText('Photo viewing limit reached. Please wait before retrying.').waitFor();const beforeRetry=imageRequests;await bp.getByRole('button',{name:'Retry photo',exact:true}).click();await bp.getByText('Photo viewing limit reached. Please wait before retrying.').waitFor({state:'detached'});await bp.locator('img[src^="blob:"]').first().waitFor();assert.equal(imageRequests,beforeRetry+1);await fit(bp,'photo recovery');await shot(bp,`${name}-listing`);pass(name,'photo retry without automatic request loop');
-   await bp.getByRole('button',{name:'Open menu',exact:true}).click();await bp.getByRole('navigation',{name:'Mobile navigation'}).getByRole('button',{name:'Log out',exact:true}).click();await bp.waitForURL(url=>['/','/login'].includes(url.pathname));await bp.goto(base+'/saved');await bp.waitForURL('**/login');pass(name,'mobile logout and protected-page redirect');
+   await bp.getByRole('button',{name:'Open menu',exact:true}).click();await bp.getByRole('navigation',{name:'Mobile navigation'}).getByRole('button',{name:'Log out',exact:true}).click();await bp.waitForURL(url=>['/','/login'].includes(url.pathname));await Promise.all([bp.waitForURL('**/marketplace'),bp.getByRole('link',{name:'Marketplace',exact:true}).last().click()]);await bp.waitForURL('**/login');pass(name,'mobile logout and protected-page redirect');
   }catch(error){await shot(sp,`${name}-seller-failure`);await shot(bp,`${name}-buyer-failure`);console.log(JSON.stringify({browser:name,pageErrors:errors.length,sellerText:(await sp.locator('body').innerText()).slice(0,4000),buyerText:(await bp.locator('body').innerText()).slice(0,1000)}));throw error;}finally{for(const p of [sp,bp])p.removeAllListeners('pageerror');await browser.close();}
  }
  assert.equal(errors.length,0,errors.join('\n'));console.log(JSON.stringify({status:'success',mobileBrowserChecks:checks,pageErrors:errors.length}));
