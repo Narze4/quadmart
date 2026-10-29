@@ -1,4 +1,4 @@
-# Marketplace and message loading
+# Marketplace, messages and account-page loading
 
 The marketplace previously read only the newest 100 active campus listings and applied all filters to that truncated set. Chat detail also stopped at the newest 100 messages; the inbox listened to every conversation.
 
@@ -14,6 +14,14 @@ Conversation history preserves the scroll offset when older messages are inserte
 
 Validation uses pure controller tests for retries/races/live rollover, Firestore emulator tests with more than 100 listings and tied timestamps, and a browser regression against synthetic local data. New development composite indexes cover category/condition combinations with newest and both price orders, plus participant/last-message inbox order. Confirm index readiness before publishing a deployment that uses these queries.
 
-This pass covers marketplace, inbox and chat history. Dashboard search, notifications, seller listings, purchases and profile reviews still need their own query/pagination review; do not claim that all application reads are bounded. Existing write quotas and the full buying/selling checks remain in place.
+Notifications now keep a live head of 30 items and fetch older pages on demand. The header listens to at most 100 unread records and displays 99+ when capped. The page labels its unread count as belonging to the loaded list. Mark-read actions acknowledge at most 30 selected loaded items per atomic batch, update older loaded rows after the commit, and expose failed writes for retry. Server-confirmed snapshots exclude cache-only and pending-write events. New notifications still arrive live, and links open after successful acknowledgement. An account change remounts action state and cancels old navigation callbacks.
+
+Purchases fetch 24 receipts plus one lookahead and retrieve display names only for distinct sellers in that page (at most 24 extra document reads). A missing/inaccessible optional seller profile does not hide the receipt. The page uses persisted transaction review flags and transaction-specific review links. It describes completed trades; the former Pending/Expired tabs were fixed zero-value placeholders and have been removed. The app does not process payments or maintain buyer reservation/checkout states. Refresh purchases reloads receipts, review status and optional seller names. Unavailable sellers keep their receipt but show Review unavailable instead of a broken review link.
+
+Public profiles fetch their public header separately from 24-item listing and review pages. Each collection has independent loading, retry and cursor state. Tab switches retain loaded pages; profile or viewer changes replace them. Missing or inaccessible headers show Profile unavailable with retry and a marketplace link, rather than a permanent spinner. Listing/review failures retain the header and any successfully loaded other section. Scores and transaction totals still come from the server-owned public profile; visible item counts describe only loaded pages.
+
+Additional-page failures retain rows and cursor for retry. Access denial invalidates any in-flight history response before clearing private rows, so a late success cannot refill a denied view. New query shapes reuse existing development indexes; verify native cloud queries because the emulator does not enforce composite indexes.
+
+Dashboard search, My Listings, saved-listing reads and seller buyer-selection still need their own scaling review; do not claim that all application reads are bounded. Read budgets are per query/action here, not a server-enforced global rate limit. Historical pages are point-in-time reads: changes outside a live head require a fresh visit/reload. Existing write quotas and the full buying/selling checks remain in place.
 
 Reference: [Firestore document-snapshot cursors](https://firebase.google.com/docs/firestore/query-data/query-cursors), [ordering and limits](https://firebase.google.com/docs/firestore/query-data/order-limit-data).

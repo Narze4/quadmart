@@ -31,3 +31,9 @@ test('permission failures clear retained private content and ignore later listen
 test('a complete live result removes previously cached records that no longer exist',()=>{
  let receive;const feed=createCursorFeed({watch:cb=>{receive=cb;return()=>{};},loadPage:async()=>page([])});feed.start();receive(page([3,2]));receive(page([3],false));assert.deepEqual(feed.getSnapshot().items.map(x=>x.id),['3']);assert.equal(feed.getSnapshot().hasMore,false);
 });
+test('revoked access cannot be repopulated by an already pending history page',async()=>{
+ let receive,fail;const pending=deferred();const feed=createCursorFeed({watch:(a,b)=>{receive=a;fail=b;return()=>{};},loadPage:()=>pending.promise});feed.start();receive(page([3,2]));const loading=feed.load();fail({code:'permission-denied'});pending.resolve(page([1],false));await loading;assert.deepEqual(feed.getSnapshot().items,[]);assert.equal(feed.getSnapshot().denied,true);
+});
+test('acknowledged updates reach loaded history without changing the pagination boundary',async()=>{
+ let receive;const feed=createCursorFeed({pageSize:2,watch:cb=>{receive=cb;return()=>{};},loadPage:async()=>page([2,1],false)});feed.start();receive(page([4,3]));await feed.load();feed.updateItems(new Map([['1',{read:true}],['absent',{read:true}]]));assert.equal(feed.getSnapshot().items.at(-1).read,true);assert.equal(feed.getSnapshot().cursor,'1');assert.equal(feed.getSnapshot().items.length,4);assert.equal(feed.getSnapshot().hasMore,false);
+});

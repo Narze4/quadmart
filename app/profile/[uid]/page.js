@@ -1,30 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { collection, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore'
+import { publicProfileFeed, profileListingsFeed, profileReviewsFeed } from '@/lib/feed-queries.mjs'
+import { useCursorFeed } from '@/lib/use-cursor-feed'
+import FeedStatus from '@/components/FeedStatus'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import SafetyActions from '@/components/SafetyActions'
 import Footer from '@/components/Footer'
-import Skeleton from '@/components/Skeleton'
 import ListingCard from '@/components/ListingCard'
 import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
-
-const AlertIcon = () => (
-  <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-  </svg>
-)
-
-const BoxIcon = () => (
-  <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-  </svg>
-)
 
 function memberSince(ts) {
   if (!ts) return 'Unknown'
@@ -36,56 +25,10 @@ export default function ProfilePage() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const { uid } = useParams()
-  const [profile, setProfile] = useState(null)
-  const [reviews, setReviews] = useState([])
-  const [listings, setListings] = useState([])
-  const [fetchLoading, setFetchLoading] = useState(true)
-  const [fetchError, setFetchError] = useState(false)
-  const [activeTab, setActiveTab] = useState('Listings')
-
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
     else if (!loading && user && !user.emailVerified) router.replace('/verify-email')
   }, [user, loading, router])
-
-  const loadProfile = async () => {
-    if (!uid || !user?.emailVerified) return
-    try {
-      const snap = await getDoc(doc(db, 'publicProfiles', uid))
-      if (!snap.exists()) { router.replace('/marketplace'); return }
-      const data = { id: snap.id, ...snap.data() }
-      setProfile(data)
-      const reviewSnap = await getDocs(query(collection(db, 'publicProfiles', uid, 'reviews'), where('campusId', '==', data.campusId), orderBy('createdAt', 'desc')))
-      setReviews(reviewSnap.docs.map(d => ({ id: d.id, ...d.data() })))
-
-      const q = query(
-        collection(db, 'listings'),
-        where('sellerUid', '==', uid), where('campusId', '==', data.campusId),
-        orderBy('createdAt', 'desc')
-      )
-      const listSnap = await getDocs(q)
-      setListings(listSnap.docs.map(d => ({ id: d.id, ...d.data() })))
-    } catch {
-      setFetchError(true)
-    } finally {
-      setFetchLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    // loadProfile is also called directly by the retry button (a plain
-    // event handler), which is what trips this rule — the state updates
-    // inside it only ever happen after an await, never synchronously here.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadProfile()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uid, router, user])
-
-  const handleRetry = () => {
-    setFetchLoading(true)
-    setFetchError(false)
-    loadProfile()
-  }
 
   if (loading || !user || !user.emailVerified) {
     return (
@@ -95,15 +38,34 @@ export default function ProfilePage() {
     )
   }
 
-  if (!profile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
+  return <ProfileLoader key={`${user.uid}:${user.email}:${uid}`} user={user} uid={uid} />
+}
 
-  const username = profile.displayName || profile.email?.split('@')[0] || 'Unknown'
+function ProfileLoader({ user, uid }) {
+  const [retryKey, setRetryKey] = useState(0)
+  const configuration = useMemo(() => ({ ...publicProfileFeed(db, uid), retryKey }), [uid, retryKey])
+  const feed = useCursorFeed(configuration)
+  const profile = feed.items[0]
+  if (!profile) return <div className="min-h-screen flex flex-col bg-bg">
+    <AuthenticatedHeader />
+    <main className="flex-1 max-w-2xl mx-auto p-8 w-full">
+      {feed.loading ? <p role="status">Loading profile…</p> : <EmptyState title="Profile unavailable" description="This profile may no longer exist or may not be available to your account." action={<Button onClick={() => setRetryKey(k => k + 1)}>Try again</Button>} />}
+      {!feed.loading && <Link className="block text-center text-primary-dark underline mt-4" href="/marketplace">Back to marketplace</Link>}
+    </main><Footer />
+  </div>
+  return <ProfileContent user={user} uid={uid} profile={profile} />
+}
+
+function ProfileContent({ user, uid, profile }) {
+  const [activeTab, setActiveTab] = useState('Listings')
+  const [listingRetry, setListingRetry] = useState(0)
+  const [reviewRetry, setReviewRetry] = useState(0)
+  const listingConfiguration = useMemo(() => ({ ...profileListingsFeed(db, uid, profile.campusId), retryKey: listingRetry }), [uid, profile.campusId, listingRetry])
+  const reviewConfiguration = useMemo(() => ({ ...profileReviewsFeed(db, uid, profile.campusId), retryKey: reviewRetry }), [uid, profile.campusId, reviewRetry])
+  const listings = useCursorFeed(listingConfiguration)
+  const reviews = useCursorFeed(reviewConfiguration)
+
+  const username = profile.displayName || 'Student'
   const initial = username[0]?.toUpperCase()
   const isOwnProfile = user.uid === uid
 
@@ -176,55 +138,25 @@ export default function ProfilePage() {
                   : 'border-transparent text-text-secondary hover:text-text-primary'
               }`}
             >
-              {tab} {tab === 'Listings' && `(${listings.length})`}
+              {tab}
             </button>
           ))}
         </div>
 
-        {/* Listings tab */}
-        {activeTab === 'Listings' && (
-          fetchLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm">
-                  <Skeleton className="aspect-[4/3] rounded-none" />
-                  <div className="p-3 flex flex-col gap-2">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-4 w-1/3" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : fetchError ? (
-            <EmptyState
-              tone="error"
-              icon={<AlertIcon />}
-              title="Something went wrong"
-              description="We couldn't load this profile's listings right now."
-              action={<Button onClick={handleRetry}>Try again</Button>}
-            />
-          ) : listings.length === 0 ? (
-            <EmptyState icon={<BoxIcon />} title="No listings yet" />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {listings.map(listing => (
-                <ListingCard key={listing.id} listing={listing} showSeller={false} />
-              ))}
-            </div>
-          )
-        )}
-
-        {/* Reviews tab */}
-        {activeTab === 'Reviews' && (reviews.length ? <div className="space-y-4">{reviews.map(review => <article key={review.id} className="p-4 bg-surface rounded-xl border border-border"><p>{review.rating}/5 · {review.type === 'seller' ? 'As a seller' : 'As a buyer'}</p><p>{review.comment}</p></article>)}</div> :
-          <EmptyState
-            icon={
-              <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-              </svg>
-            }
-            title="No reviews yet"
-          />
-        )}
+        {activeTab === 'Listings' && <section aria-label="Profile listings">
+          {!listings.loading && !listings.error && !listings.items.length && <EmptyState title="No listings yet" />}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {listings.items.map(listing => <ListingCard key={listing.id} listing={listing} showSeller={false} />)}
+          </div>
+          <FeedStatus feed={listings} noun="listings" moreLabel="Load older listings" onRestart={() => setListingRetry(k => k + 1)} />
+        </section>}
+        {activeTab === 'Reviews' && <section aria-label="Profile reviews">
+          {!reviews.loading && !reviews.error && !reviews.items.length && <EmptyState title="No reviews yet" />}
+          <div className="space-y-4">{reviews.items.map(review => <article key={review.id} className="p-4 bg-surface rounded-xl border border-border">
+            <p>{review.rating}/5 · {review.type === 'seller' ? 'As a seller' : 'As a buyer'}</p><p>{review.comment}</p>
+          </article>)}</div>
+          <FeedStatus feed={reviews} noun="reviews" moreLabel="Load older reviews" onRestart={() => setReviewRetry(k => k + 1)} />
+        </section>}
       </main>
       <Footer />
     </div>
