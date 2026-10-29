@@ -1,6 +1,10 @@
 QuadMart physical-phone acceptance checklist
 Prepared October 29, 2026 — all physical-device results are PENDING
 
+Owner confirmed no physical phone is available on October 29. The additional
+Mac browser recovery results are in PHONE-SESSION-TEST-RESULTS.txt; they do not
+complete this physical-device checklist.
+
 Development preview
 https://quadmart-git-security-firestore-rules-narze4s-projects.vercel.app
 
@@ -29,6 +33,8 @@ Seller/buyer test-account labels only: ________________________________
 [ ] 8. Repeat browsing and one photo view on cellular or a weak connection. Background/resume the app while loading. Content should recover or show a useful retry option; private data must not switch between accounts. Note unusually long loading, dropped inputs, clipped buttons or photo failures.
 
 [ ] 9. Log out. Open a protected page using the app's link and confirm it returns to sign-in. Sign in as the other development account in the same browser; Saved, notifications, listings and purchases must belong to that account.
+
+[ ] 10. Record the start time, then leave a harmless unsaved Settings name or message draft for at least 65 minutes without refreshing or signing in again. Check the same page, a protected photo and a normal API-backed action; record whether sign-in continued and the draft remained. Repeat with the phone locked or another app in the foreground for at least 65 minutes, including one Wi-Fi/cellular change. A temporary connection error must retain the draft and provide a working retry. A revoked session must return to sign-in and clear private content. UI success alone does not establish that Auth/App Check renewed: have the operator correlate safe renewal timestamps or service metrics without recording any token, password or signed URL. Do not change the clock, shorten cloud token lifetime or disable App Check for this test.
 
 Result per step: PASS / FAIL / BLOCKED. Screenshots should show synthetic content only.
 For a failure record: step, device/browser, network, approximate time, expected/actual behavior and the app's request reference if shown. Do not record credentials or signed URLs.

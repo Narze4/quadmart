@@ -1,5 +1,10 @@
 QuadMart signup, verification and session recovery — 2026-10-29
 
+Follow-up: PHONE-SESSION-TEST-RESULTS.txt documents an additional regression
+and fix for temporary account-check errors after token renewal, plus offline
+recovery and account synchronization across tabs. Its physical-device limits
+remain explicit; the earlier normal-renewal pass did not cover that failure.
+
 FIXES
 - Account setup now waits for the ID token's verified-email claim after the
   user reloads a newly verified account. Previously, setup could call the API

@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSessionRequest } from '../lib/session-request.mjs';
+import { isTemporarySessionFailure } from '../lib/session-recovery.mjs';
+
+test('only temporary account checks may preserve the currently authenticated page', () => {
+  for (const error of [new TypeError('Failed to fetch'), new Error('Temporary upstream response'), { status: 503 }, { status: 429 }, { code: 'unavailable' }, { code: 'auth/network-request-failed' }]) assert.equal(isTemporarySessionFailure(error), true);
+  for (const error of [{ status: 401 }, { status: 403 }, { status: 400 }, { code: 'permission-denied' }, { code: 'auth/user-disabled' }, { code: 'auth/user-token-expired' }, null]) assert.equal(isTemporarySessionFailure(error), false);
+});
 
 function fixture({ getToken = async () => 'token', send = async () => new Response('{}') } = {}) {
   const user = { uid: 'a', getIdToken: getToken }, auth = { currentUser: null };
