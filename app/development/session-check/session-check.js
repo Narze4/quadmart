@@ -33,13 +33,14 @@ function SignedInCheck({ user }) {
           headers: { Authorization: `Bearer ${idToken}`, 'X-Firebase-AppCheck': result.token },
         })
         const evidence = await response.json()
-        if (!response.ok) throw Error(evidence.error || 'Session check failed.')
+        if (!response.ok) throw Object.assign(Error('Session check failed.'), { status: response.status })
         if (active && current === sequence && auth.currentUser === user) {
           setRecords(previous => [...previous.slice(-7), { ...evidence, source }])
           setError('')
         }
-      } catch {
-        if (active && current === sequence) setError('Could not verify this session check. Keep the page open and retry when connected.')
+      } catch (failure) {
+        const status = Number.isInteger(failure?.status) ? ` (HTTP ${failure.status})` : ''
+        if (active && current === sequence) setError(`Could not verify this session check${status}. Keep the page open and retry when connected.`)
       } finally { if (active && current === sequence) setBusy(false) }
     }
     const stop = onTokenChanged(appCheck, result => { void check(result, 'SDK callback') }, () => {

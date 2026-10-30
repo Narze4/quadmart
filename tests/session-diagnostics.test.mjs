@@ -16,7 +16,8 @@ function setup(overrides = {}) {
     env, now: () => seconds * 1000, backend: () => services,
     consume: async (...args) => { calls.push(['quota', ...args.slice(1)]); },
     active: async () => { calls.push(['active']); },
-    verifyAppCheck: async (_services, token) => { calls.push(['appcheck', token]); return claims; }, ...overrides,
+    // Match Firebase Admin VerifyAppCheckTokenResponse, not decoded claims alone.
+    verifyAppCheck: async (_services, token) => { calls.push(['appcheck', token]); return { appId: claims.app_id, token: claims }; }, ...overrides,
   });
   const request = (headers = {}) => new Request('https://preview.example/api/development/session-check', { method: 'POST', headers: { authorization: `Bearer ${secret}`, 'x-firebase-appcheck': secret, ...headers } });
   return { handler, request, calls, services };
@@ -60,10 +61,12 @@ test('unverified, unsupported and suspended accounts cannot use diagnostics', as
 test('missing, invalid, wrong-app and expired attestation fail closed without diagnostics', async () => {
   for (const change of [
     { verifyAppCheck: async () => { throw Error(secret); } },
-    { verifyAppCheck: async () => ({ ...claims, app_id: 'another-app' }) },
-    { verifyAppCheck: async () => ({ ...claims, exp: seconds - 1 }) },
-    { verifyAppCheck: async () => ({ ...claims, iat: seconds + 90 }) },
-    { verifyAppCheck: async () => ({ ...claims, iat: NaN }) },
+    { verifyAppCheck: async () => ({ token: { ...claims, app_id: 'another-app' } }) },
+    { verifyAppCheck: async () => ({ token: { ...claims, exp: seconds - 1 } }) },
+    { verifyAppCheck: async () => ({ token: { ...claims, iat: seconds + 90 } }) },
+    { verifyAppCheck: async () => ({ token: { ...claims, iat: NaN } }) },
+    { verifyAppCheck: async () => ({}) },
+    { verifyAppCheck: async () => claims },
     { env: { ...env, NEXT_PUBLIC_FIREBASE_APP_ID: '' } },
   ]) {
     const { handler, request } = setup(change), response = await handler(request());
