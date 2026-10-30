@@ -160,7 +160,7 @@ export default function SignUpPage() {
             <CubeIcon />
             <span className="font-bold text-lg">QuadMart</span>
           </div>
-          <p className="text-sm text-green-100">Student-only. Verified by your university email.</p>
+          <p className="text-sm text-green-100">Your campus community. Verify your university email to join.</p>
         </div>
 
         {/* Form panel */}

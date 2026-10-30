@@ -30,7 +30,7 @@ const COLLAGE_ITEMS = [
 
 const TRUST_ROW = [
   { icon: '🎓', label: 'Verified university email' },
-  { icon: '👥', label: 'Student-only communities' },
+  { icon: '👥', label: 'Campus communities' },
   { icon: '📍', label: 'Local campus transactions' },
   { icon: '🏫', label: 'No listings outside your school' },
 ]
@@ -54,14 +54,14 @@ const SAMPLE_LISTINGS = [
 ]
 
 const BUYER_STEPS = [
-  { title: 'Verify email', desc: 'Sign up with your .edu address to confirm you’re a student at your school.' },
-  { title: 'Browse listings', desc: 'See what’s for sale or offer, posted only by students at your university.' },
+  { title: 'Verify email', desc: 'Confirm access to your supported university email to join your campus marketplace.' },
+  { title: 'Browse listings', desc: 'See what people with verified university emails are offering on your campus.' },
   { title: 'Connect and transact', desc: 'Message the seller, agree on a time and place, and meet up on campus.' },
 ]
 
 const SELLER_STEPS = [
   { title: 'Create a listing', desc: 'Add photos, a price, and a description in a few quick steps.' },
-  { title: 'Reach your campus', desc: 'Your listing is visible to verified students at your school only.' },
+  { title: 'Reach your campus', desc: 'Your listing is visible to verified university-email accounts from your campus.' },
   { title: 'Manage messages', desc: 'Buyers message you directly in-app — reply, negotiate, and set up a meetup.' },
 ]
 
@@ -78,7 +78,7 @@ const SAFETY_POINTS = [
   },
   {
     icon: '💬',
-    title: 'Secure messaging',
+    title: 'In-app messaging',
     desc: 'Buyers and sellers talk through QuadMart’s built-in messaging — no need to share personal contact info upfront.',
   },
 ]
@@ -130,7 +130,7 @@ export default function LandingPage() {
             Your campus marketplace.
           </h1>
           <p className="text-lg text-green-100 mb-8">
-            Buy, sell and find student services from verified people at your university.
+            Buy, sell and find student services in your campus community.
           </p>
 
           {/* University search */}
@@ -348,10 +348,10 @@ export default function LandingPage() {
       <section id="safety" className="scroll-mt-20 px-6 py-16 bg-surface">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-3xl font-bold text-text-primary text-center mb-2">
-            Built to be safe
+            Tools for safer campus trading
           </h2>
           <p className="text-sm text-text-secondary text-center mb-10">
-            QuadMart is designed around trust between students at the same school.
+            University email checks, reporting tools, and practical meetup guidance.
           </p>
           <div className="grid sm:grid-cols-3 gap-8 text-center">
             {SAFETY_POINTS.map((point) => (
@@ -364,6 +364,7 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+          <p className="mt-8 text-center"><Link href="/help#safety" className="font-medium text-primary-dark underline underline-offset-2">How to report a concern or block someone</Link></p>
         </div>
       </section>
 

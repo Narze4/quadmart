@@ -1,6 +1,6 @@
 # Account deletion and photo cleanup
 
-Development implementation, October 28, 2026. This is an engineering retention boundary, not a finalized privacy/retention policy. Agree on retention, support ownership and maintenance scheduling before inviting students.
+Development implementation, October 28, 2026. This is an engineering retention boundary, not a finalized privacy/retention policy. Agree on retention and support ownership, and review the Mac-dependent maintenance coverage before inviting students. See LAUNCH-READINESS.txt for current gates.
 
 ## Student flow
 
@@ -50,7 +50,7 @@ Set XDG_CONFIG_HOME when using a custom Firebase CLI cache; QUADMART_FIREBASE_CL
 
 ## Scheduling and remaining limits
 
-The local development worker and six-hour Codex schedule are described in [Scheduled maintenance and backups](SCHEDULED-MAINTENANCE-AND-BACKUPS.md). It captures a verified encrypted Firestore backup before bounded account/photo sweeps and records failures. It depends on the Mac/app being available and is not an always-on service. No paid service, additional runtime IAM grant, automatic evidence erasure or production deployment was added. Independent monitoring, off-device and Auth/photo recovery, and a retention policy remain launch requirements. Do not broaden the web runtime's privileges merely to bypass these operational requirements.
+The local development worker and six-hour Codex schedule are described in [Scheduled maintenance and backups](SCHEDULED-MAINTENANCE-AND-BACKUPS.md). It captures encrypted Firestore, Auth/password-hash and photo backups, requires a verified owner-only Drive download receipt before bounded account/photo sweeps, and records failures. It depends on the Mac/app being available and is not an always-on service. No paid service, additional runtime IAM grant, automatic evidence erasure or production deployment was added. Off-device and Auth/photo recovery are implemented and rehearsed in isolated emulators; current evidence is in LAUNCH-READINESS.txt. Independent monitoring, cloud recovery/cutover and an agreed retention policy remain launch work. Do not broaden the web runtime's privileges merely to bypass these operational requirements.
 
 ## Validation
 

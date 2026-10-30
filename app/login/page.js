@@ -121,7 +121,7 @@ export default function LoginPage() {
               Your campus, your marketplace.
             </h2>
             <p className="text-green-100 mb-8">
-              QuadMart is built exclusively for verified students — no strangers, no spam, just your own campus.
+              Connect with your campus community through verified university emails, in-app messaging, and reporting tools.
             </p>
             <ul className="flex flex-col gap-3 mb-10">
               {BENEFITS.map(b => (
@@ -149,7 +149,7 @@ export default function LoginPage() {
             <CubeIcon />
             <span className="font-bold text-lg">QuadMart</span>
           </div>
-          <p className="text-sm text-green-100">Student-only. Verified by your university email.</p>
+          <p className="text-sm text-green-100">Your campus community. Verify your university email to join.</p>
         </div>
 
         {/* Form panel */}
