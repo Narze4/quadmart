@@ -1,0 +1,34 @@
+QuadMart App Check renewal validation — October 29, 2026
+
+Development evidence page
+https://quadmart-git-security-firestore-rules-narze4s-projects.vercel.app/development/session-check
+
+This page and its API exist only in an attested quadmart-development Vercel
+Preview. Other projects, production, local mode and emulators receive 404.
+It is separate from the student navigation. The API requires a current,
+revocation-checked, verified university account, the existing API quota and
+active-account checks. Firebase Admin verifies the App Check signature,
+project and expiry; the handler also requires the configured web app ID.
+
+Only verified issued/expiry/sign-in times are returned, with no-store headers.
+Tokens, user identifiers and raw SDK errors are never displayed or logged by
+the diagnostic. Results are memory-only, bounded to eight entries and scoped
+to the current signed-in user. The draft has no persistence or submit action.
+
+Leave the page open and record two SDK callback entries with increasing
+server-verified App Check issued-at times. Keep the original token lifetime,
+provider and enforcement unchanged. The explicit button refreshes Auth only;
+App Check uses getToken(false), never force-refresh, debug tokens or fake clocks.
+A callback alone is not renewal evidence: its verified issued-at time must
+advance. The following protected reads and Auth exchange must succeed.
+
+Local validation: six diagnostic-handler tests cover environment isolation,
+revoked/unverified/unsupported/suspended users, quota limits, missing/invalid/
+expired/wrong-app attestation, no-store and credential/error redaction. Lint
+and the production webpack build passed. Current head-specific hosted and CI
+results are recorded in the draft PR; this file does not imply a hosted pass.
+
+Physical phone OS suspension, camera, keyboard and cellular behavior remain
+separate acceptance checks. Fresh signup needs an unused controlled university
+address. A hosted password-reset completion needs the owner to set the new
+password; local emulator resets do not establish real inbox delivery.
