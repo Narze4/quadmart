@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Important: Non-standard Next.js version
 
-This project uses Next.js 16.2.7 with React 19.2.4 — versions likely beyond your training data. APIs, conventions, and file structure may differ from what you know. **Read the relevant guide in `node_modules/next/dist/docs/` before writing any code.** Heed deprecation notices.
+This project uses Next.js 16.4.3 with React 19.2.4 — versions likely beyond your training data. APIs, conventions, and file structure may differ from what you know. **Read the relevant guide in `node_modules/next/dist/docs/` before writing any code.** Heed deprecation notices.
 
 ## Commands
 
@@ -16,7 +16,7 @@ npm run lint     # Run ESLint
 node scripts/seed.mjs  # Seed Firestore with 20 sample listings
 ```
 
-There is no test suite configured.
+Use npm run test:credentials, npm run test:rules, npm run test:uploads, npm run test:safety, npm run test:abuse, npm run test:observability, npm run test:cleanup, npm run test:backup, npm run test:operations, npm run test:restore, npm run test:pagination and npm run test:integration. See docs/FIREBASE-SECURITY.md for the current backend contract and docs/SCHEDULED-MAINTENANCE-AND-BACKUPS.md for local operations. The older architecture notes below may describe pre-migration fields.
 
 ## Architecture
 
@@ -74,4 +74,4 @@ Tailwind CSS v4 (`@tailwindcss/postcss`). Tailwind v4 differs from v3 — theme 
 
 ### Deployment
 
-Vercel (auto-deploys on push to `main`). Firebase authorized domains must include the Vercel deployment URL for Auth to work. The Firebase project and Firestore database are shared between local and production — seed data appears on both immediately.
+Vercel (auto-deploys on push to `main`). Firebase authorized domains must include the Vercel deployment URL for Auth to work. Local tests use demo-quadmart emulators. Vercel Preview uses quadmart-development; production quadmart-4410f is separate. Never seed or deploy to production while doing development tests.

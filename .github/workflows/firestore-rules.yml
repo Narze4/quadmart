@@ -1,0 +1,34 @@
+name: Firestore rules
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  rules:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run lint
+      - run: npm run test:credentials
+      - run: node --test tests/auth-guards.test.mjs tests/session-request.test.mjs tests/session-diagnostics.test.mjs
+      - run: npm run test:rules
+      - run: npm run test:uploads
+      - run: npm run test:safety
+      - run: npm run test:abuse
+      - run: npm run test:observability
+      - run: npm run test:cleanup
+      - run: npm run test:backup
+      - run: npm run test:operations
+      - run: npm run test:restore
+      - run: npm run test:pagination
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:integration

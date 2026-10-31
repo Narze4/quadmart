@@ -6,21 +6,54 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:credentials": "node --test tests/federation.test.mjs",
+    "deploy:rules:development": "firebase deploy --only firestore:rules,firestore:indexes --project quadmart-development",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-quadmart \"node --test tests/firestore.rules.test.mjs\"",
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-quadmart",
+    "dev:local": "node scripts/dev-local.mjs",
+    "build:local": "NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true next build",
+    "test:integration": "npm run build:local && firebase emulators:exec --only auth,firestore --project demo-quadmart \"node scripts/test-integration.mjs\"",
+    "test:uploads": "firebase emulators:exec --only firestore --project demo-quadmart \"node --test tests/uploads.test.mjs\"",
+    "test:safety": "firebase emulators:exec --only firestore --project demo-quadmart \"node --test tests/safety.test.mjs\"",
+    "test:abuse": "firebase emulators:exec --only firestore --project demo-quadmart \"node --test tests/abuse.test.mjs\"",
+    "test:observability": "node --test tests/api-observability.test.mjs tests/closure-runner.test.mjs",
+    "test:cleanup": "firebase emulators:exec --only firestore --project demo-quadmart \"node --test tests/cleanup.test.mjs\"",
+    "maintenance": "node scripts/maintenance.mjs",
+    "operations": "node scripts/operations.mjs",
+    "test:operations": "firebase emulators:exec --only auth,firestore --project demo-quadmart \"node --test tests/operations.test.mjs\"",
+    "test:backup": "node --test tests/backup.test.mjs tests/operations-launcher.test.mjs tests/recovery.test.mjs",
+    "test:restore": "firebase emulators:exec --config firebase.restore.json --only auth,firestore --project demo-quadmart-restore \"node --test tests/restore.test.mjs\"",
+    "test:pagination": "node --test tests/cursor-feed.test.mjs && firebase emulators:exec --only firestore --project demo-quadmart \"node --test --test-concurrency=1 tests/pagination.test.mjs tests/collections.test.mjs\""
   },
   "dependencies": {
+    "@google-cloud/firestore": "^9.4.0",
+    "@vercel/oidc": "^4.0.4",
     "cloudinary": "^2.10.0",
-    "firebase": "^12.14.0",
-    "next": "16.2.7",
+    "firebase": "^12.19.0",
+    "firebase-admin": "^14.5.0",
+    "google-auth-library": "^11.3.1",
+    "next": "16.4.3",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@tailwindcss/postcss": "^4",
     "dotenv": "^17.4.2",
     "eslint": "^9",
-    "eslint-config-next": "16.2.7",
+    "eslint-config-next": "16.4.3",
+    "firebase-tools": "^15.34.1",
     "playwright": "^1.60.0",
     "tailwindcss": "^4"
+  },
+  "overrides": {
+    "@firebase/firestore": {
+      "@grpc/grpc-js": "1.14.6"
+    },
+    "@vercel/cli-config": {
+      "zod": "4.6.7"
+    }
   }
 }

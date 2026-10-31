@@ -1,0 +1,65 @@
+QuadMart signup, verification and session recovery — 2026-10-29
+
+Follow-up: PHONE-SESSION-TEST-RESULTS.txt documents an additional regression
+and fix for temporary account-check errors after token renewal, plus offline
+recovery and account synchronization across tabs. Its physical-device limits
+remain explicit; the earlier normal-renewal pass did not cover that failure.
+
+FIXES
+- Account setup now waits for the ID token's verified-email claim after the
+  user reloads a newly verified account. Previously, setup could call the API
+  with the old unverified token and show an access error.
+- Failed verification refresh has an accessible error and a usable retry.
+  Verification/resend actions cannot overlap. Account setup can explicitly
+  retry even when Firebase returns the same token.
+- Routine token renewal keeps the signed-in page mounted. API, upload and
+  protected-photo requests clear a rejected session without replaying writes.
+  Late responses cannot sign out a different user or a renewed session.
+- Offline/temporary errors preserve the session and offer a manual retry.
+
+TEST DESIGN
+- Tests require demo-quadmart Auth and Firestore emulators on loopback.
+  Synthetic mail stays in the emulator; no real campus addresses receive it.
+- New browser scenarios cover failed mail delivery, resend cooldown after
+  reload, unverified access rejection, emulator email-action completion,
+  interrupted token exchange and recovery, persisted login, automatic SDK
+  refresh preserving an unsaved form, revocation and fresh sign-in.
+- Automatic renewal uses a shortened emulator response expiry hint and waits
+  for the SDK timer. It does not change the JWT or bypass server checks
+  and is not evidence of a naturally expired hosted App Check token.
+- Actual HTTP probes reject revoked tokens for market, upload and photo
+  endpoints. The emulator permits refresh after revocation; the refreshed
+  token retains its old auth_time and must still be rejected by the backend.
+  Live Firebase refresh rejection is a separate check.
+- Unit cases cover token acquisition, late-response/account races, terminal
+  SDK errors, temporary errors, upload headers/body and no automatic replay.
+
+LOCAL RESULTS
+- Ten auth/request unit tests, lint and the production webpack build passed.
+- 100 backend checkpoints and the existing 64 marketplace/mobile browser
+  scenarios passed. Ten signup scenarios passed, including uninterrupted
+  verification and immediate account-safety enforcement on both engines.
+- Final session suite: 18 scenarios passed on Android-sized Chromium and
+  iPhone-sized WebKit, with zero unexpected page errors. The test separately
+  counted six WebKit loopback Firestore long-poll cancellations during explicit
+  page unloading. Only that exact diagnostic during navigation is classified;
+  other errors still fail, and each destination must load successfully.
+- The initial regression reproduced stale verification claims during setup.
+  Test-only corrections covered login selectors, installing the test clock,
+  emulator revocation behavior and navigation cancellations. Final renewal
+  testing waits for the real SDK timer with a shortened local expiry hint.
+- Current-commit CI and hosted deployment results are recorded in the PR.
+
+LIVE DEVELOPMENT
+- narze@emory.edu is the owner's only available university address and already
+  has a verified development account. Preserve its account/profile/history.
+- Fresh hosted signup remains untested; local synthetic signup is not a
+  substitute for a second real, controlled university address.
+- Hosted verification delivery/completion and session tests are recorded in
+  the PR after deployment. Never put passwords, tokens or email-action codes
+  in this report or the PR.
+
+LIMITS
+- Physical iPhone/Android, camera, cellular/background recovery, naturally
+  aged App Check renewal, and invitation-host readiness remain launch gates.
+- Keep production, billing, IAM and the pinned maintenance runtime unchanged.

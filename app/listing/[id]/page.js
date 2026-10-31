@@ -3,10 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
+import SafetyActions from '@/components/SafetyActions'
+import ProtectedPhoto from '@/components/ProtectedPhoto'
+import { marketApi } from '@/lib/market-api'
+import SaveListingButton from '@/components/SaveListingButton'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, where } from 'firebase/firestore'
+import { doc, getDoc } from 'firebase/firestore'
 import { getUniversity, getListingStatus } from '@/lib/utils'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
@@ -27,7 +30,7 @@ const CATEGORY_TONE = {
 }
 
 export default function ListingDetailPage() {
-  const { user, loading, savedListings, toggleSaved } = useAuth()
+  const { user, loading } = useAuth()
   const router = useRouter()
   const { id } = useParams()
   const [listing, setListing] = useState(null)
@@ -43,48 +46,26 @@ export default function ListingDetailPage() {
   }, [user, loading, router])
 
   useEffect(() => {
-    if (!id) return
+    if (!id || !user?.emailVerified) return
     getDoc(doc(db, 'listings', id)).then(async snap => {
       if (!snap.exists()) { router.replace('/marketplace'); setFetchLoading(false); return }
       const data = { id: snap.id, ...snap.data() }
       setListing(data)
-      // Resolve seller UID: use stored sellerUid or look up by email
-      if (data.sellerUid) {
-        setSellerUid(data.sellerUid)
-      } else {
-        const q = query(collection(db, 'users'), where('email', '==', data.sellerEmail))
-        const uSnap = await getDocs(q).catch(() => null)
-        if (uSnap && !uSnap.empty) setSellerUid(uSnap.docs[0].id)
-      }
+      setSellerUid(data.sellerUid ?? null)
       setFetchLoading(false)
-    })
-  }, [id, router])
+    }).catch(() => { setListing(null); setFetchLoading(false) })
+  }, [id, router, user])
 
   const handleMessage = async () => {
     if (!user || !listing || messaging || !sellerUid) return
     setMessaging(true)
     setMessageError('')
     try {
-      const q = query(
-        collection(db, 'conversations'),
-        where('participants', 'array-contains', user.uid),
-        where('listingId', '==', listing.id)
-      )
-      const snap = await getDocs(q)
-      if (!snap.empty) { router.push(`/messages/${snap.docs[0].id}`); return }
-      const ref = await addDoc(collection(db, 'conversations'), {
-        participants: [user.uid, sellerUid],
-        participantEmails: [user.email, listing.sellerEmail],
-        listingId: listing.id,
-        listingTitle: listing.title,
-        lastMessage: '',
-        lastMessageAt: serverTimestamp(),
-        createdAt: serverTimestamp(),
-      })
+      const ref = await marketApi('conversation', { listingId: listing.id })
       router.push(`/messages/${ref.id}`)
     } catch (err) {
       console.error('Failed to open conversation:', err)
-      setMessageError("Couldn't message this seller right now. Please try again.")
+      setMessageError(err.message)
     } finally {
       setMessaging(false)
     }
@@ -98,13 +79,12 @@ export default function ListingDetailPage() {
     )
   }
 
-  if (!listing) return null
+  if (!listing) return <main className="p-8"><p>This listing is no longer available.</p><Link className="underline" href="/marketplace">Back to marketplace</Link></main>
 
   const images = listing.images ?? []
   const sellerUsername = listing.sellerEmail?.split('@')[0] ?? 'unknown'
   const isOwnListing = listing.sellerEmail === user.email
   const status = getListingStatus(listing)
-  const saved = savedListings?.includes(listing.id) ?? false
 
   return (
     <div className="min-h-screen flex flex-col bg-bg">
@@ -145,11 +125,9 @@ export default function ListingDetailPage() {
           <div>
             <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-gray-100">
               {images[selectedImage] ? (
-                <Image
+                <ProtectedPhoto
                   src={images[selectedImage]}
                   alt={listing.title}
-                  fill
-                  unoptimized
                   className="object-cover"
                 />
               ) : (
@@ -167,7 +145,7 @@ export default function ListingDetailPage() {
                       selectedImage === i ? 'ring-2 ring-primary ring-offset-2' : 'ring-1 ring-gray-200 hover:ring-gray-300'
                     }`}
                   >
-                    <Image src={img} alt="" fill unoptimized className="object-cover" />
+                    <ProtectedPhoto src={img} alt="" className="object-cover" />
                   </button>
                 ))}
               </div>
@@ -189,7 +167,7 @@ export default function ListingDetailPage() {
 
             {/* Title & price */}
             <div>
-              <h1 className="text-3xl font-bold text-text-primary mb-2">{listing.title}</h1>
+              <h1 className="[overflow-wrap:anywhere] text-3xl font-bold text-text-primary mb-2">{listing.title}</h1>
               <p className="text-3xl font-bold text-primary-dark">${Number(listing.price).toFixed(2)}</p>
             </div>
 
@@ -227,6 +205,8 @@ export default function ListingDetailPage() {
               </div>
             )}
 
+            <SafetyActions targetUid={sellerUid} listingId={listing.id} />
+
             {/* Actions */}
             {!isOwnListing && status !== 'sold' && (
               <div className="flex flex-col gap-3">
@@ -247,15 +227,7 @@ export default function ListingDetailPage() {
                 {messageError && (
                   <p className="text-sm text-red-600 text-center -mt-2">{messageError}</p>
                 )}
-                <button
-                  onClick={() => toggleSaved(listing.id)}
-                  className="w-full flex items-center justify-center gap-2 px-6 py-3 border-2 border-primary text-primary-dark font-semibold rounded-xl hover:bg-primary/10 transition-all duration-200 active:scale-[0.98]"
-                >
-                  <svg className={`w-4 h-4 ${saved ? 'fill-primary text-primary' : 'fill-none'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                  </svg>
-                  {saved ? 'Saved' : 'Save'}
-                </button>
+                <SaveListingButton listingId={listing.id} />
               </div>
             )}
           </div>

@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
+import { authErrorMessage } from '@/lib/auth-errors.mjs'
+import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import PublicHeader from '@/components/PublicHeader'
@@ -48,6 +50,7 @@ const EyeOffIcon = () => (
 const GRADIENT = 'linear-gradient(135deg, #2d8a5e 0%, #1a5c3a 55%, #123d27 100%)'
 
 export default function LoginPage() {
+  const { loading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -63,13 +66,14 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (authLoading || loading || resetSending) return
     setError('')
     setLoading(true)
     try {
       const { user } = await signInWithEmailAndPassword(auth, email, password)
       router.push(user.emailVerified ? '/dashboard' : '/verify-email')
     } catch (err) {
-      setError('Invalid email or password. Please try again.')
+      setError(authErrorMessage(err, 'login'))
     } finally {
       setLoading(false)
     }
@@ -77,13 +81,17 @@ export default function LoginPage() {
 
   const handleReset = async (e) => {
     e.preventDefault()
+    if (authLoading || loading || resetSending) return
     setResetError('')
     setResetSending(true)
     try {
-      await sendPasswordResetEmail(auth, resetEmail)
+      await sendPasswordResetEmail(auth, resetEmail.trim())
       setResetSent(true)
     } catch (err) {
-      setResetError('Could not send a reset email to that address. Please check it and try again.')
+      // Match the same confirmation when enumeration protection is unavailable
+      // (including the emulator); do not disclose whether an address exists.
+      if (err.code === 'auth/user-not-found') setResetSent(true)
+      else setResetError(authErrorMessage(err, 'reset'))
     } finally {
       setResetSending(false)
     }
@@ -113,7 +121,7 @@ export default function LoginPage() {
               Your campus, your marketplace.
             </h2>
             <p className="text-green-100 mb-8">
-              QuadMart is built exclusively for verified students — no strangers, no spam, just your own campus.
+              Connect with your campus community through verified university emails, in-app messaging, and reporting tools.
             </p>
             <ul className="flex flex-col gap-3 mb-10">
               {BENEFITS.map(b => (
@@ -141,7 +149,7 @@ export default function LoginPage() {
             <CubeIcon />
             <span className="font-bold text-lg">QuadMart</span>
           </div>
-          <p className="text-sm text-green-100">Student-only. Verified by your university email.</p>
+          <p className="text-sm text-green-100">Your campus community. Verify your university email to join.</p>
         </div>
 
         {/* Form panel */}
@@ -152,12 +160,14 @@ export default function LoginPage() {
               Log in to your QuadMart account.
             </p>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} aria-busy={authLoading || loading}>
+              <fieldset disabled={authLoading || loading} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">
+                <label htmlFor="login-email" className="block text-sm font-medium text-text-primary mb-1">
                   Email
                 </label>
                 <input
+                  id="login-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -169,7 +179,7 @@ export default function LoginPage() {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium text-text-primary">
+                  <label htmlFor="login-password" className="block text-sm font-medium text-text-primary">
                     Password
                   </label>
                   <button
@@ -182,6 +192,7 @@ export default function LoginPage() {
                 </div>
                 <div className="relative">
                   <input
+                    id="login-password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -209,11 +220,14 @@ export default function LoginPage() {
                   ) : (
                     <div className="flex flex-col gap-2">
                       <p className="text-xs text-text-secondary">Enter your email and we&apos;ll send you a reset link.</p>
+                      <label htmlFor="reset-email" className="text-sm">Recovery email</label>
                       <div className="flex gap-2">
                         <input
+                          id="reset-email"
                           type="email"
                           value={resetEmail}
                           onChange={(e) => setResetEmail(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleReset(e) } }}
                           placeholder="you@university.edu"
                           className="input-field"
                         />
@@ -221,7 +235,7 @@ export default function LoginPage() {
                           Send
                         </Button>
                       </div>
-                      {resetError && <p className="text-xs text-red-600">{resetError}</p>}
+                      {resetError && <p role="alert" className="text-xs text-red-600">{resetError}</p>}
                     </div>
                   )}
                 </div>
@@ -233,9 +247,10 @@ export default function LoginPage() {
                 </div>
               )}
 
-              <Button type="submit" variant="primary" loading={loading} className="w-full">
+              <Button type="submit" variant="primary" loading={loading} disabled={resetSending} className="w-full">
                 {loading ? 'Logging in…' : 'Log In'}
               </Button>
+              </fieldset>
             </form>
 
             <p className="text-sm text-center text-text-secondary mt-6">

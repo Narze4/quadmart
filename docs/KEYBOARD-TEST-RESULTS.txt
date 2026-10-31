@@ -1,0 +1,39 @@
+QuadMart keyboard and settings regression checks
+October 31, 2026 (America/New_York)
+
+Implemented:
+- Shared native modal keeps background controls inert. Sale starts at Cancel;
+  filters start at Close. Escape/backdrop dismissal restores the trigger and
+  body scroll. A pending sale remains open, preventing accidental dismissal.
+- Sale failures use an announced alert, preserve the buyer and permit retry.
+- Mobile filters close when resizing to desktop without clearing filter values.
+- Filter/search/category state and settings inputs have accessible names or
+  state. Settings feedback uses status/alert semantics.
+- Settings uses the shared twelve-character password minimum instead of the old
+  six-character guidance. Policy, network, throttling, App Check and recent-login
+  failures have fixed safe guidance without raw SDK diagnostics.
+
+Local validation:
+- Lint passed; five auth-guard tests passed, including safe password-change errors.
+- Next.js production-mode emulator build passed with --webpack. Local Turbopack
+  was blocked by its worker-port sandbox restriction; CI still uses Turbopack.
+- tests/keyboard-browser.mjs passed 12 scenarios in Chromium and WebKit, using
+  separate synthetic seller/buyer contexts and only demo-quadmart emulators.
+- Checks covered safe initial focus, forward/reverse Tab, Escape and trigger
+  restoration; busy-sale dismissal/duplicate rejection; simulated sale failure
+  followed by a real emulator sale and the buyer's purchase receipt; filters at
+  390px and resize to 1280px; named settings fields, profile update and cancelled
+  closure; short-password blocking, simulated server policy rejection, retained
+  input/retry and successful local password change. Old login was rejected and
+  new login accepted. The buyer account remained available.
+- Zero unexpected page errors in the passing run; no error whitelist added.
+  Tests use app links instead of artificial full-document reloads between pages
+  to avoid WebKit's known loopback long-poll cancellation on unload.
+- Screenshots of mobile filters and the sale retry were visually reviewed.
+- Added to the full integration runner, so CI repeats this coverage.
+
+Scope:
+No real emails, hosted password changes, cloud account changes, production
+changes or student invitations. This is not a physical-phone, screen-reader,
+full WCAG, hosted password-reset, fresh-signup or launch-readiness result.
+The draft PR records CI and the development deployment for the published commit.

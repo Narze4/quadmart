@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local Firebase emulator output
+*-debug.log
+.firebase/
+
+!.env.development.example
+
+# Local operations snapshots and keys must never enter Git or deployments.
+*.qmb
+*.qmb.partial
+backup.key
+.operations/

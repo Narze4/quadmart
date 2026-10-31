@@ -1,0 +1,145 @@
+QuadMart development launch checklist
+Updated October 31, 2026 (America/New_York)
+
+Status: development validation is progressing; student invitations remain on hold.
+This is the current gate list. Dated test reports retain their historical scope.
+Do not treat a green build or a development preview as approval to launch.
+
+Development: quadmart-development, security/firestore-rules Preview.
+Production quadmart-4410f and main have not been changed by this pass.
+Published commit, current CI and deployment evidence:
+https://github.com/Narze4/quadmart/pull/1
+
+COMPLETED ENGINEERING CHECKS
+
+[x] Two-account selling/buying: verified campus profiles, listing publication,
+    protected photos, conversations, reservations, seller-selected buyer,
+    completed-trade receipt and one review per participant. Server ownership,
+    campus isolation, retry identity and concurrent-write checks are covered.
+    QuadMart records exchanges; it does not process payment or prove handoff.
+[x] Dashboard, marketplace, inbox/history, My Listings, Saved, notifications,
+    purchases and profiles have bounded reads, cursor/retry behavior and account
+    isolation checks. See PAGED-READS.md and collection/account test reports.
+[x] Reporting, bidirectional blocking, moderator decisions, suspension and
+    resumable account closure/photo cleanup have local integration coverage.
+[x] Development API quotas and authenticated firewall rejection/recovery passed.
+    Firewall: one stable preview host, /api/, restored to 300 requests/IP/minute.
+    Test used a temporary 5/minute threshold, not a 300-request load test.
+[x] Authentication App Check enforcement rejects missing/invalid attestation.
+    Firestore App Check remains monitoring; Firestore security rules apply.
+[x] Real university mailbox verification and subsequent refreshed session passed.
+    Existing account/profile preserved. No administrator fabricated verification.
+[x] Natural automatic App Check renewal passed in the hosted desktop browser:
+    server-verified issue time advanced from 2026-10-30T00:39:17Z to 01:14:18Z.
+    Auth refresh at 01:14:57Z retained the original sign-in at 2026-10-29T23:08:24Z.
+    Unsaved draft, dashboard and protected photo remained usable. No fake clock,
+    debug attestation, forced App Check refresh or reduced TTL was used.
+[x] Revoked-session and transient-error handling tested; private views clear on
+    access loss. Local reset tests cover Enter, duplicate submission, generic
+    account-existence messaging, consumed/invalid codes and old/new passwords.
+    Local tests send no real reset email. Hosted reset completion remains below.
+[x] At 2026-10-30T02:27:23Z (October 29, 10:27 PM EDT), read-only cloud checks
+    found all 21 expected composite indexes present and READY, no missing index,
+    and deployed Firestore rules exactly matching this repository.
+[x] Help is available at /help with verification, photo, trade, reporting,
+    blocking, account-recovery and closure guidance. Public copy describes
+    university mailbox verification without claiming proof of enrollment or
+    promising spam-free/safe trades. Support ownership remains unverified.
+
+[x] Sale and mobile-filter dialogs now use native modality: named dialogs,
+    safe initial focus, keyboard containment, Escape/backdrop close and focus
+    restoration. Pending sales cannot be dismissed; failed sales announce the
+    error and preserve the selected buyer. Resizing to desktop releases filters.
+[x] Settings and marketplace controls have accessible names. Settings password
+    changes now match the twelve-character minimum used by signup; server policy
+    failures retain inputs and show retry guidance. Twelve local Chromium/WebKit
+    scenarios passed with two accounts and zero unexpected page errors. This is
+    keyboard/browser coverage, not a screen-reader or real-phone certification.
+    See KEYBOARD-TEST-RESULTS.txt. No hosted password reset was performed.
+
+REGRESSION EVIDENCE
+
+Baseline CI #72 on 94c8ff325e833ab11efbf1232b0129b0afd877e4 passed:
+206 automated tests, 100 backend checkpoints, 119 browser scenarios, lint,
+production dependency audit, build and zero unexpected browser errors.
+Eleven WebKit loopback long-poll cancellations during navigation were separately
+classified, not silently counted as successful application requests.
+https://github.com/Narze4/quadmart/actions/runs/40995082188
+
+The draft PR records the latest keyboard/settings commit's exact CI and preview
+results. Baseline results do not prove a later commit passed. Browser simulation
+does not complete the physical-phone checklist.
+
+DATED OFFSITE RECOVERY REHEARSAL
+
+On October 29 at 9:37 PM EDT, the existing encrypted backup was freshly downloaded
+from its private Drive folder after checking owner-only folder/file permissions,
+the exact parent, filename and size. The download matched the encrypted checksum.
+The pinned restore worker then decrypted and restored it into empty, isolated
+demo-quadmart-restore Auth/Firestore emulators, verified the result and stopped.
+
+Artifact: quadmart-2026-10-29T23-19-11-991Z-93e06279-ee79-46c4-bb0d-7d60747ea0c3.qmb
+Encrypted bytes: 256861
+Encrypted SHA256: 3933881972513014296af5c5a6477279d6e23fb2730a55ca4eb65abd02aa53a1
+Capture: 2026-10-29T23:19:09.976Z; database read: 2026-10-29T23:18:53.983Z.
+Restore finished: 2026-10-30T01:37:10.802Z; worker exit 0, no timeout.
+Verified: 75 database records, 3 quarantined login accounts, 3 photos / 100866 bytes.
+Accounts remained disabled. This drill did not test password login, restore into
+a new cloud project or perform a disaster cutover. Photo scratch data was removed.
+No plaintext account/record/key material belongs in this report or repository.
+
+The captured firestore.rules, firestore.indexes.json and firebase.json match the
+current repository. The maintenance associated with that report finished at 23:26:20Z with
+offsite verification and zero failures, manual-review items, stale or remaining
+jobs. This new rehearsal reused the recent capture; it was not a new backup run.
+The free six-hour workflow needs this Mac awake/online and cannot detect its own
+offline period until it runs again. Recheck freshness at any future launch.
+
+REMAINING WORK, IN IMPLEMENTABLE ORDER
+
+1. Owner/device checks deliberately deferred; do not repeat approval prompts.
+   [ ] Run PHONE-ACCEPTANCE-CHECKLIST.txt on real iPhone/Safari and Android/Chrome:
+       camera/HEIC behavior, keyboard, rotation, cellular, drafts and >65-minute
+       background/resume session renewal. No phone is currently available.
+   [ ] Complete the hosted password-reset inbox/link/new-password/sign-in check.
+       Owner explicitly left this pending; do not send another reset email.
+   [ ] Complete a fresh hosted signup under enforced App Check with an unused
+       university address the owner/tester controls. The only supplied address
+       already has an account; preserve it and do not assume an alias works.
+
+2. Founding-team decisions needed before public content can be finalized.
+   [ ] Define eligible students, alumni/staff handling and re-verification.
+       University mailbox access alone does not prove current enrollment.
+   [ ] Assign support and moderator coverage; confirm hello@quadmart.app is owned
+       and monitored with an owner-directed receive/reply test. No test mail sent.
+   [ ] Agree prohibited items, report escalation, appeals and response expectations.
+   [ ] Review Terms, Privacy and retention, including shared history, moderation
+       archives, account-closure tombstones and older backups. Terms/Privacy links
+       remain unavailable; no legal policy or deletion deadline was invented.
+   [ ] Agree acceptable data-loss/recovery time and missed-run response. Decide
+       whether Mac-dependent operations are sufficient for the intended pilot;
+       independent outage detection/always-on service is not configured here.
+
+3. Release configuration requires a chosen invitation plan, not guesses.
+   [ ] Choose the invitation hostname and controlled pilot scope. Apply/retest
+       its App Check domain, Auth redirects, firewall rejection/recovery and
+       account flows. Current edge/domain coverage is the stable preview only.
+   [ ] Review the old production schema/migration, rollout and rollback plan.
+       Current development fixes do not migrate production records automatically.
+   [ ] Rehearse cloud restore/cutover in a separately approved isolated target,
+       including quarantined Auth accounts, new-photo delivery and safe recovery.
+       The emulator recovery result is not proof of that cloud procedure.
+   [ ] Review Firestore App Check monitoring before deciding on enforcement.
+       Do not silently enable it or weaken existing rules to pass a client test.
+
+FINAL RELEASE PREFLIGHT (after the decisions/checks above)
+
+Record the exact commit and Ready deployment; require green CI for that commit.
+Verify cloud rules/indexes and environment isolation again. Run the two-account
+trade on the chosen hostname and confirm recovery/blocked-access UI. Check the
+latest capture, downloaded receipt, restore evidence and safe maintenance counts;
+resolve any expired backup, quota, permission, manual-review or remaining job.
+Confirm support/moderation coverage and record the team's go/no-go decision.
+Only then authorize invitations; this checklist does not send them or deploy
+to production. Stop expansion if a failure appears and retain a safe request
+reference, time and synthetic reproduction instead of passwords/private records.

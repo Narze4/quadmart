@@ -1,0 +1,78 @@
+QuadMart photo security and real-email verification - October 28, 2026
+
+PASS: Clean npm ci, ESLint, 2 federation credential tests,
+40 Firestore rules tests and 13 photo/verification tests.
+PASS: Production-build integration with 33 checkpoints covering signup,
+verification, profiles, listings, messaging, sales, reviews and access denials.
+GitHub Actions passed for code commit ffd426ddd6e429c973eaa41c8724ade73a8a2716.
+PASS: Production dependency audit: zero findings in the validated baseline.
+The full development dependency audit still reports 8 moderate findings through
+OpenTelemetry and uuid. No forced major update or SDK downgrade was used.
+
+REAL UNIVERSITY MAILBOX TEST: COMPLETE
+The owner opened Firebase's emailed verification link. A fresh ordinary client
+sign-in and ID token report email_verified=true for quadmart-development.
+No administrator marked this account verified. Hosted account setup provisioned
+private/public profiles. Ten readback checks passed for verification, campus
+access, public-profile privacy and denied other-campus/private-profile reads.
+The hosted dashboard loads. Before verification, marketplace reads were denied.
+University mailbox verification establishes email control, not current enrollment.
+
+CLOUDINARY DEVELOPMENT CONFIGURATION: COMPLETE
+Cloud: digi5pklj (existing Free plan; no upgrade).
+Dedicated key: QuadMart Development Preview, global Media Library User role.
+Folder role: Manager only on quadmart/quadmart-development.
+This is a restricted key/folder in the existing cloud, not a separate product
+environment. The owner approved persistent access at this scope.
+The temporary administrator credential file was removed after role assignment.
+CLOUDINARY_* secrets and QUADMART_ENABLE_UPLOADS=true are scoped only to the
+security/firestore-rules Vercel Preview branch. General Preview remains disabled.
+No secret is in Git, reports or archives; local fixtures are ignored and mode 600.
+
+REAL CLOUDINARY PROVIDER CHECKS: PASSED
+- Upload outside the shared development folder was denied.
+- Authenticated upload and signed image delivery succeeded inside the folder.
+- Unsigned image delivery was denied.
+- Sanitized fixture was resized to width 1600; EXIF/XMP/ICC metadata absent.
+- Temporary provider probe was removed successfully.
+- Dynamic asset_folder is explicit and validated in the upload response.
+
+HOSTED BROWSER / FIREBASE CHECKS: PASSED
+- Seller uploaded the synthetic desk image and published listing
+  wFLZrvmcru6dTmGwHYBJ through the protected Vercel Preview.
+- Seller My Listings and listing detail rendered the image.
+- Buyer dashboard and listing detail rendered the image (1600 x 889, blob URL).
+- Direct photo URL without a Firebase authorization header returned
+  "Sign in required." No signed Cloudinary URL is sent to the browser.
+- Ordinary seller and buyer clients read the listing's app photo URL.
+- Buyer could not alter the seller's photos; both clients were denied reads of
+  internal media registry records.
+- Oversized file was rejected with an immediate visible error at the photo step.
+- A text file named invalid-image.png was rejected by the hosted server.
+- On upload failure the form returned to photos, preserving title/description/
+  price. Removing the bad file cleared the error. A valid replacement uploaded
+  and published as listing zEGaV0wzh7kgyPCvLtEh, with its image rendered.
+- Both listings are labeled synthetic development tests, not real offers.
+
+The browser walkthrough found and fixed a UI defect: file-selection errors
+were previously rendered only on the final step. Errors now appear on the
+current step, failed uploads return to the picker, and remove/back controls
+have accessible names. Remove-photo controls remain visible on touch devices.
+
+LOCAL COVERAGE / LIMITS
+Local tests additionally cover unverified/cross-campus photo denial, bounded
+streaming, full decoding, quotas, idempotency, concurrency, forged ownership and
+rejection of mismatched/public/wrong-folder provider responses. Those negative
+cases are local automated tests; do not describe them all as live hosted probes.
+Local storage adapters are mocked. The separate provider and browser checks
+above exercised real Cloudinary storage and the deployed application.
+
+Development Firebase: quadmart-development (nam5).
+Preview: https://quadmart-git-security-firestore-rules-narze4s-projects.vercel.app
+Vercel team authentication is required. Production quadmart-4410f and main are
+unchanged. No invitations, real payments or billing changes were made.
+
+Remaining launch work: reporting/blocking, moderation/suspension policy, broader
+abuse controls, account/orphan-media cleanup, pagination, backup/recovery,
+production-data/image migration and development dependency advisories.
+See FIREBASE-SECURITY.md. Passing these checks does not establish launch readiness.

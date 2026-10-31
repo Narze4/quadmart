@@ -1,0 +1,43 @@
+QuadMart dashboard, My Listings and saved items — 2026-10-28
+
+Implemented:
+- Dashboard: eight recent listings, bounded full-campus search with continuation,
+  functional category filters and honest category navigation without sample totals.
+- My Listings: 24-row campus/owner/status pages, retries retaining loaded rows,
+  explicit loaded counts, confirmed status transitions and stale-version recovery.
+- Saved: server-confirmed owner-only membership, explicit load/write errors,
+  atomic saves/removals, 24-slot pages, removable unavailable/sold listings,
+  the existing 200-item limit and account-scoped reset behavior.
+- Sale buyer selection: 24-row pages, bounded profile lookups, explicit choice,
+  disabled confirmation on incomplete/failed loading and no silent off-platform
+  fallback. Completing a sale still uses the existing protected server operation.
+
+Local validation before publishing:
+- 9 controller and 16 Firestore paging/authorization tests passed. The six added
+  tests cover recent previews/old search, seller status cursors, unavailable saved
+  slots, atomic/capped/owned saves, buyer pagination and unverified access denial.
+- 15 new Chromium collection checks passed with zero page errors, using two
+  synthetic local accounts and 223 same-campus listings. All three seller status
+  tabs, 65 buyers/saves, offline retries, read/write denial and retry, reservation
+  conflicts, sale-to-purchase-to-review, account switching and save caps passed.
+- The existing 21 browser checks and 83 buying/selling HTTP checkpoints passed
+  again against the same production build. Full CI reruns all suites together.
+- ESLint and local Next.js Webpack production build passed. CI retains the normal
+  Turbopack build, dependency audit and all security/operations/recovery suites.
+- Five native indexed query shapes and two direct document reads succeeded on
+  quadmart-development. The new campus/seller/status/date index was deployed
+  there before app publication; development now has 21 indexes. The private
+  operations index reference and manifest hash were updated together, with all
+  24 pinned runtime files verified. No operational code or credentials changed.
+- Screenshot checks use synthetic data; hosted checks and final CI/deployment
+  status are recorded in the pull request after deployment.
+
+Scope and limitations:
+- Error fixtures, many-record histories and two-account writes use isolated local
+  emulators. Cloud query probes and hosted smoke checks are read-only.
+- Saved membership changes restart its pages intentionally. Counts describe
+  loaded records. Historical pages require refresh/revisit for later changes.
+- Limits bound individual actions; direct client reads do not yet have a global
+  server-enforced abuse quota. Launch safety/operations items remain in PR 1.
+- Production, main, Firestore rules, billing, IAM, runtime credentials and the
+  free Mac-hosted backup schedules were not changed. This is not launch approval.

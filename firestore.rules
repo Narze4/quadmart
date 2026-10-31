@@ -1,0 +1,105 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function campus() {
+      let email = request.auth.token.email.lower();
+      return email.matches('.*@([a-z0-9-]+[.])*emory[.]edu') ? 'emory.edu'
+        : email.matches('.*@([a-z0-9-]+[.])*uga[.]edu') ? 'uga.edu'
+        : email.matches('.*@([a-z0-9-]+[.])*gatech[.]edu') ? 'gatech.edu'
+        : email.matches('.*@([a-z0-9-]+[.])*scad[.]edu') ? 'scad.edu'
+        : email.matches('.*@([a-z0-9-]+[.])*gsu[.]edu') ? 'gsu.edu'
+        : email.matches('.*@([a-z0-9-]+[.])*kennesaw[.]edu') ? 'kennesaw.edu'
+        : email.matches('.*@([a-z0-9-]+[.])*utk[.]edu') ? 'utk.edu' : '';
+    }
+    function student() {
+      return signedIn() && request.auth.token.email_verified == true && campus() != ''
+        && (!exists(/databases/$(database)/documents/accountLifecycle/$(request.auth.uid))
+          || get(/databases/$(database)/documents/accountLifecycle/$(request.auth.uid)).data.closed != true)
+        && (!exists(/databases/$(database)/documents/moderationAccounts/$(request.auth.uid))
+          || get(/databases/$(database)/documents/moderationAccounts/$(request.auth.uid)).data.suspended != true);
+    }
+    // Client cursors must stay bounded even when callers bypass the UI.
+    function bounded(maximum) {
+      return request.query.limit > 0 && request.query.limit <= maximum
+        && request.query.get('offset', 0) == 0;
+    }
+    function member(conversationId) {
+      return student() && request.auth.uid in
+        get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+    }
+
+    // Private account data, including saved listings. Provisioned by trusted backend.
+    match /users/{uid} {
+      allow get: if student() && request.auth.uid == uid;
+      allow write: if false; // Backend validates saved items and limits changes.
+      // Legacy reviews are denied; transaction-validated reviews use publicProfiles.
+      match /reviews/{reviewId} { allow read, write: if false; }
+    }
+    // Public-facing fields must be explicitly projected by the trusted backend.
+    match /publicProfiles/{uid} {
+      allow get: if student() && resource.data.campusId == campus();
+      allow list: if bounded(25) && student() && resource.data.campusId == campus();
+      allow write: if false;
+      match /reviews/{reviewId} {
+        allow get: if student() && resource.data.campusId == campus();
+        allow list: if bounded(25) && student() && resource.data.campusId == campus();
+        allow write: if false;
+      }
+    }
+    match /listings/{listingId} {
+      allow get: if student() && resource.data.campusId == campus();
+      allow list: if bounded(25) && student() && resource.data.campusId == campus();
+      // Server validates photos/ownership and atomically applies publication quotas.
+      allow create, update: if false;
+      allow delete: if student() && resource.data.sellerUid == request.auth.uid
+        && resource.data.campusId == campus() && resource.data.status in ['active','reserved'];
+    }
+    match /conversations/{conversationId} {
+      allow get: if student() && request.auth.uid in resource.data.participants;
+      allow list: if bounded(31) && student() && request.auth.uid in resource.data.participants;
+      allow create: if false; // Authenticated backend validates and deduplicates conversations.
+      // Message previews/notifications are backend-owned to prevent forged events.
+      allow update, delete: if false;
+      match /messages/{messageId} {
+        allow get: if member(conversationId);
+        allow list: if bounded(31) && member(conversationId);
+        allow create: if false; // Backend atomically writes message, preview and notification.
+        allow update, delete: if false;
+      }
+    }
+    match /notifications/{notificationId} {
+      allow get: if student() && resource.data.userId == request.auth.uid;
+      allow list: if bounded(100) && student() && resource.data.userId == request.auth.uid;
+      allow write: if false; // Backend validates and limits read acknowledgements.
+    }
+    match /transactions/{transactionId} {
+      allow get: if student() && (resource.data.sellerUid == request.auth.uid || resource.data.buyerUid == request.auth.uid);
+      allow list: if bounded(25) && student() && (resource.data.sellerUid == request.auth.uid || resource.data.buyerUid == request.auth.uid);
+      allow write: if false;
+    }
+    // Registries and distributed budgets are backend-owned.
+    match /media/{id} { allow read, write: if false; }
+    match /operationLimits/{id} { allow read, write: if false; }
+    match /listingRequests/{id} { allow read, write: if false; }
+    match /uploadLimits/{id} { allow read, write: if false; }
+    match /accountLifecycle/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+    match /accountDeletions/{uid} { allow read, write: if false; }
+    match /moderationAccounts/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+    match /moderators/{uid} { allow read, write: if false; }
+    match /reports/{id} { allow read, write: if false; }
+    match /removedListings/{id} { allow read, write: if false; }
+    match /moderationEvents/{id} { allow read, write: if false; }
+    match /openReports/{id} { allow read, write: if false; }
+    match /reportLimits/{uid} { allow read, write: if false; }
+    // Blocks are API-only, including reads. The other party cannot enumerate them.
+    match /users/{uid}/blocks/{targetUid} { allow read, write: if false; }
+    // All other paths (including legacy /messages) are denied by default.
+  }
+}

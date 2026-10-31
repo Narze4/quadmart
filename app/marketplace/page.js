@@ -1,17 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore'
-import { getUniversity, getDomain, getListingStatus } from '@/lib/utils'
+import { marketplaceFeed } from '@/lib/feed-queries.mjs'
+import { useCursorFeed } from '@/lib/use-cursor-feed'
+import { getUniversity, getCampusId } from '@/lib/utils'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
 import ListingCard from '@/components/ListingCard'
 import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
+import Modal from '@/components/Modal'
 
 const TABS = [
   { label: 'All', value: 'All', icon: (
@@ -64,12 +66,12 @@ const BoxIcon = () => (
 function FilterFields({ sort, setSort, condition, setCondition, minPrice, setMinPrice, maxPrice, setMaxPrice }) {
   return (
     <>
-      <select value={sort} onChange={e => setSort(e.target.value)} className="input-field text-text-primary">
+      <select aria-label="Sort" value={sort} onChange={e => setSort(e.target.value)} className="input-field text-text-primary">
         <option value="newest">Newest</option>
         <option value="price-asc">Price: Low to High</option>
         <option value="price-desc">Price: High to Low</option>
       </select>
-      <select value={condition} onChange={e => setCondition(e.target.value)} className="input-field text-text-primary">
+      <select aria-label="Condition" value={condition} onChange={e => setCondition(e.target.value)} className="input-field text-text-primary">
         <option value="">Any condition</option>
         <option value="New">New</option>
         <option value="Like New">Like New</option>
@@ -77,8 +79,8 @@ function FilterFields({ sort, setSort, condition, setCondition, minPrice, setMin
         <option value="Fair">Fair</option>
       </select>
       <div className="flex gap-2">
-        <input type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)} placeholder="Min $" min="0" className="input-field w-full" />
-        <input type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="Max $" min="0" className="input-field w-full" />
+        <input aria-label="Minimum price" type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)} placeholder="Min $" min="0" className="input-field w-full" />
+        <input aria-label="Maximum price" type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="Max $" min="0" className="input-field w-full" />
       </div>
     </>
   )
@@ -87,10 +89,6 @@ function FilterFields({ sort, setSort, condition, setCondition, minPrice, setMin
 export default function MarketplacePage() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [listings, setListings] = useState([])
-  const [fetchLoading, setFetchLoading] = useState(true)
-  const [fetchError, setFetchError] = useState(false)
-  const [userUniversity, setUserUniversity] = useState(null)
   const [activeTab, setActiveTab] = useState('All')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('newest')
@@ -100,58 +98,37 @@ export default function MarketplacePage() {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
   useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 640px)')
+    const closeOnResize = () => { if (desktop.matches) setMobileFiltersOpen(false) }
+    desktop.addEventListener('change', closeOnResize)
+    return () => desktop.removeEventListener('change', closeOnResize)
+  }, [])
+
+  useEffect(() => {
     if (!loading && !user) router.replace('/login')
     else if (!loading && user && !user.emailVerified) router.replace('/verify-email')
   }, [user, loading, router])
 
-  const fetchAll = async () => {
-    if (!user) return
-    try {
-      // Fetch user profile for university
-      const profileSnap = await getDoc(doc(db, 'users', user.uid))
-      if (profileSnap.exists()) setUserUniversity(profileSnap.data().university)
-
-      const q = query(collection(db, 'listings'), orderBy('createdAt', 'desc'))
-      const snap = await getDocs(q)
-      setListings(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    } catch {
-      setFetchError(true)
-    } finally {
-      setFetchLoading(false)
-    }
-  }
-
+  const [retryKey, setRetryKey] = useState(0)
+  const [settledFilters, setSettledFilters] = useState(null)
   useEffect(() => {
-    // fetchAll is also called directly by the retry button (a plain event
-    // handler), which is what trips this rule — the state updates inside
-    // it only ever happen after an await, never synchronously here.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchAll()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
-
-  const handleRetry = () => {
-    setFetchLoading(true)
-    setFetchError(false)
-    fetchAll()
-  }
-
-  const userDomain = getDomain(user?.email)
-  const campusListings = listings.filter(l => getDomain(l.sellerEmail) === userDomain && getListingStatus(l) === 'active')
-
-  let filtered = listings.filter(l => {
-    if (getDomain(l.sellerEmail) !== userDomain) return false
-    if (getListingStatus(l) !== 'active') return false
-    if (activeTab !== 'All' && l.category !== activeTab) return false
-    if (search && !l.title?.toLowerCase().includes(search.toLowerCase())) return false
-    if (condition && l.condition !== condition) return false
-    if (minPrice !== '' && l.price < Number(minPrice)) return false
-    if (maxPrice !== '' && l.price > Number(maxPrice)) return false
-    return true
-  })
-
-  if (sort === 'price-asc') filtered = [...filtered].sort((a, b) => a.price - b.price)
-  if (sort === 'price-desc') filtered = [...filtered].sort((a, b) => b.price - a.price)
+    const timer = setTimeout(() => setSettledFilters({ category: activeTab, search, sort, condition, minPrice, maxPrice }), 300)
+    return () => clearTimeout(timer)
+  }, [activeTab, search, sort, condition, minPrice, maxPrice])
+  const enabled = !!user?.emailVerified && !!settledFilters
+  const configuration = useMemo(() => ({
+    enabled,
+    loadPage: enabled ? marketplaceFeed(db, getCampusId(user.email), settledFilters) : async () => ({ items: [], hasMore: false }),
+    // A new feed discards in-flight results from another identity/filter/retry.
+    identity: `${user?.uid ?? ''}:${retryKey}`,
+  }), [enabled, user, settledFilters, retryKey])
+  const feed = useCursorFeed(configuration)
+  const filtered = feed.items
+  const filtersPending = !settledFilters || settledFilters.category !== activeTab || settledFilters.search !== search || settledFilters.sort !== sort || settledFilters.condition !== condition || settledFilters.minPrice !== minPrice || settledFilters.maxPrice !== maxPrice
+  const invalidPrice = (minPrice !== '' && (!Number.isFinite(Number(minPrice)) || Number(minPrice) < 0)) || (maxPrice !== '' && (!Number.isFinite(Number(maxPrice)) || Number(maxPrice) < 0)) || (minPrice !== '' && maxPrice !== '' && Number(minPrice) > Number(maxPrice))
+  const fetchLoading = feed.loading || filtersPending
+  const fetchError = !!feed.error && !filtered.length
+  const handleRetry = () => setRetryKey(k => k + 1)
 
   const activeFilterCount = [
     activeTab !== 'All',
@@ -177,7 +154,7 @@ export default function MarketplacePage() {
     )
   }
 
-  const university = userUniversity ?? getUniversity(user.email)
+  const university = getUniversity(user.email)
 
   return (
     <div className="min-h-screen flex flex-col bg-bg">
@@ -186,7 +163,7 @@ export default function MarketplacePage() {
         <h1 className="text-3xl font-bold text-text-primary mb-1">{university} Marketplace</h1>
         {!fetchLoading && !fetchError && (
           <p className="text-sm text-text-secondary mb-6">
-            Showing {filtered.length} of {campusListings.length} listing{campusListings.length === 1 ? '' : 's'}
+            {filtered.length} listing{filtered.length === 1 ? '' : 's'}{feed.hasMore ? ' shown so far' : ' found'}
           </p>
         )}
 
@@ -199,6 +176,7 @@ export default function MarketplacePage() {
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
+            aria-label="Search listings"
             placeholder="Search listings…"
             className="input-field pl-12 py-3.5 text-base"
           />
@@ -209,6 +187,7 @@ export default function MarketplacePage() {
           {TABS.map(tab => (
             <button
               key={tab.value}
+              aria-pressed={activeTab === tab.value}
               onClick={() => setActiveTab(tab.value)}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200 ${
                 activeTab === tab.value
@@ -234,6 +213,8 @@ export default function MarketplacePage() {
           </div>
 
           <button
+            aria-haspopup="dialog"
+            aria-expanded={mobileFiltersOpen}
             onClick={() => setMobileFiltersOpen(true)}
             className="sm:hidden relative flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl text-sm font-medium text-text-primary bg-surface"
           >
@@ -255,27 +236,26 @@ export default function MarketplacePage() {
 
         {/* Mobile filter drawer */}
         {mobileFiltersOpen && (
-          <div className="sm:hidden fixed inset-0 z-50 flex items-end" role="dialog" aria-modal="true">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setMobileFiltersOpen(false)} aria-hidden="true" />
+          <Modal labelledBy="marketplace-filter-title" onClose={() => setMobileFiltersOpen(false)} className="items-end">
             <div className="relative w-full bg-surface rounded-t-2xl p-5 max-h-[85vh] overflow-y-auto animate-fade-in">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-text-primary text-lg">Filters</h2>
+                <h2 id="marketplace-filter-title" className="font-semibold text-text-primary text-lg">Filters</h2>
                 <button onClick={() => setMobileFiltersOpen(false)} className="p-1.5 rounded-full hover:bg-bg text-text-secondary" aria-label="Close filters">
                   <CloseIcon />
                 </button>
               </div>
               <div className="flex flex-col gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">Sort</label>
-                  <select value={sort} onChange={e => setSort(e.target.value)} className="input-field text-text-primary">
+                  <label htmlFor="mobile-sort" className="block text-sm font-medium text-text-primary mb-1">Sort</label>
+                  <select id="mobile-sort" value={sort} onChange={e => setSort(e.target.value)} className="input-field text-text-primary">
                     <option value="newest">Newest</option>
                     <option value="price-asc">Price: Low to High</option>
                     <option value="price-desc">Price: High to Low</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">Condition</label>
-                  <select value={condition} onChange={e => setCondition(e.target.value)} className="input-field text-text-primary">
+                  <label htmlFor="mobile-condition" className="block text-sm font-medium text-text-primary mb-1">Condition</label>
+                  <select id="mobile-condition" value={condition} onChange={e => setCondition(e.target.value)} className="input-field text-text-primary">
                     <option value="">Any condition</option>
                     <option value="New">New</option>
                     <option value="Like New">Like New</option>
@@ -284,10 +264,10 @@ export default function MarketplacePage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">Price range</label>
+                  <p className="block text-sm font-medium text-text-primary mb-1">Price range</p>
                   <div className="flex gap-2">
-                    <input type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)} placeholder="Min $" min="0" className="input-field w-full" />
-                    <input type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="Max $" min="0" className="input-field w-full" />
+                    <input aria-label="Minimum price" type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)} placeholder="Min $" min="0" className="input-field w-full" />
+                    <input aria-label="Maximum price" type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="Max $" min="0" className="input-field w-full" />
                   </div>
                 </div>
               </div>
@@ -296,11 +276,11 @@ export default function MarketplacePage() {
                 <Button onClick={() => setMobileFiltersOpen(false)} className="flex-1">Show results</Button>
               </div>
             </div>
-          </div>
+          </Modal>
         )}
 
         {/* Listings */}
-        {fetchLoading ? (
+        {invalidPrice ? <p role="alert" className="text-sm text-red-700">Enter a valid price range. Minimum must not exceed maximum.</p> : fetchLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm">
@@ -321,7 +301,7 @@ export default function MarketplacePage() {
             action={<Button onClick={handleRetry}>Try again</Button>}
           />
         ) : filtered.length === 0 ? (
-          listings.length === 0 ? (
+          activeFilterCount === 0 && !feed.hasMore ? (
             <EmptyState
               icon={<BoxIcon />}
               title="No listings yet"
@@ -331,14 +311,22 @@ export default function MarketplacePage() {
           ) : (
             <EmptyState
               icon={<SearchIcon className="w-9 h-9" />}
-              title="No matches"
-              description="Try adjusting your filters, or browse a different category."
+              title={feed.hasMore ? 'No matches in this batch' : 'No matches'}
+              description={feed.hasMore ? 'Continue searching older listings, or adjust your filters.' : 'Try adjusting your filters, or browse a different category.'}
               action={<Button variant="secondary" onClick={clearAll}>Clear filters</Button>}
             />
           )
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map(listing => <ListingCard key={listing.id} listing={listing} />)}
+          </div>
+        )}
+        {!fetchLoading && !invalidPrice && !feed.denied && (feed.hasMore || feed.error) && (
+          <div className="mt-6 text-center">
+            {feed.error && filtered.length > 0 && <p role="alert" className="mb-3 text-sm text-red-700">{feed.error}</p>}
+            <Button onClick={feed.loadMore} disabled={feed.loadingMore}>
+              {feed.loadingMore ? 'Loading…' : feed.error ? 'Retry loading more' : activeFilterCount ? 'Continue searching' : 'Load more listings'}
+            </Button>
           </div>
         )}
       </main>

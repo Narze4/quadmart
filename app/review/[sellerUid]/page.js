@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { marketApi } from '@/lib/market-api'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore'
+import { doc, getDoc } from 'firebase/firestore'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import EmptyState from '@/components/ui/EmptyState'
@@ -32,6 +33,7 @@ export default function ReviewPage() {
   const router = useRouter()
   const { sellerUid } = useParams()
   const searchParams = useSearchParams()
+  const transactionId = searchParams.get('transactionId')
   const type = searchParams.get('type') === 'buyer' ? 'buyer' : 'seller'
 
   const [target, setTarget] = useState(null)
@@ -55,41 +57,28 @@ export default function ReviewPage() {
 
     const load = async () => {
       try {
-        const targetSnap = await getDoc(doc(db, 'users', sellerUid))
+        const targetSnap = await getDoc(doc(db, 'publicProfiles', sellerUid))
         if (!targetSnap.exists()) { router.replace('/my-purchases'); return }
         setTarget({ id: targetSnap.id, ...targetSnap.data() })
 
-        const reviewSnap = await getDocs(
-          query(collection(db, 'users', sellerUid, 'reviews'), where('reviewerUid', '==', user.uid))
-        )
-        if (!reviewSnap.empty) setAlreadyReviewed(true)
+        if (!transactionId) { setError('Open this review from a completed trade.'); return }
+        const sale = await getDoc(doc(db, 'transactions', transactionId))
+        if (!sale.exists()) { setError('Trade not found'); return }
+        setAlreadyReviewed(type === 'seller' ? !!sale.data().buyerReviewed : !!sale.data().sellerReviewed)
+      } catch { setError('Unable to load this trade.')
       } finally {
         setFetchLoading(false)
       }
     }
     load()
-  }, [user, sellerUid, router])
+  }, [user, sellerUid, router, transactionId, type])
 
   const handleSubmit = async () => {
-    if (rating === 0 || submitting) return
+    if (!transactionId || rating === 0 || submitting) return
     setSubmitting(true)
     setError('')
     try {
-      await addDoc(collection(db, 'users', sellerUid, 'reviews'), {
-        reviewerUid: user.uid,
-        rating,
-        comment: comment.trim(),
-        type,
-        createdAt: serverTimestamp(),
-      })
-
-      const allReviewsSnap = await getDocs(
-        query(collection(db, 'users', sellerUid, 'reviews'), where('type', '==', type))
-      )
-      const ratings = allReviewsSnap.docs.map(d => d.data().rating).filter(r => typeof r === 'number')
-      const avg = ratings.reduce((sum, r) => sum + r, 0) / ratings.length
-      const scoreField = type === 'seller' ? 'sellerScore' : 'buyerScore'
-      await updateDoc(doc(db, 'users', sellerUid), { [scoreField]: Math.round(avg * 20) })
+      await marketApi('review', { transactionId, rating, comment: comment.trim() })
 
       setSubmitted(true)
     } catch {
@@ -107,7 +96,7 @@ export default function ReviewPage() {
     )
   }
 
-  const targetUsername = target?.email?.split('@')[0] ?? 'this user'
+  const targetUsername = target?.displayName ?? 'this user'
 
   return (
     <div className="min-h-screen flex flex-col bg-bg">
@@ -151,7 +140,7 @@ export default function ReviewPage() {
 
             {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
 
-            <Button onClick={handleSubmit} disabled={rating === 0 || submitting} className="w-full">
+            <Button onClick={handleSubmit} disabled={!transactionId || rating === 0 || submitting} className="w-full">
               {submitting ? 'Submitting…' : 'Submit Review'}
             </Button>
           </div>
