@@ -13,6 +13,7 @@ import Skeleton from '@/components/Skeleton'
 import ListingCard from '@/components/ListingCard'
 import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
+import Modal from '@/components/Modal'
 
 const TABS = [
   { label: 'All', value: 'All', icon: (
@@ -65,12 +66,12 @@ const BoxIcon = () => (
 function FilterFields({ sort, setSort, condition, setCondition, minPrice, setMinPrice, maxPrice, setMaxPrice }) {
   return (
     <>
-      <select value={sort} onChange={e => setSort(e.target.value)} className="input-field text-text-primary">
+      <select aria-label="Sort" value={sort} onChange={e => setSort(e.target.value)} className="input-field text-text-primary">
         <option value="newest">Newest</option>
         <option value="price-asc">Price: Low to High</option>
         <option value="price-desc">Price: High to Low</option>
       </select>
-      <select value={condition} onChange={e => setCondition(e.target.value)} className="input-field text-text-primary">
+      <select aria-label="Condition" value={condition} onChange={e => setCondition(e.target.value)} className="input-field text-text-primary">
         <option value="">Any condition</option>
         <option value="New">New</option>
         <option value="Like New">Like New</option>
@@ -78,8 +79,8 @@ function FilterFields({ sort, setSort, condition, setCondition, minPrice, setMin
         <option value="Fair">Fair</option>
       </select>
       <div className="flex gap-2">
-        <input type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)} placeholder="Min $" min="0" className="input-field w-full" />
-        <input type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="Max $" min="0" className="input-field w-full" />
+        <input aria-label="Minimum price" type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)} placeholder="Min $" min="0" className="input-field w-full" />
+        <input aria-label="Maximum price" type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="Max $" min="0" className="input-field w-full" />
       </div>
     </>
   )
@@ -95,6 +96,13 @@ export default function MarketplacePage() {
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 640px)')
+    const closeOnResize = () => { if (desktop.matches) setMobileFiltersOpen(false) }
+    desktop.addEventListener('change', closeOnResize)
+    return () => desktop.removeEventListener('change', closeOnResize)
+  }, [])
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
@@ -168,6 +176,7 @@ export default function MarketplacePage() {
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
+            aria-label="Search listings"
             placeholder="Search listings…"
             className="input-field pl-12 py-3.5 text-base"
           />
@@ -178,6 +187,7 @@ export default function MarketplacePage() {
           {TABS.map(tab => (
             <button
               key={tab.value}
+              aria-pressed={activeTab === tab.value}
               onClick={() => setActiveTab(tab.value)}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200 ${
                 activeTab === tab.value
@@ -203,6 +213,8 @@ export default function MarketplacePage() {
           </div>
 
           <button
+            aria-haspopup="dialog"
+            aria-expanded={mobileFiltersOpen}
             onClick={() => setMobileFiltersOpen(true)}
             className="sm:hidden relative flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl text-sm font-medium text-text-primary bg-surface"
           >
@@ -224,27 +236,26 @@ export default function MarketplacePage() {
 
         {/* Mobile filter drawer */}
         {mobileFiltersOpen && (
-          <div className="sm:hidden fixed inset-0 z-50 flex items-end" role="dialog" aria-modal="true">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setMobileFiltersOpen(false)} aria-hidden="true" />
+          <Modal labelledBy="marketplace-filter-title" onClose={() => setMobileFiltersOpen(false)} className="items-end">
             <div className="relative w-full bg-surface rounded-t-2xl p-5 max-h-[85vh] overflow-y-auto animate-fade-in">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-text-primary text-lg">Filters</h2>
+                <h2 id="marketplace-filter-title" className="font-semibold text-text-primary text-lg">Filters</h2>
                 <button onClick={() => setMobileFiltersOpen(false)} className="p-1.5 rounded-full hover:bg-bg text-text-secondary" aria-label="Close filters">
                   <CloseIcon />
                 </button>
               </div>
               <div className="flex flex-col gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">Sort</label>
-                  <select value={sort} onChange={e => setSort(e.target.value)} className="input-field text-text-primary">
+                  <label htmlFor="mobile-sort" className="block text-sm font-medium text-text-primary mb-1">Sort</label>
+                  <select id="mobile-sort" value={sort} onChange={e => setSort(e.target.value)} className="input-field text-text-primary">
                     <option value="newest">Newest</option>
                     <option value="price-asc">Price: Low to High</option>
                     <option value="price-desc">Price: High to Low</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">Condition</label>
-                  <select value={condition} onChange={e => setCondition(e.target.value)} className="input-field text-text-primary">
+                  <label htmlFor="mobile-condition" className="block text-sm font-medium text-text-primary mb-1">Condition</label>
+                  <select id="mobile-condition" value={condition} onChange={e => setCondition(e.target.value)} className="input-field text-text-primary">
                     <option value="">Any condition</option>
                     <option value="New">New</option>
                     <option value="Like New">Like New</option>
@@ -253,10 +264,10 @@ export default function MarketplacePage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">Price range</label>
+                  <p className="block text-sm font-medium text-text-primary mb-1">Price range</p>
                   <div className="flex gap-2">
-                    <input type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)} placeholder="Min $" min="0" className="input-field w-full" />
-                    <input type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="Max $" min="0" className="input-field w-full" />
+                    <input aria-label="Minimum price" type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)} placeholder="Min $" min="0" className="input-field w-full" />
+                    <input aria-label="Maximum price" type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="Max $" min="0" className="input-field w-full" />
                   </div>
                 </div>
               </div>
@@ -265,7 +276,7 @@ export default function MarketplacePage() {
                 <Button onClick={() => setMobileFiltersOpen(false)} className="flex-1">Show results</Button>
               </div>
             </div>
-          </div>
+          </Modal>
         )}
 
         {/* Listings */}

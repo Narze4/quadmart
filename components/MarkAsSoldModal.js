@@ -1,15 +1,18 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { db } from '@/lib/firebase'
 import { listingBuyersFeed } from '@/lib/feed-queries.mjs'
 import { useCursorFeed } from '@/lib/use-cursor-feed'
 import FeedStatus from '@/components/FeedStatus'
 import { marketApi } from '@/lib/market-api'
+import Modal from '@/components/Modal'
 
 const OFF_PLATFORM = 'off-platform'
 
 export default function MarkAsSoldModal({ listing, onClose, onSold }) {
+  const titleId = useId()
+  const cancelRef = useRef(null)
   const [retryKey, setRetryKey] = useState(0)
   const configuration = useMemo(() => ({ ...listingBuyersFeed(db, listing.id, listing.sellerUid), retryKey }), [listing.id, listing.sellerUid, retryKey])
   const feed = useCursorFeed(configuration)
@@ -41,14 +44,13 @@ export default function MarkAsSoldModal({ listing, onClose, onSold }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-black/40" onClick={submitting ? undefined : onClose} aria-hidden="true" />
+    <Modal labelledBy={titleId} onClose={onClose} busy={submitting} initialFocusRef={cancelRef} className="items-center justify-center p-4">
       <div className="relative w-full max-w-sm max-h-[90vh] overflow-y-auto bg-surface rounded-2xl p-6 shadow-lg animate-fade-in">
-        <h2 className="text-lg font-bold text-text-primary mb-1">Who bought this?</h2>
+        <h2 id={titleId} className="text-lg font-bold text-text-primary mb-1">Who bought this?</h2>
         <p className="text-sm text-text-secondary mb-4 [overflow-wrap:anywhere]">{listing.title}</p>
 
         {loadingBuyers ? (
-          <div className="flex justify-center py-6">
+          <div role="status" aria-label="Loading buyers" className="flex justify-center py-6">
             <div className="w-6 h-6 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
@@ -96,10 +98,11 @@ export default function MarkAsSoldModal({ listing, onClose, onSold }) {
         )}
 
         <FeedStatus feed={feed} noun="buyers" moreLabel="Load more buyers" onRestart={() => setRetryKey(k => k + 1)} />
-        {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+        {error && <p role="alert" className="text-sm text-red-600 mb-3">{error}</p>}
 
         <div className="flex gap-3">
           <button
+            ref={cancelRef}
             onClick={onClose}
             disabled={submitting}
             className="flex-1 px-4 py-2.5 border border-border text-text-primary text-sm font-semibold rounded-xl hover:bg-bg transition-all duration-200 active:scale-95 disabled:opacity-50"
@@ -115,6 +118,6 @@ export default function MarkAsSoldModal({ listing, onClose, onSold }) {
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }

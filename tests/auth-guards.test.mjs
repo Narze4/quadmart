@@ -27,9 +27,17 @@ test('auth failures never echo SDK diagnostics or identify existing accounts', (
 });
 
 test('live App Check rejection gives security retry guidance for every auth action', () => {
-  for (const action of ['signup', 'login', 'reset']) {
+  for (const action of ['signup', 'login', 'reset', 'change-password']) {
     const message = authErrorMessage({ code: 'auth/firebase-app-check-token-is-invalid.', message: 'private diagnostic' }, action);
     assert.equal(message, 'The security check could not finish. Reload this page and try again.');
     assert(!message.includes('password'));
   }
+});
+
+test('password-change failures expose actionable policy and sign-in guidance without SDK details', () => {
+  for (const code of ['auth/weak-password', 'auth/password-does-not-meet-requirements']) {
+    assert.match(authErrorMessage({ code, message: 'private diagnostic' }, 'change-password'), /at least 12 characters/);
+  }
+  assert.equal(authErrorMessage({ code: 'auth/requires-recent-login' }, 'change-password'), 'Sign in again before changing your password.');
+  assert.equal(authErrorMessage({ code: 'unexpected', message: 'private credential' }, 'change-password'), 'Failed to update password. Please try again.');
 });

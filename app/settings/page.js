@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { marketApi } from '@/lib/market-api'
+import { MIN_PASSWORD_LENGTH, authErrorMessage } from '@/lib/auth-errors.mjs'
 import { useAuth } from '@/lib/auth-context'
 import { auth } from '@/lib/firebase'
 import {
@@ -73,8 +74,9 @@ export default function SettingsPage() {
     e.preventDefault()
     setPwError('')
     setPwSuccess('')
-    if (newPassword.length < 6) {
-      setPwError('New password must be at least 6 characters.')
+    if (pwSaving) return
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      setPwError(`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`)
       return
     }
     setPwSaving(true)
@@ -89,7 +91,7 @@ export default function SettingsPage() {
       if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setPwError('Current password is incorrect.')
       } else {
-        setPwError('Failed to update password. Please try again.')
+        setPwError(authErrorMessage(err, 'change-password'))
       }
     } finally {
       setPwSaving(false)
@@ -148,8 +150,9 @@ export default function SettingsPage() {
           </div>
           <form onSubmit={handleUpdateName} className="flex flex-col gap-3">
             <div>
-              <label className="block text-sm font-medium text-text-primary mb-1">Display Name</label>
+              <label htmlFor="settings-name" className="block text-sm font-medium text-text-primary mb-1">Display Name</label>
               <input
+                id="settings-name"
                 type="text"
                 value={currentDisplayName}
                 onChange={(e) => setDisplayName(e.target.value)}
@@ -157,8 +160,8 @@ export default function SettingsPage() {
                 className="input-field"
               />
             </div>
-            {nameError && <p className="text-sm text-red-600">{nameError}</p>}
-            {nameSuccess && <p className="text-sm text-primary-dark">{nameSuccess}</p>}
+            {nameError && <p role="alert" className="text-sm text-red-600">{nameError}</p>}
+            {nameSuccess && <p role="status" className="text-sm text-primary-dark">{nameSuccess}</p>}
             <button
               type="submit"
               disabled={nameSaving}
@@ -173,8 +176,10 @@ export default function SettingsPage() {
         <Section title="Change Password">
           <form onSubmit={handleUpdatePassword} className="flex flex-col gap-3">
             <div>
-              <label className="block text-sm font-medium text-text-primary mb-1">Current Password</label>
+              <label htmlFor="settings-current-password" className="block text-sm font-medium text-text-primary mb-1">Current Password</label>
               <input
+                id="settings-current-password"
+                autoComplete="current-password"
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
@@ -183,18 +188,23 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-text-primary mb-1">New Password</label>
+              <label htmlFor="settings-new-password" className="block text-sm font-medium text-text-primary mb-1">New Password</label>
               <input
+                id="settings-new-password"
+                autoComplete="new-password"
+                aria-describedby="settings-password-hint"
+                minLength={MIN_PASSWORD_LENGTH}
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="At least 6 characters"
+                placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
                 required
                 className="input-field"
               />
             </div>
-            {pwError && <p className="text-sm text-red-600">{pwError}</p>}
-            {pwSuccess && <p className="text-sm text-primary-dark">{pwSuccess}</p>}
+            <p id="settings-password-hint" className="text-sm text-text-secondary">Use at least {MIN_PASSWORD_LENGTH} characters.</p>
+            {pwError && <p role="alert" className="text-sm text-red-600">{pwError}</p>}
+            {pwSuccess && <p role="status" className="text-sm text-primary-dark">{pwSuccess}</p>}
             <button
               type="submit"
               disabled={pwSaving}
@@ -226,7 +236,9 @@ export default function SettingsPage() {
                 Enter your password to close your account and start deletion. <strong>This cannot be undone.</strong>
               </p>
               <p className="text-sm text-text-secondary">Shared messages, completed trades, reviews and moderation records are retained. Unused photos are cleaned up separately; evidence photos are preserved. If interrupted, sign in again to finish.</p>
+              <label htmlFor="settings-delete-password" className="text-sm">Confirm your password</label>
               <input
+                id="settings-delete-password"
                 type="password"
                 autoComplete="current-password"
                 value={deletePassword}
@@ -235,7 +247,7 @@ export default function SettingsPage() {
                 required
                 className="w-full px-4 py-2.5 border border-red-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
               />
-              {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
+              {deleteError && <p role="alert" className="text-sm text-red-600">{deleteError}</p>}
               <div className="flex gap-3">
                 <button
                   type="submit"

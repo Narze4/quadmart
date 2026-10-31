@@ -1,5 +1,5 @@
 QuadMart development launch checklist
-Updated October 29, 2026 (America/New_York)
+Updated October 31, 2026 (America/New_York)
 
 Status: development validation is progressing; student invitations remain on hold.
 This is the current gate list. Dated test reports retain their historical scope.
@@ -46,20 +46,31 @@ COMPLETED ENGINEERING CHECKS
     university mailbox verification without claiming proof of enrollment or
     promising spam-free/safe trades. Support ownership remains unverified.
 
+[x] Sale and mobile-filter dialogs now use native modality: named dialogs,
+    safe initial focus, keyboard containment, Escape/backdrop close and focus
+    restoration. Pending sales cannot be dismissed; failed sales announce the
+    error and preserve the selected buyer. Resizing to desktop releases filters.
+[x] Settings and marketplace controls have accessible names. Settings password
+    changes now match the twelve-character minimum used by signup; server policy
+    failures retain inputs and show retry guidance. Twelve local Chromium/WebKit
+    scenarios passed with two accounts and zero unexpected page errors. This is
+    keyboard/browser coverage, not a screen-reader or real-phone certification.
+    See KEYBOARD-TEST-RESULTS.txt. No hosted password reset was performed.
+
 REGRESSION EVIDENCE
 
-Baseline CI #70 on 2beac350ceca87b876bea700a30d042909931031 passed:
+Baseline CI #72 on 94c8ff325e833ab11efbf1232b0129b0afd877e4 passed:
 206 automated tests, 100 backend checkpoints, 119 browser scenarios, lint,
 production dependency audit, build and zero unexpected browser errors.
-Ten WebKit loopback long-poll cancellations during navigation were separately
+Eleven WebKit loopback long-poll cancellations during navigation were separately
 classified, not silently counted as successful application requests.
-https://github.com/Narze4/quadmart/actions/runs/40984515888
+https://github.com/Narze4/quadmart/actions/runs/40995082188
 
-The draft PR records the new Help/documentation commit's exact CI and preview
+The draft PR records the latest keyboard/settings commit's exact CI and preview
 results. Baseline results do not prove a later commit passed. Browser simulation
 does not complete the physical-phone checklist.
 
-FRESH OFFSITE RECOVERY REHEARSAL
+DATED OFFSITE RECOVERY REHEARSAL
 
 On October 29 at 9:37 PM EDT, the existing encrypted backup was freshly downloaded
 from its private Drive folder after checking owner-only folder/file permissions,
@@ -78,7 +89,7 @@ a new cloud project or perform a disaster cutover. Photo scratch data was remove
 No plaintext account/record/key material belongs in this report or repository.
 
 The captured firestore.rules, firestore.indexes.json and firebase.json match the
-current repository. Last maintenance finished successfully at 23:26:20Z with
+current repository. The maintenance associated with that report finished at 23:26:20Z with
 offsite verification and zero failures, manual-review items, stale or remaining
 jobs. This new rehearsal reused the recent capture; it was not a new backup run.
 The free six-hour workflow needs this Mac awake/online and cannot detect its own
