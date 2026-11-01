@@ -1,5 +1,5 @@
 QuadMart development launch checklist
-Updated October 31, 2026 (America/New_York)
+Updated November 1, 2026 (America/New_York)
 
 Status: development validation is progressing; student invitations remain on hold.
 This is the current gate list. Dated test reports retain their historical scope.
@@ -56,6 +56,13 @@ COMPLETED ENGINEERING CHECKS
     scenarios passed with two accounts and zero unexpected page errors. This is
     keyboard/browser coverage, not a screen-reader or real-phone certification.
     See KEYBOARD-TEST-RESULTS.txt. No hosted password reset was performed.
+
+[x] A verification failure reproduced in WebKit returned to login when a normal
+    moderation snapshot cleared the shared setup error. Account-setup and safety
+    errors now have separate state; safety results are scoped to the account,
+    stale callbacks are ignored, and Retry reattaches safety listeners. The test
+    waits for the initialized verification view and confirms delivery of the
+    simulated failed token exchange. See KEYBOARD-TEST-RESULTS.txt for evidence.
 
 REGRESSION EVIDENCE
 

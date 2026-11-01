@@ -37,3 +37,23 @@ No real emails, hosted password changes, cloud account changes, production
 changes or student invitations. This is not a physical-phone, screen-reader,
 full WCAG, hosted password-reset, fresh-signup or launch-readiness result.
 The draft PR records CI and the development deployment for the published commit.
+
+November 1 verification follow-up:
+CI run 74 failed twice in the existing WebKit verification-failure assertion.
+The Firestore security-rule tests passed in both attempts. Safe local diagnostics
+then reproduced the failure: the verification flow reached /login instead of
+retaining its retry, after two simulated failed token exchanges.
+
+The account moderation listener was sharing setupError with the token/profile
+provisioning flow, and a normal safety snapshot could clear that unrelated error.
+The Auth provider now keeps account-scoped safety errors separate, ignores stale
+listener callbacks and restarts safety listeners on an explicit account retry.
+The regression waits for verification-view initialization, installs the transport
+failure before changing Auth state and proves a failed response was delivered.
+It retains the required visible error and usable retry assertions; no timeout was
+increased and no failure was ignored. Failure output includes only synthetic-test
+stage, safe UI state and exchange counts, never tokens or email action codes.
+
+The development PR records exact final CI results for this follow-up. The two
+failed attempts remain historical evidence, not passing validation. No production
+rules, data, credentials, billing, recovery runtime or real password were changed.

@@ -27,6 +27,7 @@ try {
     const context = await browser.newContext(devices[device]);
     const page = await context.newPage();
     let navigating = false;
+    let failedExchanges = 0;
     const navigate = async action => {
       navigating = true;
       try { await action(); } finally { navigating = false; }
@@ -69,13 +70,24 @@ try {
         await page.waitForURL('**/verify-email');
       });
       pass(name, 'resend cooldown survives reload and unverified accounts cannot enter the dashboard');
+      // The redirect URL can settle before the new verification view restores
+      // its per-account state. Install the failure before changing Auth state,
+      // then prove the SDK actually received it; do not race an unseen exchange.
+      await page.getByText('Verification email sent.', { exact: true }).waitFor();
+      const continueButton = page.getByRole('button', { name: "I've verified, continue", exact: true });
+      assert(await continueButton.isEnabled());
+      await page.route(refresh, route => {
+        failedExchanges++;
+        return route.fulfill({ status: 503, headers: { 'access-control-allow-origin': base }, contentType: 'application/json', body: JSON.stringify({ error: { message: 'INTERNAL_ERROR' } }) });
+      });
       const code = (await codes(email)).at(-1);
       assert.equal(new URL(code.oobLink).searchParams.get('continueUrl'), base + '/verify-email');
       const verified = await fetch('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:update?key=demo-key', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oobCode: code.oobCode }) });
       assert.equal(verified.status, 200);
       // Verify the mail code, then interrupt the separate token exchange.
-      await page.route(refresh, route => route.fulfill({ status: 503, headers: { 'access-control-allow-origin': base }, contentType: 'application/json', body: JSON.stringify({ error: { message: 'INTERNAL_ERROR' } }) }));
-      await page.getByRole('button', { name: "I've verified, continue", exact: true }).click();
+      const interrupted = page.waitForResponse(response => response.url().includes('/securetoken.googleapis.com/v1/token') && response.status() === 503, { timeout: 10000 });
+      await Promise.all([continueButton.click(), interrupted]);
+      assert(failedExchanges > 0);
       await page.getByRole('alert').filter({ hasText: /connection|try again/i }).waitFor();
       const recovery = page.getByRole('button', { name: /^(I've verified, continue|Retry account setup)$/ });
       assert(await recovery.isEnabled());
@@ -132,6 +144,13 @@ try {
       await page.waitForURL('**/dashboard');
       await page.getByRole('heading', { name: /Welcome back,/ }).waitFor();
       pass(name, 'fresh password sign-in recovers after revocation');
+    } catch (error) {
+      // Safe synthetic-test state only: no token, email, code, SDK error or URL query.
+      console.log(JSON.stringify({ sessionFailure: true, browser: name, afterCheck: checks,
+        path: new URL(page.url()).pathname, failedExchanges,
+        alerts: await page.getByRole('alert').allTextContents(),
+        buttons: await page.getByRole('button').allTextContents() }));
+      throw error;
     } finally {
       page.removeAllListeners('pageerror');
       await context.close(); await browser.close();
