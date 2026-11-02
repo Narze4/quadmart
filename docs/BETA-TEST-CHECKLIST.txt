@@ -1,0 +1,108 @@
+QuadMart — student beta checklist
+Updated November 1, 2026 (America/New_York)
+
+Decision today: development engineering checks pass; do not invite students yet.
+This list separates the remaining real-world checks and team decisions from
+work already verified. Keep PR #1 draft until the release gates are satisfied.
+Current commit, CI and development deployment: https://github.com/Narze4/quadmart/pull/1
+
+DONE / EVIDENCE
+- Full baseline CI run 76: 207 automated tests, 100 backend checkpoints,
+  131 browser scenarios, zero unexpected browser errors. The draft PR records
+  validation of the final badge/documentation change separately.
+- Verified-email account access, server ownership/campus checks, protected photos,
+  messages, sales, reviews, saved items, paginated pages and safety flows tested.
+- Verification retry/session isolation, keyboard dialogs and password-policy
+  guidance corrected; local two-account browser regressions passed.
+- Fresh encrypted Drive copy downloaded, checksummed and decrypted; maintenance
+  completed with zero failures or remaining jobs; isolated recovery verified
+  75 documents, 3 quarantined accounts and 3 photos. See recovery report.
+- The two scheduled-workflow handoff failures were corrected and exercised.
+- Listing badges say university email verified, not proof of student enrollment.
+
+BEFORE THE FIRST STUDENT INVITATIONS — IN ORDER
+
+[ ] 1. Choose the beta scope and eligibility. Owner: founding team.
+    Name the initial campus, exact test site, dates and small invited group
+    (a suggested first group is 5–10 volunteers). Define current students versus
+    alumni/staff and how eligibility will be checked again. Decide whether beta
+    data will be retained or reset and tell testers. University-mailbox access
+    does not itself prove current enrollment. No invitations have been sent.
+
+[ ] 2. Complete a genuinely fresh signup. Owner: a tester + engineering.
+    Use an unused university email the tester controls; preserve the owner's
+    existing account and do not assume an email alias works. On the chosen host,
+    sign up under enforced App Check, open the actual email, verify and continue.
+    Pass: marketplace blocked before verification; correct campus/profile and
+    dashboard afterward; reload works; duplicate-account guidance is safe.
+
+[ ] 3. Complete the hosted password-reset flow. Owner: account holder.
+    This remains deliberately deferred. The holder requests/opens the actual
+    email, chooses the password privately, then signs in. Pass: new password
+    works, old password fails and the used link cannot be reused. Local reset
+    tests are already green; they do not replace this hosted check.
+
+[ ] 4. Test real iPhone/Safari and Android/Chrome. Owner: two device testers.
+    Follow PHONE-ACCEPTANCE-CHECKLIST.txt: camera/gallery and HEIC, permissions,
+    uploads/photos, keyboard, touch targets, scrolling, rotation, slow/cellular
+    network and offline retry. Background the app for more than 65 minutes,
+    resume and confirm access/renewal without losing drafts. A simulated mobile
+    browser or frozen desktop renderer does not complete this step.
+
+[ ] 5. Assign support and moderation. Owner: founding team.
+    Choose a named primary and backup, coverage hours, escalation/appeals owner
+    and realistic response expectations. Verify hello@quadmart.app is owned and
+    monitored through an owner-directed receive/reply check. Agree prohibited
+    listings and report handling; rehearse report/block/suspend/restore with
+    disposable accounts. Do not promise continuous coverage unless staffed.
+
+[ ] 6. Approve and publish the user policies. Owner: founding team/reviewer.
+    Finalize Terms, Privacy, eligibility, listing rules and retention/deletion
+    treatment for messages, reviews, moderation records and older backups.
+    Provide accurate operator/contact details and review the wording before
+    making the currently unavailable Terms/Privacy links live. These policies
+    have not been invented or treated as approved by engineering.
+
+[ ] 7. Configure and rehearse the exact beta destination. Owner: engineering + team.
+    Choose a separate beta environment or explicitly review the intended target.
+    Apply/retest Auth redirect domains, App Check, API firewall and access rules
+    for its actual hostname; current coverage is the protected development
+    preview. Test the invitation/access path without disabling protection on
+    existing development data. Verify rules/indexes and environment isolation.
+    Review Firestore App Check monitoring before any enforcement decision.
+    If reusing production data, reconcile/migrate legacy profiles, photos, chats,
+    transactions and reviews in isolation first. A UI deployment alone is not
+    a migration. Review rollback and cloud restore/cutover in an approved target.
+
+[ ] 8. Confirm operational coverage. Owner: named operator + backup.
+    Observe a successful unattended backup/maintenance cycle with the revised
+    prompt. Check backup age, owner-only receipt, restore evidence, storage and
+    free-tier usage. Agree acceptable data loss/recovery time and a missed-run
+    response. Keep the Mac online/available and the app running if retaining
+    this free setup; it cannot independently alert while unavailable. Today's
+    overdue run recovered, but continuous availability is not established.
+
+[ ] 9. Run the final two-person beta acceptance test. Owner: seller + buyer.
+    On the chosen hostname: sign in, publish a real test photo/listing, find and
+    save it, message, reserve, complete the seller-selected sale, check both
+    receipts/notifications, leave reviews and update profiles. Also verify
+    failed-request retries, blocking/reporting and sign-out. Record browser,
+    device, build, result and safe error reference; never capture passwords or
+    tokens. Require green CI and the correct Ready deployment for that build.
+    QuadMart records a trade; it does not process payment or prove handoff.
+
+[ ] 10. Record the team's go/no-go, then invite the chosen group. Owner: team.
+    Assign a feedback/bug triage owner and agree what stops the beta: access to
+    another user's private data, lost/duplicate sales, broad signup/login failure,
+    unsafe moderation behavior or unresolved recovery failure. Stop expansion
+    when these occur, preserve evidence and retest the fix before resuming.
+
+Evidence to fill for each item:
+Owner: __________  Date/build: __________  Result/link: __________
+A checked engineering test is not approval to skip an owner/device/team gate.
+
+Related reports:
+- LAUNCH-READINESS.txt — detailed launch gates and historical evidence
+- RECOVERY-VALIDATION-2026-11-01.txt — current backup/maintenance/restore evidence
+- PHONE-ACCEPTANCE-CHECKLIST.txt — physical-device acceptance steps
+- KEYBOARD-TEST-RESULTS.txt — Chromium/WebKit keyboard and verification regressions

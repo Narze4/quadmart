@@ -129,7 +129,9 @@ export default function ListingCard({ listing, showSeller = true }) {
                 </div>
                 <span
                   className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary flex items-center justify-center ring-2 ring-surface"
-                  title="Verified student"
+                  role="img"
+                  aria-label="University email verified"
+                  title="University email verified"
                 >
                   <CheckBadgeIcon />
                 </span>

@@ -2,7 +2,8 @@ QuadMart development launch checklist
 Updated November 1, 2026 (America/New_York)
 
 Status: development validation is progressing; student invitations remain on hold.
-This is the current gate list. Dated test reports retain their historical scope.
+This is the detailed gate list. BETA-TEST-CHECKLIST.txt gives the ordered team
+action list. Dated test reports retain their historical scope.
 Do not treat a green build or a development preview as approval to launch.
 
 Development: quadmart-development, security/firestore-rules Preview.
@@ -66,16 +67,27 @@ COMPLETED ENGINEERING CHECKS
 
 REGRESSION EVIDENCE
 
-Baseline CI #72 on 94c8ff325e833ab11efbf1232b0129b0afd877e4 passed:
-206 automated tests, 100 backend checkpoints, 119 browser scenarios, lint,
+Baseline CI #76 on ed3239ab041c645a9ca068a343276294f2367997 passed:
+207 automated tests, 100 backend checkpoints, 131 browser scenarios, lint,
 production dependency audit, build and zero unexpected browser errors.
-Eleven WebKit loopback long-poll cancellations during navigation were separately
+Nine WebKit loopback long-poll cancellations during navigation were separately
 classified, not silently counted as successful application requests.
-https://github.com/Narze4/quadmart/actions/runs/40995082188
+https://github.com/Narze4/quadmart/actions/runs/41332352170
 
 The draft PR records the latest keyboard/settings commit's exact CI and preview
 results. Baseline results do not prove a later commit passed. Browser simulation
 does not complete the physical-phone checklist.
+
+CURRENT RECOVERY FOLLOW-UP
+
+On November 1 at 10:13 PM EST, a fresh encrypted offsite backup was downloaded,
+checksummed/decrypted, used for successful maintenance, and restored into isolated
+emulators. Verified 75 documents, 3 quarantined Auth accounts and 3 photos.
+Failures/manual-review/stale/remaining jobs were all zero; the run was overdue
+before starting. The two permission/URL handoff problems were corrected and the
+scheduled prompts updated. See RECOVERY-VALIDATION-2026-11-01.txt for exact
+artifact, timestamps, counts and limits. The pinned runtime was unchanged.
+A later unattended cycle is still needed to validate the revised schedule.
 
 DATED OFFSITE RECOVERY REHEARSAL
 
