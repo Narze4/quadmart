@@ -1,0 +1,53 @@
+QuadMart notifications, purchases and profiles — 2026-10-28
+
+Implemented:
+- Notifications: live 30-row head, older-history pages, a bounded 99+ header
+  badge, explicit loaded-list unread counts and atomic mark-read batches of
+  at most 30. Older loaded rows update after commit. Failed writes are shown,
+  acknowledgement precedes link navigation and pending writes are not counted
+  as server-confirmed reads. Account changes discard old action state.
+- Purchases: 24 receipts per page, optional bounded seller lookups, retained
+  receipts when a seller is unavailable, persisted review flags, a refresh
+  action and transaction-specific review links. Removed unimplemented
+  Pending/Expired zero-count placeholders; this page records completed trades.
+- Profiles: separate public header, listings and reviews loading; independent
+  24-row cursors/retries; preserved tab history; clear unavailable-profile
+  state. Removed the permanent spinner on failed/missing profile lookups.
+- Shared access-denial handling now invalidates an already pending history
+  request so late data cannot refill a denied view.
+
+Local validation before publishing:
+- Controller and Firestore paging suite: 9 controller tests and 10 query/
+  authorization tests. Tied timestamps, page boundaries, bounded writes,
+  unread cap, unavailable seller fallback, unverified/foreign-user denial,
+  campus isolation and pending-request revocation are covered.
+- 21 Chromium browser checks passed, zero page errors. Synthetic local data
+  included 133 listings, 65 conversations, 125 messages, 135 notifications,
+  65 purchases and 65 initial reviews. Coverage includes all prior marketplace/
+  messaging checks, full account-page pagination, live notification navigation,
+  mark-read acknowledgement, a rejected write followed by recovery, offline
+  purchase/review page failures and retries, independent profile tabs,
+  missing/cross-campus/empty profile handling, a receipt-to-review-to-profile
+  action, and two-account isolation including logout/login in the same browser.
+- All 83 production-build buying/selling HTTP checkpoints passed again.
+- ESLint and the local Next.js Webpack production build passed. The repository
+  keeps its standard Turbopack build; the full GitHub job runs all required
+  suites, audit, build and browser checks. Its current result is linked on PR 1.
+- All five query shapes succeeded against quadmart-development: notification
+  history, unread badge, purchases, seller listings and profile reviews. They
+  reuse existing indexes. No new indexes or security-rule changes were needed.
+- Synthetic notification/purchase/profile screenshots were inspected.
+
+Scope and remaining work:
+- Bulk histories and destructive/error fixtures are emulator-only. Cloud query
+  checks are read-only. Hosted smoke checks and CI status are recorded in the
+  pull request after the development deployment completes.
+- Older history is fetched on demand, not kept under an unlimited listener;
+  changes outside a live head require refresh/revisit. Counts label loaded
+  records, not collection totals. Current per-action bounds are not a global
+  server-enforced read quota.
+- Dashboard search, My Listings, saved items and buyer selection still need
+  their own scaling review. Readiness also depends on the operational and
+  safety items in the draft PR; this is not approval to invite students.
+- Production, main, Firebase rules/indexes, billing, IAM, runtime credentials
+  and the existing free Mac-hosted maintenance setup were not changed.

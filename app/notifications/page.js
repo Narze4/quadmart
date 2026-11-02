@@ -1,22 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { collection, doc, onSnapshot, orderBy, query, updateDoc, where, writeBatch } from 'firebase/firestore'
+import { marketApi } from '@/lib/market-api'
+import { notificationFeed } from '@/lib/feed-queries.mjs'
+import { useCursorFeed } from '@/lib/use-cursor-feed'
+import { markNotificationsRead, NOTIFICATION_WRITE_LIMIT } from '@/lib/notification-actions.mjs'
+import FeedStatus from '@/components/FeedStatus'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Skeleton from '@/components/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
-import Button from '@/components/ui/Button'
 import { timeAgo } from '@/lib/utils'
-
-const AlertIcon = () => (
-  <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-  </svg>
-)
 
 function NotifIcon({ type }) {
   if (type === 'message') return (
@@ -46,45 +43,10 @@ function NotifIcon({ type }) {
 export default function NotificationsPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [notifications, setNotifications] = useState([])
-  const [fetchLoading, setFetchLoading] = useState(true)
-  const [fetchError, setFetchError] = useState(false)
-  const [retryKey, setRetryKey] = useState(0)
-
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
     else if (!loading && user && !user.emailVerified) router.replace('/verify-email')
   }, [user, loading, router])
-
-  useEffect(() => {
-    if (!user) return
-    const q = query(
-      collection(db, 'notifications'),
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
-    )
-    const unsub = onSnapshot(q, snap => {
-      setNotifications(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-      setFetchLoading(false)
-    }, () => {
-      setFetchError(true)
-      setFetchLoading(false)
-    })
-    return unsub
-  }, [user, retryKey])
-
-  const markRead = async (notif) => {
-    if (!notif.read) await updateDoc(doc(db, 'notifications', notif.id), { read: true })
-    if (notif.linkTo) router.push(notif.linkTo)
-  }
-
-  const markAllRead = async () => {
-    const unread = notifications.filter(n => !n.read)
-    if (!unread.length) return
-    const batch = writeBatch(db)
-    unread.forEach(n => batch.update(doc(db, 'notifications', n.id), { read: true }))
-    await batch.commit()
-  }
 
   if (loading || !user || !user.emailVerified) {
     return (
@@ -94,30 +56,59 @@ export default function NotificationsPage() {
     )
   }
 
-  const unreadCount = notifications.filter(n => !n.read).length
+  return <NotificationList key={`${user.uid}:${user.email}`} user={user} />
+}
+
+function NotificationList({ user }) {
+  const router = useRouter()
+  const [retryKey, setRetryKey] = useState(0)
+  const [saving, setSaving] = useState(false)
+  const [actionError, setActionError] = useState('')
+  const active = useRef(true)
+  useEffect(() => { active.current = true; return () => { active.current = false } }, [])
+  const configuration = useMemo(() => ({ ...notificationFeed(db, user.uid), retryKey }), [user.uid, retryKey])
+  const feed = useCursorFeed(configuration)
+  const notifications = feed.items
+  const unread = notifications.filter(n => !n.read)
+  const toMark = unread.slice(0, NOTIFICATION_WRITE_LIMIT)
+  const markRead = async (items, linkTo) => {
+    if (saving || feed.denied) return
+    setSaving(true); setActionError('')
+    try {
+      const ids = await markNotificationsRead(marketApi, items, user.uid)
+      if (!active.current) return
+      feed.updateItems(new Map(ids.map(id => [id, { read: true }])))
+      if (typeof linkTo === 'string' && /^\/(?!\/)/.test(linkTo)) router.push(linkTo)
+    } catch (error) { if (active.current) setActionError(error.status === 429 ? error.message : 'Could not mark these notifications as read. Please try again.') }
+    finally { if (active.current) setSaving(false) }
+  }
+
+  const unreadCount = unread.length
 
   return (
     <div className="min-h-screen flex flex-col bg-bg">
       <AuthenticatedHeader />
       <main className="flex-1 max-w-2xl mx-auto px-4 sm:px-6 py-12 w-full">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-text-primary">Notifications</h1>
             {unreadCount > 0 && (
-              <p className="text-sm text-text-secondary mt-0.5">{unreadCount} unread</p>
+              <p className="text-sm text-text-secondary mt-0.5">{unreadCount} unread in this list</p>
             )}
           </div>
           {unreadCount > 0 && (
             <button
-              onClick={markAllRead}
+              onClick={() => markRead(toMark)}
+              disabled={saving || feed.denied}
               className="text-sm text-primary-dark hover:opacity-80 font-medium transition-opacity"
             >
-              Mark all as read
+              {saving ? 'Marking as read…' : `Mark ${toMark.length} as read`}
             </button>
           )}
         </div>
 
-        {fetchLoading ? (
+        {actionError && <p role="alert" className="mb-4 text-sm text-red-700">{actionError}</p>}
+        {feed.loading ? (
           <div className="flex flex-col gap-2">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="rounded-2xl border border-border px-4 py-4 flex items-start gap-4 bg-surface">
@@ -129,15 +120,7 @@ export default function NotificationsPage() {
               </div>
             ))}
           </div>
-        ) : fetchError ? (
-          <EmptyState
-            tone="error"
-            icon={<AlertIcon />}
-            title="Something went wrong"
-            description="We couldn't load your notifications right now."
-            action={<Button onClick={() => { setFetchLoading(true); setFetchError(false); setRetryKey(k => k + 1) }}>Try again</Button>}
-          />
-        ) : notifications.length === 0 ? (
+        ) : notifications.length === 0 && !feed.error ? (
           <EmptyState
             icon={
               <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -153,7 +136,9 @@ export default function NotificationsPage() {
             {notifications.map(notif => (
               <button
                 key={notif.id}
-                onClick={() => markRead(notif)}
+                onClick={() => markRead([notif], notif.linkTo)}
+                disabled={saving || feed.denied}
+                aria-label={`${notif.read ? 'Read' : 'Unread'}: ${notif.title}`}
                 className={`w-full text-left rounded-2xl border px-4 py-4 flex items-start gap-4 transition-all duration-200 hover:shadow-sm ${
                   notif.read
                     ? 'bg-surface border-border'
@@ -164,7 +149,7 @@ export default function NotificationsPage() {
                   <NotifIcon type={notif.type} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-semibold ${notif.read ? 'text-text-secondary' : 'text-text-primary'}`}>
+                  <p className={`text-sm font-semibold [overflow-wrap:anywhere] ${notif.read ? 'text-text-secondary' : 'text-text-primary'}`}>
                     {notif.title}
                   </p>
                   {notif.description && (
@@ -176,6 +161,7 @@ export default function NotificationsPage() {
             ))}
           </div>
         )}
+        <FeedStatus feed={feed} noun="notifications" moreLabel="Load older notifications" onRestart={() => setRetryKey(k => k + 1)} />
       </main>
       <Footer />
     </div>

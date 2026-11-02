@@ -1,0 +1,79 @@
+QuadMart recovery validation — November 1, 2026, 10:13 PM EST
+
+Result: fresh offsite backup, bounded maintenance and isolated restore passed.
+Scope: quadmart-development only. Production, credentials, IAM, billing and
+pinned runtime/manifest were unchanged. No real emails or invitations were sent.
+
+RECOVERY OF THE TWO FAILED HANDOFFS
+The earlier guard check could not inspect processes inside the shell sandbox.
+This run used the normal approved command escalation for only the owned guard's
+spawn/inspection/termination. Its PID and required pmset assertions were verified.
+The earlier download handoff used URL in an orchestration context without that
+global. This run explicitly imported URL from node:url inside Node REPL, wrote
+only the download input in a fresh private temporary directory, then used the
+authorized shell to validate and copy it exclusively into the operations cache.
+The pinned downloader validated the URL and removed the temporary input.
+No signed URL, key, plaintext records or password hashes appear in this report.
+Both automation prompts now specify the successfully tested permission/handoff
+steps; their schedules and quiet-on-unchanged-success behavior remain unchanged.
+At the time of this rehearsal, an unattended run was still needed. It has since
+completed successfully; see the November 2 follow-up below.
+
+VERIFIED ENCRYPTED ARTIFACT
+Filename: quadmart-2026-11-02T03-11-14-617Z-c093cb89-ad20-44e1-a602-a28d3f395ef8.qmb
+Project: quadmart-development
+Capture: 2026-11-02T03:11:12.650Z
+Database read: 2026-11-02T03:10:56.091Z
+Encrypted bytes: 256765
+Encrypted SHA256: 8595b1f5975064da695dfaa8985626c09607fbc0bcf6ce9c93805bb165efad05
+Drive folder/file: verified sole owner, shared=false, expected parent/name/size.
+Inventory: 12 existing files, all sizes known; 3108613 bytes after this upload,
+below the 1073741824-byte budget. No Drive files were deleted or shared.
+Download: ciphertext matched the original; decryption and complete recovery
+schema passed. Owner-only receipt registered at 2026-11-02T03:12:25.549Z.
+
+MAINTENANCE
+Finished 2026-11-02T03:12:38.440Z, exit 0, no timeout, offsiteVerified=true.
+75 database records, 3 login accounts and 3 photos captured.
+Failures 0; manualReview 0; staleJobs 0; jobsRemaining 0.
+2 jobs visited, 0 newly completed; 3 profiles checked; missingAuthQueued 0.
+6 media entries visited, 0 photos deleted, 3 media entries held by safeguards.
+overdueBeforeRun=true: the earlier missed runs were detected and this run
+completed. This is not evidence that maintenance ran while the Mac was offline.
+
+RESTORE REHEARSAL
+Finished 2026-11-02T03:13:15.092Z, success, no timeout.
+The pinned worker verified source hashes and started its own empty
+ demo-quadmart-restore Firestore/Auth emulators (8180/9199).
+Verified 75 restored documents, 3 disabled/quarantined login accounts and
+3 photos totaling 100866 bytes. Temporary photo data and emulators were cleaned
+up by the worker. Password login and provider re-upload were not tested here.
+This is an emulator rehearsal, not a new cloud-project recovery or cutover.
+One obsolete downloaded .qmb cache copy was removed after success; the current
+download, metadata, all primary backups and all Drive files were preserved.
+The owned 30-minute sleep guard was identity-checked, stopped and confirmed gone.
+
+REMAINING OPERATIONAL LIMIT
+The free scheduler needs an available, online Mac and running desktop app.
+A temporary sleep assertion does not cover a closed lid, manual sleep, shutdown,
+network loss or a stopped app. Assign an operator to check missed runs and agree
+acceptable data-loss/recovery time before a student beta. Do not treat a single
+successful recovery as a guarantee of recurring availability.
+
+NOVEMBER 2 SCHEDULED FOLLOW-UP — READ BACK NOVEMBER 2
+The revised scheduled path completed unattended. Latest safe results:
+Capture: 2026-11-02T12:43:48.208Z (7:43 AM EST)
+Filename: quadmart-2026-11-02T12-43-50-117Z-b434cde3-4d79-4e2e-9594-addb91d08a09.qmb
+Encrypted bytes: 256769
+Encrypted SHA256: 7bc27d555c03c41c0f2cf12a831cb056ed4c2651178001cd1c24e60c6ea81c57
+Downloaded receipt verified: 2026-11-02T12:45:06.643Z; ownerOnly=true.
+Maintenance finished: 2026-11-02T12:45:22.946Z (7:45 AM EST).
+Exit 0, no timeout; apply=true, offsiteVerified=true, overdueBeforeRun=false.
+75 documents, 3 Auth accounts and 3 photos in the verified complete backup.
+Zero failures, manual-review items, stale jobs or remaining jobs.
+3 profiles and 6 media entries checked; 0 photos deleted, 3 media entries held.
+This closes the pending scheduled-cycle verification. It does not establish
+continuous Mac availability or select recovery objectives for the team.
+The latest restore remains the 03:13 UTC rehearsal above; it was not repeated
+for this later capture. Readbacks used latest-launch.json, latest-offsite.json
+and latest-rehearsal.json; no new maintenance or restore ran for this report.

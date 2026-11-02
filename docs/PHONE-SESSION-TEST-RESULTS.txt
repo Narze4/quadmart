@@ -1,0 +1,52 @@
+QuadMart mobile session recovery — October 29, 2026
+
+Reproduced issue and fix
+- A real SDK token renewal followed by HTTP 503 from account setup replaced
+  the Settings page and erased its unsaved name. The regression failed on the
+  previous production build with the draft input missing.
+- An already checked, unchanged identity now keeps its page mounted on a
+  temporary transport, 429 or server failure. An accessible inline banner
+  offers an explicit retry and preserves unsaved input. The retry target is
+  at least 44 CSS pixels high and fits a 320 x 360 viewport.
+- First-time account checks still gate access. Revocation, account changes,
+  suspension and permission failures do not use the temporary-error path.
+  Backend authorization and the single-attempt write behavior are unchanged.
+
+New local browser evidence
+- 13 checks passed: seven on Pixel 7-sized Chromium and six on iPhone 13-sized
+  WebKit, using only demo-quadmart Auth/Firestore emulators and synthetic users.
+- Automatic renewal followed by a temporary setup failure preserves the form;
+  explicit retry succeeds without submitting it; an offline save retains the
+  draft and reconnecting allows an explicit save; logout in another tab clears
+  private UI; a different account propagates without inheriting the first
+  account's draft; suspension still blocks access and restoration recovers it.
+- Chromium also freezes the renderer for 35 seconds after a local 60-second
+  expiry hint, preserves the draft on resume, and observes a successful token
+  exchange before the resumed save completes. This targets the installed
+  SDK's on-demand refresh buffer; its proactive timer uses a different window.
+- Zero unexpected page errors in the new suite. The initial cross-tab test
+  navigated before Firebase storage synchronization completed; it now waits
+  for that tab's successful account check before testing navigation.
+- The renewal fixture changes only the emulator response's expiry hint and
+  waits for Firebase's actual timer. It does not change JWTs, server checks,
+  cloud accounts, attestation or clocks. This is not naturally aged App Check
+  evidence or a physical-phone background test.
+- 11 focused auth/session unit tests, lint and the production webpack build
+  passed. The full application run passed 100 backend checkpoints and 104
+  browser scenarios; the final 13-check resume suite adds the frozen-renderer
+  scenario, for 105 distinct browser scenarios overall. The full run reported
+  zero unexpected page errors and separately counted five known WebKit
+  loopback long-poll cancellations during explicit page unloading.
+- Head-specific CI and hosted deployment results are recorded in the PR.
+
+Physical-device and hosted limits
+- The owner confirmed no physical phone is available for this test session.
+  iPhone Safari and Android Chrome camera/gallery, touch keyboard, rotation,
+  actual cellular/offline transitions and OS background/resume remain PENDING.
+- A browser viewport is not a physical device. Local offline transitions do
+  not reproduce radio switching or an operating system suspending the app.
+- Hosted natural Auth/App Check aging, including a background interval longer
+  than one hour, remains a separate acceptance check. No debug attestation,
+  weakened enforcement or synthetic cloud signup is used to claim a pass.
+- Use docs/PHONE-ACCEPTANCE-CHECKLIST.txt before invitations. Keep production,
+  billing, IAM, credentials and the pinned maintenance runtime unchanged.

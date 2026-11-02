@@ -1,0 +1,132 @@
+QuadMart — beta operating plan for team review
+Prepared November 2, 2026 (America/New_York)
+
+Status: proposed plan, not permission to invite students or change cloud access.
+Engineering can prepare the release; the founding team must fill the decisions
+below. Use BETA-TEST-CHECKLIST.txt as the release gate list.
+
+DECISIONS TO FILL TOGETHER
+
+1. Scope: proposed 5–10 Emory students with fresh test data. Not yet confirmed.
+   Campus/group: __________  Start/end dates: __________
+   Eligibility: current students / other explicitly agreed group: __________
+   How checked, by whom, and when checked again: __________
+   Minimum age and how handled: __________
+   University mailbox access is the implemented check, not proof of enrollment.
+
+2. Destination: exact hostname __________  Firebase project __________
+   Data retained after test or reset: __________  Notice to testers: __________
+   Access method and owner: __________
+   The existing protected Preview is for development. A shared link is not an
+   invitation allowlist; the app currently recognizes seven university domains.
+   Do not share an owner's Vercel login or remove protection to admit testers.
+   First choose the destination, then implement and test its access boundary,
+   including direct Firebase reads/API requests and uninvited verified users.
+   A client-side school dropdown or hidden signup button cannot enforce access.
+
+3. People: primary support/moderator __________  backup __________
+   Coverage hours/timezone __________  review cadence __________
+   Appeals reviewer (different from original decision when possible) __________
+   Technical/recovery operator __________  backup __________
+   Escalation route known to the team __________
+   Verify the advertised inbox is owned and monitored before publishing any
+   response promise. Confirm through an owner-directed receive/reply check.
+   No external test message has been sent as part of preparing this plan.
+
+4. Rules: prohibited-item list __________  review/approval owner __________
+   Decide the actual categories and enforcement examples before a beta; the
+   existing report reason “prohibited” is not a published listing policy.
+   Decide eligibility, conduct, appeals, retention and deletion using the
+   implementation facts in DATA-HANDLING-REVIEW.txt. Terms/Privacy stay pending
+   until the operator details and the reviewed text are ready.
+
+5. Recovery: acceptable data loss __________  recovery time goal __________
+   Who checks if the Mac/app/network is unavailable __________
+   Six-hour scheduling is not a six-hour data-loss guarantee. The latest
+   successfully captured, downloaded and verified backup is the recovery point.
+   Do not rely on this same offline Mac to detect its own outage.
+
+OPENING CHECK — FOR EACH AGREED BETA SUPPORT PERIOD
+
+- Record the actual hostname, commit and Ready deployment. CI must pass for
+  that code. Use a safe test account to check sign-in, campus and a photo.
+- Read the latest safe backup receipt and maintenance result. Confirm matching
+  filename/project, downloaded verification and healthy counts, not just an
+  uploaded file or successful prepare phase. Check capture age against the
+  agreed objective and note whether the last run was overdue.
+- Confirm recent isolated restore evidence. A restore drill is distinct from
+  a backup run; quarantined emulator accounts are not a cloud-login test.
+- Review Firestore/Auth/Cloudinary/Vercel free-tier usage and backup storage.
+  The approved Drive budget is 1 GiB. Unknown sizes/incomplete inventory stop
+  uploads. Do not buy storage or delete offsite files to bypass the limit.
+- Review the moderation queue and support inbox during assigned coverage.
+  Record who is handling each report; avoid duplicate conflicting decisions.
+
+TRIAGE AND RESPONSE — PROPOSED PROCESS
+
+Access to another account's private data, unauthorized photos, duplicate/lost
+sales, widespread login failures or broken recovery:
+  Stop invitations and expansion; tell the assigned operator immediately.
+  Preserve safe evidence (time, hostname/build, action, request reference and
+  synthetic reproduction). Do not export chat bodies, tokens or raw SDK errors.
+  Investigate the boundary and use a reviewed containment/rollback plan. A UI
+  rollback can be incompatible with current rules/data; do not redeploy the old
+  direct-write client blindly or weaken rules/App Check to make it work.
+  Resume only after the fix passes, affected records are reconciled and the
+  team records a go/no-go. This document implements no emergency kill switch.
+
+Report of harassment, scam or a prohibited item:
+  Review the report and captured evidence in /moderation as an authorized
+  campus moderator. Record the reason for the action in the decision note.
+  Blocking prevents new messages/trades but leaves history and public listings.
+  Removing a listing archives it and restricts its photos. Suspension restricts
+  marketplace activity; existing listing documents need separate review.
+  Use the matching report to restore/reinstate after review. Refresh a stale
+  decision rather than forcing it. Self-moderation and moderator-account cases
+  need a separate owner. Do not disclose reporter identity or private evidence.
+  Confirm the next review time using the team's actual coverage, not a promise
+  of immediate or round-the-clock service. The app is not an emergency channel.
+
+Single-account loading/upload error:
+  Record the safe request reference, page, browser/device and network. Check the
+  existing result before repeating a write. Respect a rate-limit wait; retain
+  drafts while reconnecting. Escalate repeated failures to the technical owner.
+  Never request someone's password, reset link, verification code or auth token.
+
+Backup/cleanup failure:
+  Stop at the failed step and preserve the encrypted artifact/receipt. Identify
+  permission, freshness, quota or provider error using safe counts. Do not change
+  timestamps, weaken checks, loop retries or treat prepare as completed cleanup.
+  Any restoration must use the reviewed isolated target and verification path;
+  it must not overwrite a nonempty/live target. Keep the recovery key separate.
+
+TEAM REHEARSAL — DISPOSABLE ACCOUNTS, NO REAL PAYMENT
+
+Assign one moderator, one seller and one buyer. Use synthetic listings/messages.
+Before moving to any cloud target, complete the same script in local emulators.
+1. Buyer reports seller's listing; moderator finds it in the correct campus queue.
+2. Buyer blocks seller; both message directions/new trade attempts are denied.
+   Existing history remains. Buyer unblocks; normal contact resumes.
+3. Moderator removes the reported listing, records a note and confirms ordinary
+   users cannot view its photo. Then restores through that report and verifies.
+4. With a separate synthetic report, suspend/reinstate the seller; confirm active
+   sessions are restricted and the correct report is required to reverse it.
+5. Walk through a support escalation and an appeal without sending real email.
+6. Read one successful and one simulated failed maintenance result; explain why
+   an unverified/expired backup cannot authorize cleanup. Do not modify receipts.
+7. Record participants, target/build, steps/results and unresolved issues below.
+
+Engineering automation already covers these control paths; a named team member
+must still demonstrate they can operate them. This plan does not grant roles,
+change an account, send invitations, or claim that the human rehearsal occurred.
+
+EVIDENCE RECORD (copy for each test or incident)
+Date/time + timezone: __________  Target/build: __________
+Tester role / synthetic account label: __________
+Device/OS/browser + network: __________
+Action and expected behavior: __________
+Actual result: PASS / FAIL / BLOCKED __________
+Safe request reference / test report: __________
+Owner and next step: __________  Retest result: __________
+Team go/no-go and date: __________
+Keep names/emails of invited testers in the team's private record, not this repo.

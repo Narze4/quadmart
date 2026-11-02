@@ -3,16 +3,16 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { marketApi } from '@/lib/market-api'
+import { MIN_PASSWORD_LENGTH, authErrorMessage } from '@/lib/auth-errors.mjs'
 import { useAuth } from '@/lib/auth-context'
-import { auth, db } from '@/lib/firebase'
+import { auth } from '@/lib/firebase'
 import {
-  deleteUser,
   EmailAuthProvider,
   reauthenticateWithCredential,
   updatePassword,
   updateProfile,
 } from 'firebase/auth'
-import { doc, setDoc } from 'firebase/firestore'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 import Card from '@/components/ui/Card'
@@ -61,7 +61,7 @@ export default function SettingsPage() {
     try {
       const trimmed = currentDisplayName.trim()
       await updateProfile(auth.currentUser, { displayName: trimmed })
-      await setDoc(doc(db, 'users', user.uid), { displayName: trimmed }, { merge: true })
+      await marketApi('profile', { displayName: trimmed })
       setNameSuccess('Display name updated.')
     } catch {
       setNameError('Failed to update name. Please try again.')
@@ -74,8 +74,9 @@ export default function SettingsPage() {
     e.preventDefault()
     setPwError('')
     setPwSuccess('')
-    if (newPassword.length < 6) {
-      setPwError('New password must be at least 6 characters.')
+    if (pwSaving) return
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      setPwError(`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`)
       return
     }
     setPwSaving(true)
@@ -90,7 +91,7 @@ export default function SettingsPage() {
       if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setPwError('Current password is incorrect.')
       } else {
-        setPwError('Failed to update password. Please try again.')
+        setPwError(authErrorMessage(err, 'change-password'))
       }
     } finally {
       setPwSaving(false)
@@ -104,13 +105,15 @@ export default function SettingsPage() {
     try {
       const credential = EmailAuthProvider.credential(user.email, deletePassword)
       await reauthenticateWithCredential(auth.currentUser, credential)
-      await deleteUser(auth.currentUser)
-      router.push('/')
+      await user.getIdToken(true)
+      await marketApi('accountClose', { confirmation: 'DELETE' })
+      setDeletePassword('')
+      await user.getIdToken(true)
     } catch (err) {
       if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setDeleteError('Password is incorrect.')
       } else {
-        setDeleteError('Failed to delete account. Please try again.')
+        setDeleteError(err.message || 'Could not request deletion. Please try again.')
       }
     } finally {
       setDeleting(false)
@@ -147,8 +150,9 @@ export default function SettingsPage() {
           </div>
           <form onSubmit={handleUpdateName} className="flex flex-col gap-3">
             <div>
-              <label className="block text-sm font-medium text-text-primary mb-1">Display Name</label>
+              <label htmlFor="settings-name" className="block text-sm font-medium text-text-primary mb-1">Display Name</label>
               <input
+                id="settings-name"
                 type="text"
                 value={currentDisplayName}
                 onChange={(e) => setDisplayName(e.target.value)}
@@ -156,8 +160,8 @@ export default function SettingsPage() {
                 className="input-field"
               />
             </div>
-            {nameError && <p className="text-sm text-red-600">{nameError}</p>}
-            {nameSuccess && <p className="text-sm text-primary-dark">{nameSuccess}</p>}
+            {nameError && <p role="alert" className="text-sm text-red-600">{nameError}</p>}
+            {nameSuccess && <p role="status" className="text-sm text-primary-dark">{nameSuccess}</p>}
             <button
               type="submit"
               disabled={nameSaving}
@@ -172,8 +176,10 @@ export default function SettingsPage() {
         <Section title="Change Password">
           <form onSubmit={handleUpdatePassword} className="flex flex-col gap-3">
             <div>
-              <label className="block text-sm font-medium text-text-primary mb-1">Current Password</label>
+              <label htmlFor="settings-current-password" className="block text-sm font-medium text-text-primary mb-1">Current Password</label>
               <input
+                id="settings-current-password"
+                autoComplete="current-password"
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
@@ -182,18 +188,23 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-text-primary mb-1">New Password</label>
+              <label htmlFor="settings-new-password" className="block text-sm font-medium text-text-primary mb-1">New Password</label>
               <input
+                id="settings-new-password"
+                autoComplete="new-password"
+                aria-describedby="settings-password-hint"
+                minLength={MIN_PASSWORD_LENGTH}
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="At least 6 characters"
+                placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
                 required
                 className="input-field"
               />
             </div>
-            {pwError && <p className="text-sm text-red-600">{pwError}</p>}
-            {pwSuccess && <p className="text-sm text-primary-dark">{pwSuccess}</p>}
+            <p id="settings-password-hint" className="text-sm text-text-secondary">Use at least {MIN_PASSWORD_LENGTH} characters.</p>
+            {pwError && <p role="alert" className="text-sm text-red-600">{pwError}</p>}
+            {pwSuccess && <p role="status" className="text-sm text-primary-dark">{pwSuccess}</p>}
             <button
               type="submit"
               disabled={pwSaving}
@@ -210,7 +221,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-text-primary">Delete account</p>
-                <p className="text-xs text-text-secondary mt-0.5">Permanently remove your account. This cannot be undone.</p>
+                <p className="text-xs text-text-secondary mt-0.5">Close marketplace access and remove your listings and private profile.</p>
               </div>
               <button
                 onClick={() => setShowDeleteConfirm(true)}
@@ -222,24 +233,28 @@ export default function SettingsPage() {
           ) : (
             <form onSubmit={handleDeleteAccount} className="flex flex-col gap-3">
               <p className="text-sm text-text-primary">
-                Enter your password to confirm deletion. <strong>This cannot be undone.</strong>
+                Enter your password to close your account and start deletion. <strong>This cannot be undone.</strong>
               </p>
+              <p className="text-sm text-text-secondary">Shared messages, completed trades, reviews and moderation records are retained. Unused photos are cleaned up separately; evidence photos are preserved. If interrupted, sign in again to finish.</p>
+              <label htmlFor="settings-delete-password" className="text-sm">Confirm your password</label>
               <input
+                id="settings-delete-password"
                 type="password"
+                autoComplete="current-password"
                 value={deletePassword}
                 onChange={(e) => setDeletePassword(e.target.value)}
                 placeholder="Your password"
                 required
                 className="w-full px-4 py-2.5 border border-red-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
               />
-              {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
+              {deleteError && <p role="alert" className="text-sm text-red-600">{deleteError}</p>}
               <div className="flex gap-3">
                 <button
                   type="submit"
                   disabled={deleting}
                   className="px-5 py-2 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 transition-all duration-200 active:scale-95 disabled:opacity-60"
                 >
-                  {deleting ? 'Deleting…' : 'Confirm Delete'}
+                  {deleting ? 'Requesting deletion…' : 'Close account and delete'}
                 </button>
                 <button
                   type="button"

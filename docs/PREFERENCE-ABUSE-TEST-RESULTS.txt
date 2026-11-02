@@ -1,0 +1,23 @@
+Saved-item and notification abuse protection — October 29, 2026
+
+Implemented
+- Saved-item changes and notification read acknowledgements now use the authenticated market API. Firestore denies direct client writes to both private profiles and notifications.
+- The server derives the account from verified Auth, rechecks active status and campus inside each transaction, validates allowed fields/identifiers, and commits the change and its quota atomically.
+- Saved changes: 30/minute, 300/day; 200 saved items maximum under concurrency. New saves require an available same-campus listing. Removal still works for missing/foreign legacy entries.
+- Notification batches: 20/minute, 200/day, maximum 30 input IDs per batch. A mixed-owner/missing batch fails entirely; only read flags change. At most 6,000 notifications can be acknowledged per day through these full batches, subject also to the general request limits.
+- No-change retries do not rewrite records or debit change quotas. General account/shared API attempts still count. Opposing actions in different tabs have no additional ordering guarantee.
+- Client requests are tied to the account that initiated them; rate limits show readable wait times. The notification header wraps on short screens and long titles wrap in Safari.
+
+Verified locally
+- 94 focused tests passed: 35 Firestore rules, 43 abuse, and 16 pagination/collection tests. Twelve new server scenarios exercise atomicity, ownership, malformed requests, suspension/closure, retries, caps and quota isolation.
+- 95 production-build HTTP checkpoints and 36 desktop browser scenarios passed under the new backend/rules.
+- 28 phone-browser scenarios passed after the Safari notification fix: Chromium with Pixel 7 settings and WebKit with iPhone 13 settings, also at 320 x 360. Zero browser page errors.
+- New phone coverage includes an aborted saved-item request, actual saved/notification quota rejection, successful single retries and unchanged notification state for the other account.
+- Full ESLint and local production webpack build passed. CI runs the complete suite and normal Turbopack build; consult the matching PR head for final hosted CI status.
+
+Evidence and boundaries
+- All synthetic data and forced quotas in these tests use demo-quadmart loopback emulators. No forced limit was applied to a real student or owner account.
+- Photo retry success is still a local JPEG fixture; this pass does not establish real camera upload behavior.
+- Phone browser emulation is not a physical iPhone/Android acceptance result. Use PHONE-ACCEPTANCE-CHECKLIST.txt on actual devices.
+- Deploy the matching Preview backend before tightening development Firestore rules; reload old clients. Update the private recovery copy/hash of the rules together, without changing recovery runtime code or credentials.
+- Existing preview firewall enforcement, App Check/signup-abuse review, monitoring ownership, fresh recovery proof and production migration remain separate invitation gates. No claim of launch readiness.

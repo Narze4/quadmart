@@ -1,0 +1,61 @@
+QuadMart safety and moderation validation - October 28, 2026
+
+DEVELOPMENT ONLY
+Firebase: quadmart-development (nam5).
+Vercel: security/firestore-rules protected Preview.
+Draft PR: https://github.com/Narze4/quadmart/pull/1
+Production project, main, production credentials and billing were not changed.
+The verified owner account is the only configured development moderator, scoped
+by server-owned role data to Emory. No browser/client role-management API exists.
+
+AUTOMATED VALIDATION: PASSED
+- 44 Firestore rules scenarios, including suspension with an existing session,
+  private moderation collections, archived-ID recreation denial and five-photo
+  listing lookup budgets.
+- 13 upload/verification scenarios.
+- 11 safety scenarios: reporting idempotency/deduplication, concurrent daily quota,
+  private conversation evidence, bidirectional blocks, forged roles, removal and
+  restoration, overlapping photo removals, stale decisions, suspension and role
+  revocation. Moderators can review removed-photo evidence; ordinary users cannot.
+- 2 credential federation scenarios in CI.
+- Production-build HTTP integration: 63 checkpoints, including the buying/selling
+  flow and report -> moderator decision -> denied access -> restoration.
+- ESLint and CI production dependency audit passed.
+GitHub Actions passed on efb9aea905fd5fba7906c3f7c4dcaba39e770091.
+
+HOSTED BROWSER AND FIREBASE VALIDATION: PASSED
+- The development buyer blocked the seller. Message Seller was rejected by the
+  server with the block explanation. Safety center listed the blocked seller.
+- Buyer submitted a clearly synthetic listing report and account report. Both
+  appeared in the reporter's Safety center as Awaiting review.
+- Buyer opening /moderation received Moderator access required; no reports shown.
+- The verified owner signed in, saw the Moderation menu and loaded both reports.
+- Removing the photo-test listing moved it out of the public marketplace.
+  Ordinary Firebase reads were denied and the seller could not recreate its ID.
+- Moderator could view the archived photo evidence after removal.
+- Suspending the test seller denied marketplace/private-profile reads from a
+  client authenticated BEFORE suspension, and denied self-reinstatement.
+- Reinstating the seller restored its ordinary profile access.
+- Restoring the archived listing recovered its original title and publication.
+- Buyer and seller were both denied direct reads of reports and moderator roles.
+- The test block was removed. The test seller and listing were restored. Reports
+  remain labeled synthetic and resolved, preserving an audit trail.
+- Both new reports indexes reached READY and the deployed queue/history loaded.
+
+SCOPE AND LIMITS
+Blocking prevents new contact/trades in both directions; it retains old messages
+and completed-trade review eligibility. Suspension restricts the app and data,
+not the Firebase Auth account itself. Existing listings must be reviewed/removed
+separately. Moderators retain campus-limited photo evidence access. Data already
+viewed or downloaded cannot be recalled.
+
+Hosted browser tests used synthetic seller/buyer accounts and the owner account.
+Concurrency limits, cross-campus/forged role cases and private message-evidence
+validation were exercised in local automated tests; do not label all of those
+negative cases as separate hosted browser probes.
+
+BEFORE STUDENT INVITATIONS
+Agree prohibited-items rules, escalation/appeal handling, report retention and
+who monitors the support inbox. Broader abuse limits, orphan-photo/account cleanup,
+backup/recovery, other pagination, dependency tooling advisories, production
+migration and final phone/pilot testing remain. See SAFETY-AND-MODERATION.md.

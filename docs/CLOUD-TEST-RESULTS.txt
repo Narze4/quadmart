@@ -1,0 +1,49 @@
+QuadMart development deployment - October 27, 2026 (America/New_York)
+
+Application code tested: c522a11d40aff340c0cbef0e1af9fbe40834f69e
+Draft PR: https://github.com/Narze4/quadmart/pull/1
+Preview: https://quadmart-git-security-firestore-rules-narze4s-projects.vercel.app
+Deployment: https://vercel.com/narze4s-projects/quadmart/Civhz3WfNCAsvqe4v9QFbroekeNs
+Firebase: quadmart-development, Standard Firestore, nam5, Spark plan.
+
+PASS: Vercel Preview deployed and uses development Firebase configuration.
+PASS: Email/Password authentication enabled; preview Auth domain authorized.
+PASS: Firestore rules deployed; all six composite indexes READY.
+PASS: Server authenticates through Vercel OIDC and Google Workload Identity
+Federation. No user-managed service-account key was created. Runtime roles are
+datastore.user and firebaseauth.viewer, restricted to the QuadMart Preview identity.
+PASS: Browser walkthrough with two synthetic development accounts:
+  Seller login -> provision private/public profiles -> publish Cloud test desk
+  ($25, no photos) -> buyer login -> discover listing -> start conversation ->
+  send message -> seller sees message and notification -> seller reply -> mark
+  sold to Development Buyer -> seller review -> buyer completed-purchase history
+  -> buyer review -> seller profile shows one transaction and the earned score.
+  Both messages persisted; seller reply was confirmed after a page reload.
+PASS: 25 additional cloud Auth/Firestore checks using the two client identities:
+  - Verified fixture identity and expected development project.
+  - Sold listing, correct seller, campus, price and transaction participants.
+  - Both review flags, exactly one trade per private/public profile, exactly one
+    linked review per recipient, correct reputation, no private profile fields
+    exposed in the public projection, and message/review notifications.
+  - Exactly two chat participants, both messages and latest-message preview.
+  - Denied cross-user private profile reads, unscoped review queries, direct
+    transaction creation, forged review creation and signed-out listing reads.
+PASS: Latest application commit's GitHub Actions workflow completed successfully:
+  https://github.com/Narze4/quadmart/actions/runs/40613425754
+  Includes 2 credential tests, 33 rules tests and 29 integration checkpoints.
+PASS: Local credential tests, production-build integration, ESLint and diff checks.
+
+Cloud fixture listing: U8en0hDRFeFtajIVJDFp
+Cloud fixture conversation: f720867eb40c81daf3806690435a991f6c9c541cfa4f3ac86c2e1a3521b58e42
+Fixture credentials are stored only in a local ignored file, never Git or this report.
+The fixtures were administratively marked verified; no verification emails were
+sent. Real university-email delivery and ownership verification remain untested.
+The walkthrough validates persisted chat behavior, not a realtime latency SLA.
+
+Preview remains protected by Vercel team authentication. Main and production
+quadmart-4410f were not changed. No billing upgrade was made. Cloudinary uploads
+remain disabled pending authentication, content, rate-limit and ownership controls.
+This app records sales; it does not process payments or confirm physical handoff.
+Production migration, moderation/blocking/reporting, abuse limits, account cleanup,
+pagination, backup policy and unresolved dependency advisories remain launch work.
+See FIREBASE-SECURITY.md for configuration and the remaining launch tasks.

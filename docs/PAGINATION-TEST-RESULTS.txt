@@ -1,0 +1,38 @@
+QuadMart marketplace and messaging pagination — 2026-10-28
+
+Implemented:
+- Campus marketplace pages, database-wide newest/price ordering, indexed
+  category/condition filters, bounded substring/price scanning with explicit
+  continuation when more matching listings may exist.
+- Inbox and chat pages, live-head updates, timestamp/ID tie breakers,
+  duplicate prevention, recoverable page failures and private-data clearing
+  on access denial. Burst/reconnect gaps reset to a contiguous window.
+- Older-message scroll anchoring and identity/thread/filter request isolation.
+
+Fresh validation:
+- 7 controller tests passed: failures/retries, concurrency, stale completion,
+  Strict Mode restart, empty filtered pages, moving live boundaries,
+  disconnected bursts, revoked access and complete-result pruning.
+- 6 Firestore emulator tests passed with 135 listing fixtures, 65 inbox
+  conversations and 65 tied-timestamp messages. An older-than-100 substring
+  match was found after an empty batch. Campus/participant denial retained.
+- 10 Chromium browser checks passed against the local production build:
+  initial and next listing pages; global price order; rare-title continuation;
+  reset filters; all 65 conversations; all 125 messages; live arrivals;
+  recovery after a 35-message burst; clean switch to another conversation.
+  Zero page errors. Marketplace and chat screenshots visually checked.
+- Existing production-build buying/selling HTTP flow: all 83 checkpoints passed.
+- ESLint and local Next.js Webpack production build passed. Local Turbopack
+  worker startup was blocked by this execution environment; the repository's
+  normal Turbopack build remains unchanged and is checked in GitHub CI.
+- 12 additional development composite indexes deployed. All 13 native cloud
+  query combinations succeeded after index construction (12 listing variants
+  plus participant/last-message inbox). No production or rules change.
+- Browser regression is committed and now runs after the HTTP flow in the
+  integration job. CI installs Chromium before that step.
+
+This is scoped to marketplace, inbox and chat. Other collection screens and
+server-enforced read budgets remain separate work. Substring search scans at
+most 100 records per action and offers Continue searching if not exhausted;
+this is not a full-text search service. Live updates can refresh loaded history
+following a disconnected burst so no inaccessible gap is silently retained.

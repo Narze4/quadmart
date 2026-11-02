@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { authenticatedRequest } from '@/lib/authenticated-request'
+
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { db } from '@/lib/firebase'
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { marketApi } from '@/lib/market-api'
 import AuthenticatedHeader from '@/components/AuthenticatedHeader'
 import Footer from '@/components/Footer'
 
@@ -49,7 +50,12 @@ export default function SellPage() {
   const [step, setStep] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [uploadProgress, setUploadProgress] = useState('')
+  const [uploadsAvailable, setUploadsAvailable] = useState(false)
   const [error, setError] = useState('')
+  const pendingListing = useRef(null)
+  const uploadCache = useRef(new WeakMap())
+  const photoPreviews = useRef(new Set())
+  useEffect(() => () => { photoPreviews.current.forEach(url => URL.revokeObjectURL(url)) }, [])
   const [photos, setPhotos] = useState([]) // [{ file: File, preview: string }]
   const [form, setForm] = useState({
     category: '',
@@ -58,6 +64,14 @@ export default function SellPage() {
     price: '',
     condition: 'New',
   })
+
+  useEffect(() => {
+    let active = true
+    fetch('/api/upload').then(response => response.json()).then(data => {
+      if (active) setUploadsAvailable(data.enabled === true)
+    }).catch(() => {})
+    return () => { active = false }
+  }, [])
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
@@ -80,31 +94,48 @@ export default function SellPage() {
   }
 
   const handlePhotoSelect = (e) => {
-    const newFiles = Array.from(e.target.files ?? [])
-    setPhotos(prev => {
-      const combined = [
-        ...prev,
-        ...newFiles.map(f => ({ file: f, preview: URL.createObjectURL(f) })),
-      ]
-      return combined.slice(0, 5)
-    })
+    const files = Array.from(e.target.files ?? [])
     e.target.value = ''
+    if (photos.length + files.length > 5) { setError('Choose up to 5 photos.'); return }
+    if (files.some(file => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 3 * 1024 * 1024 || file.size === 0)) {
+      setError('Choose JPG, PNG, or WebP photos, up to 3 MB each.'); return
+    }
+    setError('')
+    const selected = files.map(file => {
+      const preview = URL.createObjectURL(file)
+      photoPreviews.current.add(preview)
+      return { file, preview }
+    })
+    setPhotos(prev => [...prev, ...selected])
   }
 
   const removePhoto = (index) => {
+    const preview = photos[index].preview
+    URL.revokeObjectURL(preview)
+    photoPreviews.current.delete(preview)
     setPhotos(prev => prev.filter((_, i) => i !== index))
+    setError('')
   }
 
   const uploadImages = async () => {
-    if (photos.length === 0) return []
-    setUploadProgress(`Uploading ${photos.length} photo${photos.length > 1 ? 's' : ''}…`)
-    const formData = new FormData()
-    photos.forEach(({ file }) => formData.append('images', file))
-    const res = await fetch('/api/upload', { method: 'POST', body: formData })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error ?? 'Upload failed')
+    const assets = []
+    for (const [index, { file }] of photos.entries()) {
+      let cached = uploadCache.current.get(file)
+      if (!cached) { cached = { requestId: crypto.randomUUID() }; uploadCache.current.set(file, cached) }
+      if (!cached.asset) {
+        setUploadProgress(`Uploading photo ${index + 1} of ${photos.length}…`)
+        const res = await authenticatedRequest('/api/upload', {
+          method: 'POST', headers: { 'Content-Type': file.type, 'X-Upload-Id': cached.requestId }, body: file,
+        }, { expectedUid: user.uid })
+        let data
+        try { data = await res.json() } catch { throw new Error('Photo upload is temporarily unavailable. Please retry.') }
+        if (!res.ok) throw new Error(data.error ?? 'Photo upload failed. Please retry.')
+        cached.asset = data
+      }
+      assets.push(cached.asset)
+    }
     setUploadProgress('')
-    return data.urls
+    return assets
   }
 
   const handleNext = async () => {
@@ -112,22 +143,20 @@ export default function SellPage() {
     setError('')
     setSubmitting(true)
     try {
-      const images = await uploadImages()
-      await addDoc(collection(db, 'listings'), {
-        title: form.title.trim(),
-        description: form.description.trim(),
-        price: Number(form.price),
-        category: form.category,
-        condition: form.condition,
-        images,
-        sellerEmail: user.email,
-        sellerUid: user.uid,
-        status: 'active',
-        createdAt: serverTimestamp(),
-      })
+      let assets
+      try { assets = await uploadImages() }
+      catch (uploadError) { setStep(2); throw uploadError }
+      const data = {
+        title: form.title.trim(), description: form.description.trim(),
+        price: Number(form.price), category: form.category, condition: form.condition,
+        imageIds: assets.map(asset => asset.id),
+      }
+      const signature = JSON.stringify(data)
+      if (pendingListing.current?.signature !== signature) pendingListing.current = { signature, requestId: crypto.randomUUID() }
+      await marketApi('listingCreate', { ...data, requestId: pendingListing.current.requestId })
       router.push('/my-listings')
-    } catch {
-      setError('Failed to post listing. Please try again.')
+    } catch (error) {
+      setError(error.message || 'Failed to post listing. Please try again.')
     } finally {
       setSubmitting(false)
       setUploadProgress('')
@@ -149,7 +178,7 @@ export default function SellPage() {
       <main className="flex-1 max-w-2xl mx-auto px-4 sm:px-6 py-12 w-full">
         {/* Step header */}
         <div className="flex items-center gap-4 mb-8">
-          <button onClick={handleBack} className="p-2 rounded-full hover:bg-gray-100 transition-colors text-text-secondary">
+          <button onClick={handleBack} aria-label="Back" disabled={submitting} className="p-2 rounded-full hover:bg-gray-100 transition-colors text-text-secondary">
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="15 18 9 12 15 6" />
             </svg>
@@ -206,7 +235,8 @@ export default function SellPage() {
                 Listings with photos get more attention. Up to 5 images. (Optional)
               </p>
 
-              {photos.length < 5 && (
+              {!uploadsAvailable && <p className="text-sm text-text-secondary">Photos are temporarily unavailable. You can continue and publish without photos.</p>}
+              {uploadsAvailable && photos.length < 5 && (
                 <label
                   htmlFor="photo-upload"
                   className="flex flex-col items-center justify-center w-full h-52 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
@@ -217,12 +247,12 @@ export default function SellPage() {
                   </svg>
                   <p className="text-sm font-medium text-text-secondary">Upload photos</p>
                   <p className="text-xs text-gray-400 mt-1">
-                    {photos.length === 0 ? 'PNG, JPG up to 10MB each' : `${photos.length}/5 added — click to add more`}
+                    {photos.length === 0 ? 'JPG, PNG, or WebP up to 3 MB each' : `${photos.length}/5 added — click to add more`}
                   </p>
                   <input
                     id="photo-upload"
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     multiple
                     className="hidden"
                     onChange={handlePhotoSelect}
@@ -242,7 +272,8 @@ export default function SellPage() {
                       />
                       <button
                         onClick={() => removePhoto(i)}
-                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gray-900/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-900"
+                        aria-label={`Remove photo ${i + 1}`}
+                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gray-900/70 text-white flex items-center justify-center hover:bg-gray-900 focus-visible:ring-2 focus-visible:ring-primary"
                       >
                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -273,6 +304,8 @@ export default function SellPage() {
               <p className="text-sm text-text-secondary mb-6">Give your listing a clear, descriptive name.</p>
               <input
                 type="text"
+                maxLength={120}
+                aria-label="Listing title"
                 value={form.title}
                 onChange={e => set('title', e.target.value)}
                 placeholder="e.g. Calculus Textbook, Guitar Lessons, 1BR Sublease"
@@ -288,6 +321,8 @@ export default function SellPage() {
               <h2 className="text-xl font-semibold text-text-primary mb-2">Add a description</h2>
               <p className="text-sm text-text-secondary mb-6">Tell buyers more about what you&apos;re offering.</p>
               <textarea
+                maxLength={5000}
+                aria-label="Listing description"
                 value={form.description}
                 onChange={e => set('description', e.target.value)}
                 placeholder="Describe your item, its condition, what's included..."
@@ -307,6 +342,7 @@ export default function SellPage() {
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary font-medium">$</span>
                 <input
                   type="number"
+                  inputMode="decimal"
                   value={form.price}
                   onChange={e => set('price', e.target.value)}
                   placeholder="0.00"
@@ -340,10 +376,10 @@ export default function SellPage() {
                 ))}
               </div>
 
-              {error && <p className="text-sm text-red-600 mt-6">{error}</p>}
             </div>
           )}
           </div>
+          {error && <p role="alert" className="text-sm text-red-600 mt-6">{error}</p>}
         </div>
 
         {/* Next / Post button */}

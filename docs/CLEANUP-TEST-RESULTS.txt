@@ -1,0 +1,94 @@
+QUADMART ACCOUNT AND PHOTO CLEANUP - OCTOBER 28, 2026
+
+SCOPE AND VERIFIED VERSION
+Code commit: d8e3070cb27f123688ed020f173b511e3cc6dc2f
+Code tree: 29b2e457b6b6741d1c9f61a4b8aae3016883af0c
+Draft PR: https://github.com/Narze4/quadmart/pull/1
+Preview: https://quadmart-git-security-firestore-rules-narze4s-projects.vercel.app
+Vercel: https://vercel.com/narze4s-projects/quadmart/BNqdgjriRjyFyUx44tSCHMJcMDhW
+CI: https://github.com/Narze4/quadmart/actions/runs/40731269759 (passed)
+Firebase rules deployed only to quadmart-development.
+
+IMPLEMENTED
+- Recent-password confirmation starts a self-only, resumable deletion job.
+- A private closure marker immediately blocks marketplace access and contact.
+- Bounded, checkpointed batches remove listings, private profile data, own
+  notifications and block records, and replace the public/conversation name.
+- Login deletion occurs only after database cleanup. Interrupted jobs resume;
+  a guarded operator command can reconcile failed or out-of-band Auth deletion.
+- Shared messages, trades, reviews, incoming blocks and moderation evidence
+  remain. Minimal public reputation and private lifecycle tombstones remain.
+- Photo cleanup defaults to dry-run, has a 24-hour grace period and checks exact
+  development paths plus live listings, archived listings and report snapshots.
+- Provider deletion is claimed transactionally, retries safely and cannot race
+  successfully with new photo attachment or late upload finalization.
+- No runtime Auth administrator role, production deployment or scheduler added.
+
+AUTOMATED VALIDATION - ALL PASSED
+109 tests:
+  27 Firestore rules, 27 abuse/listing, 13 uploads, 11 safety,
+  16 account/photo cleanup, 8 API/logging, 5 client deletion runner,
+  2 server credentials.
+83 production-build HTTP integration checkpoints passed.
+ESLint, production build and the production dependency audit passed in CI.
+
+Coverage includes stale/forged confirmations, active moderator protection,
+concurrent closure/publication, multi-batch recovery, preserved counterpart
+records, existing-token denial, failed Auth deletion and absent-Auth recovery.
+Photo scenarios include grace periods, exact project paths, retained evidence,
+provider failure/retry, concurrent cleanup and upload/publication races.
+Client-runner tests cover duplicate starts, account switches, network failure,
+batch limits and preventing login deletion before database cleanup completes.
+Local HTTP integration uses the real route and Firebase client deleteUser.
+
+REAL DEVELOPMENT SERVICES - PASSED
+Two new disposable synthetic accounts were used, separate from the existing
+demo seller/buyer and the real verified owner. Their verified-email state was
+administratively seeded; this was not another real-mailbox verification test.
+
+The same committed backend modules were called with real development Firestore,
+Firebase Auth and the restricted Cloudinary credential. This verifies actual
+service behavior, but is not a hosted HTTP or browser deletion end-to-end test.
+- Uploaded two synthetic images into authenticated Cloudinary development
+  storage, published listings, chatted, completed a sale and submitted a review.
+- Recent and currently listed images were held by cleanup.
+- Closed the seller, denied its existing token and new contact, processed all
+  database batches, deleted its real Firebase login and reconciled completion.
+- The buyer retained access to the trade, chat and review with Deleted student
+  replacing the seller's public/conversation name.
+- Confirmed one unreferenced photo was actually absent from Cloudinary.
+- Confirmed the other photo stayed protected by the synthetic report snapshot;
+  ordinary photo access was denied after its owner closed the account.
+- Removed only that runner-created report fixture after proving the hold, then
+  removed the second test photo and confirmed it was absent from Cloudinary.
+- Deleted the disposable buyer login directly and proved missing-Auth dry-run,
+  explicit queueing and full operator reconciliation worked against real Auth.
+- The bounded real Firestore photo scan completed in dry-run mode. No other
+  candidates were deleted. Both disposable logins and private profiles are gone;
+  shared-history/minimal lifecycle test records remain by design.
+- Temporary credentials for the two new disposable accounts were removed.
+
+Only the two new synthetic media timestamps were backdated to exercise the
+24-hour cleaner without waiting a day. The initial assertion stopped after a
+successful provider deletion because Cloudinary nests its 404 under error;
+the verification harness was corrected and resumed using the same fixtures.
+This required no product-code change and did not recreate deleted assets.
+
+HOSTED UI CHECK
+The deployed Settings disclosure rendered correctly with password confirmation,
+retention wording and a Cancel control. Screenshot saved with the local handoff.
+The real owner did not submit deletion; the confirmation was cancelled safely.
+
+LIMITS / BEFORE INVITING STUDENTS
+Maintenance is currently an operator workflow, not a scheduled service. Jobs,
+orphaned data and unused photos can remain indefinitely without it. A normal
+browser deletion leaves its job at the Auth checkpoint until reconciliation.
+Choose and implement scheduling, stale-job visibility, alerts and operational
+ownership. Agree on retention/erasure policy for shared history, evidence and
+tombstones; this implementation does not delete every piece of personal data.
+Complete remaining pagination, backup/restore rehearsal, edge abuse controls,
+support/moderation policy and a final phone/multiple-account rehearsal.
+
+See docs/ACCOUNT-AND-PHOTO-CLEANUP.md for precise semantics and commands.
+Earlier hosted trade/photo/moderation/abuse evidence remains in its dated reports.
+Production Firebase quadmart-4410f, main, billing and invitations are unchanged.

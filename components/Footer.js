@@ -21,7 +21,7 @@ const COLUMNS = [
   {
     title: 'Support',
     links: [
-      { label: 'Help', disabled: true },
+      { label: 'Help', href: '/help' },
       { label: 'Terms', disabled: true },
       { label: 'Privacy', disabled: true },
       { label: 'Contact', href: 'mailto:hello@quadmart.app' },

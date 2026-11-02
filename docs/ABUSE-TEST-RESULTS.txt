@@ -1,0 +1,76 @@
+QUADMART ABUSE LIMITS AND OPERATIONAL LOGS - OCTOBER 28, 2026
+
+VALIDATED CODE
+GitHub commit: c0232aafc200c7c8c3ef4fd6ffc756bf84a6d2d7
+Code tree: 6864a9a54cae62c3e1d80d02a5c0afc5e4ba64cd
+CI run: 40723512040 (success)
+Vercel deployment: 2FEny2PpFb3bjNYa1T1zEtjecCZ2 (Ready)
+Development project: quadmart-development. Production was not changed.
+
+AUTOMATED VALIDATION
+87 passing tests: 27 abuse/listing scenarios, 26 Firestore rules tests,
+13 upload tests, 11 safety scenarios, 8 API/logging checks, 2 credential tests.
+Production-build HTTP integration: 69 checkpoints passed.
+ESLint, production build, and production dependency audit passed (0 findings).
+CI reran all suites successfully on the validated code commit above.
+
+Listing validation moved from client-rule tests to the server API suite.
+The new rule tests prove clients cannot bypass server publication/status/name
+controls or read/reset budgets and retry records. Server scenarios cover field
+validation, five owned photos, wrong-owner/campus/status/URL photos, atomic
+quotas under concurrent listing/message writes, per-account isolation, UTC
+window resets, exact Retry-After values, duplicate retries, stale status updates,
+sold listings, unchanged profiles, unverified users and suspended users.
+
+The HTTP suite exercises verified onboarding, server listing publication and
+reservation, buyer browsing, messaging, sale completion, bilateral reviews,
+privacy failures, reporting, moderation enforcement and restoration. It checks
+request-reference and no-store headers, malformed attempt accounting and 429
+responses. Local upload tests mock storage; hosted checks use real Cloudinary.
+
+HOSTED BROWSER AND CLIENT-SDK CHECKS
+- Synthetic seller's daily listing quota was temporarily set to its limit using
+  the development admin API; the original counter was saved for restoration.
+- The six-step form uploaded one synthetic photo to real restricted storage.
+  Publication was denied with a readable listing-limit message. Form contents
+  and uploaded-photo cache remained intact.
+- After restoring the original counter, the same form successfully published
+  exactly one listing, reusing its uploaded photo and request ID.
+- Reservation -> active worked through the backend, resulting in version 2.
+- Buyer could read the listing and render its protected photo (1600 x 889).
+- Both ordinary test accounts were denied direct listing creation/updates,
+  reads/writes of operation budgets, and reads/writes of listing retry records.
+- Buyer created the conversation using the deployed backend.
+- A temporarily exhausted buyer message budget produced a readable limit
+  message while preserving the draft. After restoring its original counter,
+  retry created exactly one message and one recipient notification.
+- Independent ordinary seller/buyer SDK readback confirmed the message and
+  conversation preview. No temporary exhausted budgets remain.
+- Vercel runtime logs visibly showed structured successful upload/profile/photo
+  events and listingCreate status 429 with a generated request reference.
+  Application records contained no email, actor ID, message body or credentials.
+  Platform access-log route paths are separate from the projected JSON record.
+
+FIXTURES RETAINED FOR REVIEW
+Listing: 30cb103ecf8ed0209ca90944f7e7248fcf465fcad6504e20f2ea006d2ff9da17
+Title: Development quota test desk (explicit synthetic description; price 0)
+Conversation: 8b0ff0457364d5da12e7a8d0a1815b0214be65f24aca7bc2cc82a25c246b31f8
+One synthetic recovery message. Existing trades/reviews and moderation audit
+records were preserved. No real student invitations or payments occurred.
+
+EVIDENCE IN THE TASK OUTPUTS DIRECTORY
+quadmart-abuse-seller-readback.json
+quadmart-abuse-buyer-readback.json
+quadmart-message-quota-recovery.json
+quadmart-publication-limit.png
+quadmart-message-limit.png
+quadmart-message-quota-recovery.png
+quadmart-quota-recovery-listing.png
+quadmart-operational-logs.png
+
+REMAINING LAUNCH WORK
+Account and orphan-photo cleanup, read pagination, backup/restore drill, edge
+abuse protection and multi-account controls, automatic monitoring/alerts,
+moderation/support ownership, eligibility/re-verification policy and production
+migration. See ABUSE-AND-OPERATIONS.md for exact limits and known coverage gaps.
+No claim of production launch readiness is made.

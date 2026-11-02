@@ -1,0 +1,66 @@
+QUADMART SCHEDULED MAINTENANCE AND FIRESTORE RECOVERY - OCTOBER 28, 2026
+
+IMPLEMENTATION
+- A private pinned local runtime runs bounded development maintenance.
+- A fresh encrypted Firestore backup must be written/decrypted/verified first.
+- A 15-minute lease prevents overlap; saved cursors resume bounded scans.
+- Missing Auth reconciliation requires positive absence; active moderators and
+  malformed profiles require review. Other account/photo safeguards are retained.
+- Reports contain safe counts/phases. Failed runs exit unsuccessfully; launch
+  reports also cover configuration/dependency errors and eight-minute timeouts.
+- A six-hour Codex heartbeat is configured for this Mac. The user chose to keep
+  the free development setup; no billing, production or runtime IAM was changed.
+- A weekly local restore launcher starts its own empty isolated emulator and
+  checks the newest encrypted backup. It refuses stale backups and cloud targets.
+
+LOCAL TEST EVIDENCE
+- 51 emulator tests passed: 27 rules, 16 account/photo cleanup, 8 worker tests.
+- 10 backup/launcher tests passed: encryption and tampering, project/path guards,
+  pagination, missing parents, private files, retention, runtime integrity and
+  symlink rejection.
+- One isolated restore integration test passed with nested data, an integer
+  beyond JavaScript's safe range, precise timestamps, references, bytes and points.
+- ESLint passed. CI now includes these suites and all previous marketplace tests.
+- Tests cover backup-failure gating, live/expired/stolen leases, missing Auth,
+  preserved live accounts/moderator roles, dry-run isolation, cursor wraparound,
+  stale jobs, overdue runs and safe failure reporting.
+
+REAL DEVELOPMENT SERVICE EVIDENCE
+- The first fixed-read-time snapshot contained 68 Firestore documents and was
+  written only as authenticated AES-256-GCM ciphertext with private permissions.
+- Decrypted that actual development backup into demo-quadmart-restore on
+  127.0.0.1:8180. All 68 documents were independently read back and matched.
+- Source checksum:
+  0e76fe5976956b0a7ea6212da87a9ea6cedde3e40de9c39d3f14b4e2027416f6
+- The installed maintenance launcher completed a real apply-mode run in about
+  14 seconds: verified a fresh 68-document backup, checked three live profiles,
+  inspected two already-completed deletion jobs and two deleted media tombstones,
+  and returned zero failures/manual-review/stale-job findings. No live account or
+  additional photo needed deletion during that run.
+- The installed weekly restore launcher independently restored and verified the
+  latest 68-document backup in about six seconds, then shut down its emulator.
+- Existing real owner/demo accounts were preserved. No test emails were sent.
+- Dependencies stalled when loaded from the Documents workspace; the scheduled
+  runtime was moved to a persistent private Application Support directory and
+  the exact launchers were tested there. Duplicate scratch credentials/key and
+  dependency copies were removed after the working installation was verified.
+
+LIMITS
+- Scheduling requires this Mac, network access and the desktop app. A sleeping
+  or unavailable Mac cannot deliver a missed-run alert until it resumes.
+- Local credentials and task permissions must remain available. A denied
+  permission/expired login is a failure to report, not a reason to bypass checks.
+- The encrypted archive covers Firestore documents plus source configuration;
+  it does not include Firebase Auth passwords/accounts or Cloudinary image bytes.
+- Key and archives reside on one Mac. Loss of that Mac is not covered without
+  an independently protected off-device copy and separate recovery-key custody.
+- Restores are deliberately restricted to a disposable local emulator. Cloud
+  disaster recovery, Auth/photo recovery, retention policy and reconciliation of
+  later account closures/moderation actions remain pre-launch work.
+- No claim of production readiness follows from this rehearsal.
+
+Draft PR: https://github.com/Narze4/quadmart/pull/1
+Guide: docs/SCHEDULED-MAINTENANCE-AND-BACKUPS.md
+Current CI results are attached to the PR; the safe local handoff includes the
+exact tested source revision and scheduling/launcher reports. No credentials or
+plaintext snapshots are included in repository, CI artifacts or the source ZIP.

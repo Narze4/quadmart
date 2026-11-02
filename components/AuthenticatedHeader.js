@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { collection, onSnapshot, query, where } from 'firebase/firestore'
+import { onSnapshot } from 'firebase/firestore'
+import { unreadNotificationsQuery } from '@/lib/feed-queries.mjs'
 import { getUsername } from '@/lib/utils'
 
 const CubeIcon = () => (
@@ -53,34 +54,34 @@ const NAV_LINKS = [
   { label: 'My listings', href: '/my-listings' },
   { label: 'Purchases', href: '/my-purchases' },
   { label: 'Messages', href: '/messages' },
+  { label: 'Safety', href: '/safety' },
 ]
 
 export default function AuthenticatedHeader() {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, logout } = useAuth()
-  const [unreadCount, setUnreadCount] = useState(0)
+  const { user, logout, isModerator } = useAuth()
+  const [unread, setUnread] = useState(null)
+  const unreadCount = unread && user?.emailVerified && unread.uid === user.uid ? unread.count : null
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const unsubNotificationsRef = useRef(null)
   const menuRef = useRef(null)
   const menuTriggerRef = useRef(null)
+  const mobileTriggerRef = useRef(null)
 
   useEffect(() => {
-    if (!user) return
-    const q = query(
-      collection(db, 'notifications'),
-      where('userId', '==', user.uid),
-      where('read', '==', false)
-    )
+    if (!user?.emailVerified) return
+    let active = true
     const unsub = onSnapshot(
-      q,
-      snap => setUnreadCount(snap.size),
-      err => console.error('notifications listener error:', err)
+      unreadNotificationsQuery(db, user.uid), { includeMetadataChanges: true },
+      snap => { if (active && !snap.metadata.fromCache && !snap.metadata.hasPendingWrites) setUnread({ uid: user.uid, count: snap.size }) },
+      () => { if (active) setUnread({ uid: user.uid, count: null }) }
     )
     unsubNotificationsRef.current = unsub
     return () => {
+      active = false
       unsub()
       unsubNotificationsRef.current = null
     }
@@ -113,10 +114,10 @@ export default function AuthenticatedHeader() {
   }, [menuOpen])
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') setMobileOpen(false) }
+    const onKey = (e) => { if (e.key === 'Escape' && mobileOpen) { setMobileOpen(false); mobileTriggerRef.current?.focus() } }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [mobileOpen])
 
   const isActive = (href) =>
     pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
@@ -164,7 +165,7 @@ export default function AuthenticatedHeader() {
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-0.5 lg:gap-1">
+          <div className="hidden lg:flex items-center gap-0.5 lg:gap-1">
             {NAV_LINKS.map(link => (
               <Link key={link.href} href={link.href} className={linkClass(link.href)}>
                 {link.label}
@@ -174,7 +175,7 @@ export default function AuthenticatedHeader() {
             <Link href="/saved" className={iconClass('/saved')} aria-label="Saved listings">
               <HeartIcon />
             </Link>
-            <Link href="/notifications" className={iconClass('/notifications')} aria-label="Notifications">
+            <Link href="/notifications" className={iconClass('/notifications')} aria-label={unreadCount === null ? 'Notifications, unread count unavailable' : `Notifications, ${unreadCount > 99 ? '99+' : unreadCount} unread`}>
               <BellIcon />
               {unreadCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
@@ -224,6 +225,7 @@ export default function AuthenticatedHeader() {
                   >
                     My profile
                   </Link>
+                  {isModerator && <Link href="/moderation" role="menuitem" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm hover:bg-bg">Moderation</Link>}
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); handleLogout() }}
@@ -237,8 +239,8 @@ export default function AuthenticatedHeader() {
           </div>
 
           {/* Mobile toggle */}
-          <div className="flex items-center gap-1 md:hidden">
-            <Link href="/notifications" className={iconClass('/notifications')} aria-label="Notifications">
+          <div className="flex items-center gap-1 lg:hidden">
+            <Link href="/notifications" className={iconClass('/notifications')} aria-label={unreadCount === null ? 'Notifications, unread count unavailable' : `Notifications, ${unreadCount > 99 ? '99+' : unreadCount} unread`}>
               <BellIcon />
               {unreadCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
@@ -247,8 +249,9 @@ export default function AuthenticatedHeader() {
               )}
             </Link>
             <button
+              ref={mobileTriggerRef}
               onClick={() => setMobileOpen(o => !o)}
-              className="p-2 rounded-lg text-text-secondary hover:bg-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="min-h-11 min-w-11 p-2 rounded-lg text-text-secondary hover:bg-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={mobileOpen}
             >
@@ -260,7 +263,7 @@ export default function AuthenticatedHeader() {
 
       {/* Mobile drawer */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-border bg-surface px-4 py-4 flex flex-col gap-1">
+        <nav aria-label="Mobile navigation" className="lg:hidden max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain border-t border-border bg-surface px-4 py-4 flex flex-col gap-1">
           {NAV_LINKS.map(link => (
             <Link
               key={link.href}
@@ -296,6 +299,7 @@ export default function AuthenticatedHeader() {
             >
               My profile
             </Link>
+            {isModerator && <Link href="/moderation" onClick={() => setMobileOpen(false)} className="px-3 py-2.5 text-sm">Moderation</Link>}
             <button
               onClick={() => { setMobileOpen(false); handleLogout() }}
               className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
@@ -303,7 +307,7 @@ export default function AuthenticatedHeader() {
               Log out
             </button>
           </div>
-        </div>
+        </nav>
       )}
     </header>
   )
