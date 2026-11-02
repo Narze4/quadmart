@@ -1,5 +1,5 @@
 QuadMart — student beta checklist
-Updated November 1, 2026 (America/New_York)
+Updated November 2, 2026 (America/New_York)
 
 Decision today: development engineering checks pass; do not invite students yet.
 This list separates the remaining real-world checks and team decisions from
@@ -7,9 +7,9 @@ work already verified. Keep PR #1 draft until the release gates are satisfied.
 Current commit, CI and development deployment: https://github.com/Narze4/quadmart/pull/1
 
 DONE / EVIDENCE
-- Full baseline CI run 76: 207 automated tests, 100 backend checkpoints,
-  131 browser scenarios, zero unexpected browser errors. The draft PR records
-  validation of the final badge/documentation change separately.
+- Baseline CI run 78 on 5d2d24b60f20c40d348d512ce651f4b8d0583741 passed:
+  207 automated tests, 100 backend checkpoints, 131 browser scenarios and zero
+  unexpected browser errors. The draft PR records later changes separately.
 - Verified-email account access, server ownership/campus checks, protected photos,
   messages, sales, reviews, saved items, paginated pages and safety flows tested.
 - Verification retry/session isolation, keyboard dialogs and password-policy
@@ -18,6 +18,10 @@ DONE / EVIDENCE
   completed with zero failures or remaining jobs; isolated recovery verified
   75 documents, 3 quarantined accounts and 3 photos. See recovery report.
 - The two scheduled-workflow handoff failures were corrected and exercised.
+- The revised scheduled path has now completed unattended. The latest run finished
+  November 2 at 7:45 AM EST with offsite verification, no overdue condition, and
+  zero failures, manual-review items, stale jobs or remaining jobs. This closes
+  the scheduled-cycle check, not the separate operational-coverage decision.
 - Listing badges say university email verified, not proof of student enrollment.
 
 BEFORE THE FIRST STUDENT INVITATIONS — IN ORDER
@@ -75,12 +79,12 @@ BEFORE THE FIRST STUDENT INVITATIONS — IN ORDER
     a migration. Review rollback and cloud restore/cutover in an approved target.
 
 [ ] 8. Confirm operational coverage. Owner: named operator + backup.
-    Observe a successful unattended backup/maintenance cycle with the revised
-    prompt. Check backup age, owner-only receipt, restore evidence, storage and
-    free-tier usage. Agree acceptable data loss/recovery time and a missed-run
-    response. Keep the Mac online/available and the app running if retaining
-    this free setup; it cannot independently alert while unavailable. Today's
-    overdue run recovered, but continuous availability is not established.
+    Scheduled-cycle verification is complete (see DONE above). Check backup age,
+    owner-only receipt, restore evidence, storage and free-tier usage at go/no-go.
+    Agree acceptable data loss/recovery time and a missed-run response. Keep the
+    Mac online/available and the app running if retaining this free setup; it
+    cannot independently alert while unavailable. Continuous availability and
+    named coverage are not established by two successful scheduled runs.
 
 [ ] 9. Run the final two-person beta acceptance test. Owner: seller + buyer.
     On the chosen hostname: sign in, publish a real test photo/listing, find and
@@ -106,3 +110,5 @@ Related reports:
 - RECOVERY-VALIDATION-2026-11-01.txt — current backup/maintenance/restore evidence
 - PHONE-ACCEPTANCE-CHECKLIST.txt — physical-device acceptance steps
 - KEYBOARD-TEST-RESULTS.txt — Chromium/WebKit keyboard and verification regressions
+- BETA-OPERATIONS-PLAN.txt — proposed team decisions, triage and rehearsal
+- DATA-HANDLING-REVIEW.txt — implemented data lifecycle for policy review

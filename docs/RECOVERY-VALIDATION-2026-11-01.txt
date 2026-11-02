@@ -16,7 +16,8 @@ The pinned downloader validated the URL and removed the temporary input.
 No signed URL, key, plaintext records or password hashes appear in this report.
 Both automation prompts now specify the successfully tested permission/handoff
 steps; their schedules and quiet-on-unchanged-success behavior remain unchanged.
-A future unattended run is still needed to confirm the revised scheduled path.
+At the time of this rehearsal, an unattended run was still needed. It has since
+completed successfully; see the November 2 follow-up below.
 
 VERIFIED ENCRYPTED ARTIFACT
 Filename: quadmart-2026-11-02T03-11-14-617Z-c093cb89-ad20-44e1-a602-a28d3f395ef8.qmb
@@ -58,3 +59,21 @@ A temporary sleep assertion does not cover a closed lid, manual sleep, shutdown,
 network loss or a stopped app. Assign an operator to check missed runs and agree
 acceptable data-loss/recovery time before a student beta. Do not treat a single
 successful recovery as a guarantee of recurring availability.
+
+NOVEMBER 2 SCHEDULED FOLLOW-UP — READ BACK NOVEMBER 2
+The revised scheduled path completed unattended. Latest safe results:
+Capture: 2026-11-02T12:43:48.208Z (7:43 AM EST)
+Filename: quadmart-2026-11-02T12-43-50-117Z-b434cde3-4d79-4e2e-9594-addb91d08a09.qmb
+Encrypted bytes: 256769
+Encrypted SHA256: 7bc27d555c03c41c0f2cf12a831cb056ed4c2651178001cd1c24e60c6ea81c57
+Downloaded receipt verified: 2026-11-02T12:45:06.643Z; ownerOnly=true.
+Maintenance finished: 2026-11-02T12:45:22.946Z (7:45 AM EST).
+Exit 0, no timeout; apply=true, offsiteVerified=true, overdueBeforeRun=false.
+75 documents, 3 Auth accounts and 3 photos in the verified complete backup.
+Zero failures, manual-review items, stale jobs or remaining jobs.
+3 profiles and 6 media entries checked; 0 photos deleted, 3 media entries held.
+This closes the pending scheduled-cycle verification. It does not establish
+continuous Mac availability or select recovery objectives for the team.
+The latest restore remains the 03:13 UTC rehearsal above; it was not repeated
+for this later capture. Readbacks used latest-launch.json, latest-offsite.json
+and latest-rehearsal.json; no new maintenance or restore ran for this report.

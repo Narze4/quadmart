@@ -1,0 +1,116 @@
+QuadMart — implementation facts for the policy review
+Reviewed November 2, 2026
+
+This is an internal engineering inventory, not Terms or a Privacy Policy.
+It describes the development code reviewed today, not an assertion about the
+older production app or every provider setting. The team must approve actual
+purposes, retention periods, operator/contact details and public wording.
+
+ACCOUNTS AND PROFILES
+Firebase Authentication holds login identity and verification state. The app
+does not store plaintext passwords in Firestore. Private users/<uid> records
+contain email, campus, display name, counts and saved listing IDs. The public
+profile contains display name, campus and reputation/trade information, not
+the private email. Access remains subject to campus and account rules.
+Current eligibility checks establish supported university mailbox access.
+They do not establish identity, current enrollment or an invitation entitlement.
+
+On closure: the private profile/saved items are removed in resumable batches;
+the login is deleted after database cleanup. Public profile identity is reduced
+to “Deleted student,” UID, campus and reputation/trade aggregates. A permanent
+private lifecycle marker prevents old sessions from restoring the account.
+Decisions: eligible users/minimum age, re-verification, invitation approval,
+profile visibility and how retained identifiers/aggregates are handled.
+
+LISTINGS AND PHOTOS
+Listings hold the seller/campus, description, price, condition and managed photo
+references. Server upload accepts bounded static JPG/PNG/WebP, decodes/re-encodes
+to JPEG and strips image metadata. Photos themselves may still show personal
+information; re-encoding does not redact faces, addresses or belongings.
+Cloudinary stores authenticated images in the restricted development namespace.
+The app checks account/campus access before photo delivery.
+
+On closure: listings are removed in batches. Unreferenced registered photos at
+least 24 hours old can be deleted by maintenance; referenced, blocked or invalid
+entries are held. Removed-listing archives and report snapshots preserve photo
+references even after report resolution. Provider deletion must be confirmed;
+the registry retains a minimal deletion marker. Twenty-four hours is a cleaner
+eligibility/grace period, not a guaranteed deletion deadline. Copies already
+downloaded by a viewer cannot be recalled.
+Decisions: listing retention, moderation evidence retention, exception handling
+and accurate deletion expectations.
+
+MESSAGES, SALES AND REVIEWS
+Conversation records include participants, display names, listing context and
+the latest message; message records contain sender UID, text and time. Trade
+records contain participants, listing title/price and time. Reviews link to a
+completed trade and store reviewer/target IDs, score and comment. Notifications
+can include a short message excerpt or trade context.
+
+On closure: own notifications are removed, and the participant display name in
+conversations becomes “Deleted student.” Shared message text, trade records,
+reviews and reputation remain. Free text may contain personal information and
+is not automatically anonymized by replacing the profile name. Counterparty
+notifications and shared records are not all erased by account closure.
+Decisions: retention periods and treatment of shared content/deletion requests.
+Do not claim that closing an account deletes every piece of personal data.
+
+REPORTS, BLOCKS AND MODERATION
+Reports store the reporter/target, reason/details, listing or profile snapshot,
+and, when attached to a conversation, its last ten messages. Moderator decisions
+record actor, action, explanation, version and time. Removed listings are kept
+in a private archive; account restriction state is separate from login identity.
+Reporters see a limited outcome, not moderator evidence or other reporters.
+
+On closure: own block records are removed. Incoming blocks, reports, snapshots,
+moderation events/archives and account lifecycle/deletion markers remain. Cleanup
+does not silently erase this evidence. Role assignment is private and managed
+outside the public app; the team still needs an access/coverage/appeals owner.
+Decisions: allowed uses, authorized reviewers, retention and appeal handling.
+
+ABUSE CONTROLS AND LOGS
+Private quotas, request ledgers and media digests support limits and retry safety.
+The application log projection emits operation/route, request reference, status,
+duration and a bounded failure code; it excludes request bodies, identities,
+tokens and arbitrary exceptions. Vercel, Firebase/reCAPTCHA and Cloudinary may
+have separate service/access logs; this application projection does not govern
+their content or retention. Provider settings require their own review.
+Decisions: monitoring owners, access, review cadence and log/ledger retention.
+
+BACKUPS AND RECOVERY
+Complete encrypted backups include database records, Firebase Auth recovery
+material (including password hashes) and photo bytes. Private local storage and
+the approved owner-only Google Drive folder hold encrypted archives. The key is
+kept separately by the owner; it does not belong in chat, source or a backup.
+An uploaded file counts as verified only after download, checksum/decryption and
+owner-only receipt checks. Isolated restore accounts are disabled/quarantined.
+
+Deleting a live record does not rewrite older encrypted backups. The repository
+local pruning helper defaults to retaining 28 archives; this is not an offsite
+retention promise. The approved recurring Drive workflow does not delete Drive
+files and stops at its 1 GiB budget. The scheduled pinned runtime and actual
+backup inventory must be reviewed before promising a retention deadline.
+Decisions: approved archive lifetime, how closure records/deletion requests are
+reconciled after restoration, recovery ownership and missed-run coverage.
+Do not release recovered accounts/photos until those checks have passed.
+
+PROVIDER AND BROWSER REVIEW BEFORE PUBLICATION
+Known development services: Firebase Auth/Firestore/App Check with reCAPTCHA
+Enterprise, Vercel hosting, Cloudinary photos, and encrypted Google Drive backup.
+Confirm the actual operator, service settings, locations, access permissions,
+browser/session storage and provider notices for the chosen beta deployment.
+This inventory is not an exhaustive provider data-processing or legal review.
+Do not describe university-mailbox checks as university endorsement.
+
+SOURCE MAP
+lib/server/market.mjs — profile, conversation, message, sale and review writes
+lib/server/account-closure.mjs — closure stages and retained profile fields
+lib/server/uploads.mjs / media-cleanup.mjs — sanitization and deletion holds
+lib/server/safety.mjs — evidence, blocks and moderator decisions
+lib/server/telemetry.mjs — application log projection
+lib/operations/backup.mjs — encrypted snapshots and local pruning
+docs/ACCOUNT-AND-PHOTO-CLEANUP.md / SCHEDULED-MAINTENANCE-AND-BACKUPS.md
+
+Publication gate: reconcile this inventory with the chosen beta target; record
+approved retention/deletion decisions; implement any required change and test it;
+then review and publish the corresponding policies and working footer links.

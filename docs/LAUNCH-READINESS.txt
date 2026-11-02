@@ -1,5 +1,5 @@
 QuadMart development launch checklist
-Updated November 1, 2026 (America/New_York)
+Updated November 2, 2026 (America/New_York)
 
 Status: development validation is progressing; student invitations remain on hold.
 This is the detailed gate list. BETA-TEST-CHECKLIST.txt gives the ordered team
@@ -87,7 +87,17 @@ Failures/manual-review/stale/remaining jobs were all zero; the run was overdue
 before starting. The two permission/URL handoff problems were corrected and the
 scheduled prompts updated. See RECOVERY-VALIDATION-2026-11-01.txt for exact
 artifact, timestamps, counts and limits. The pinned runtime was unchanged.
-A later unattended cycle is still needed to validate the revised schedule.
+The revised scheduled path subsequently passed unattended. The latest run finished
+November 2 at 7:45 AM EST with offsite verification, overdueBeforeRun=false and
+zero failures/manual-review/stale/remaining jobs. The receipt and rehearsal were
+read back on November 2; the dated recovery report includes that follow-up.
+Named operator coverage and acceptable recovery objectives remain team decisions.
+
+CI run 78 on 5d2d24b60f20c40d348d512ce651f4b8d0583741 also passed the same
+207 automated tests, 100 backend checkpoints and 131 browser scenarios, with
+zero unexpected browser errors and eight classified WebKit navigation
+cancellations: https://github.com/Narze4/quadmart/actions/runs/41386799546
+The PR records the separate validation of the later CI action upgrades.
 
 DATED OFFSITE RECOVERY REHEARSAL
 
@@ -127,6 +137,8 @@ REMAINING WORK, IN IMPLEMENTABLE ORDER
        already has an account; preserve it and do not assume an alias works.
 
 2. Founding-team decisions needed before public content can be finalized.
+   BETA-OPERATIONS-PLAN.txt provides a proposed decision sheet and rehearsal;
+   DATA-HANDLING-REVIEW.txt maps actual code behavior to the policy questions.
    [ ] Define eligible students, alumni/staff handling and re-verification.
        University mailbox access alone does not prove current enrollment.
    [ ] Assign support and moderator coverage; confirm hello@quadmart.app is owned
