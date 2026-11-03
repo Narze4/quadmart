@@ -110,6 +110,60 @@ test('legacy and unknown paths stay denied', async () => {
 });
 
 const photoId = 'a'.repeat(64);
+
+test('invite-only beta denies existing uninvited sessions across direct reads and deletion', async () => {
+  const db = auth();
+  await assertSucceeds(getDoc(doc(db, 'listings/desk')));
+  await seed('betaSettings/access', { mode: 'invite-only', campusId: 'emory.edu' });
+  for (const path of ['listings/desk', 'users/alice', 'publicProfiles/alice', 'conversations/chat', 'transactions/t', 'notifications/n']) await assertFails(getDoc(doc(db, path)));
+  await assertFails(getDocs(query(collection(db, 'listings'), where('campusId', '==', 'emory.edu'), limit(25))));
+  await assertFails(deleteDoc(doc(db, 'listings/desk')));
+  await assertSucceeds(getDoc(doc(db, 'betaAccess/alice')));
+  await assertSucceeds(getDoc(doc(db, 'betaSettings/access')));
+});
+test('invited Emory member can browse and revocation takes effect without a new token', async () => {
+  const db = auth();
+  await seed('betaSettings/access', { mode: 'invite-only', campusId: 'emory.edu' });
+  await seed('betaAccess/alice', { active: true, campusId: 'emory.edu' });
+  await assertSucceeds(getDoc(doc(db, 'listings/desk')));
+  await assertSucceeds(getDocs(query(collection(db, 'listings'), where('campusId', '==', 'emory.edu'), limit(25))));
+  await seed('betaAccess/alice', { active: false, campusId: 'emory.edu' });
+  await assertFails(getDoc(doc(db, 'listings/desk')));
+  await seed('betaAccess/alice', { active: true, campusId: 'emory.edu' });
+  await assertSucceeds(getDoc(doc(db, 'listings/desk')));
+});
+test('beta members cannot approve themselves, change policy or enumerate invitations', async () => {
+  const db = auth();
+  await seed('betaSettings/access', { mode: 'invite-only', campusId: 'emory.edu' });
+  for (const path of ['betaAccess/alice', 'betaAccess/bob', 'betaSettings/access']) {
+    await assertFails(setDoc(doc(db, path), { active: true, mode: 'invite-only', campusId: 'emory.edu' }));
+    await assertFails(deleteDoc(doc(db, path)));
+  }
+  await assertFails(getDoc(doc(db, 'betaAccess/bob')));
+  await assertFails(getDocs(query(collection(db, 'betaAccess'), limit(25))));
+  await assertFails(getDocs(query(collection(db, 'betaSettings'), limit(25))));
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'betaSettings/access')));
+});
+test('beta membership cannot override email verification or the Emory campus boundary', async () => {
+  await seed('betaSettings/access', { mode: 'invite-only', campusId: 'emory.edu' });
+  await seed('betaAccess/alice', { active: true, campusId: 'emory.edu' });
+  await assertFails(getDoc(doc(auth('alice', 'alice@emory.edu', false), 'listings/desk')));
+  await assertFails(getDoc(doc(auth('alice', 'alice@uga.edu'), 'listings/desk')));
+  await assertSucceeds(getDoc(doc(auth('alice', 'alice@students.emory.edu'), 'listings/desk')));
+});
+test('malformed beta policy and membership fail closed', async () => {
+  await seed('betaAccess/alice', { active: true, campusId: 'emory.edu' });
+  for (const policy of [{}, { mode: 'open', campusId: 'emory.edu' }, { mode: 'invite-only', campusId: 'uga.edu' }]) {
+    await seed('betaSettings/access', policy);
+    await assertFails(getDoc(doc(auth(), 'listings/desk')));
+  }
+  await seed('betaSettings/access', { mode: 'invite-only', campusId: 'emory.edu' });
+  for (const membership of [{}, { active: 'true', campusId: 'emory.edu' }, { active: true, campusId: 'uga.edu' }]) {
+    await seed('betaAccess/alice', membership);
+    await assertFails(getDoc(doc(auth(), 'listings/desk')));
+  }
+});
+
 const photoUrl = `/api/photos/${photoId}`;
 const readyPhoto = (extra = {}) => ({ ownerUid: 'alice', campusId: 'emory.edu', status: 'ready', url: photoUrl, ...extra });
 test('client cannot forge media registry or reset upload budgets',async()=>{

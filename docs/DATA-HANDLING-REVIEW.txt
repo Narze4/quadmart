@@ -13,7 +13,14 @@ contain email, campus, display name, counts and saved listing IDs. The public
 profile contains display name, campus and reputation/trade information, not
 the private email. Access remains subject to campus and account rules.
 Current eligibility checks establish supported university mailbox access.
-They do not establish identity, current enrollment or an invitation entitlement.
+They do not establish identity or current enrollment. The separately prepared
+beta gate requires server-owned approval for the Firebase UID when enabled.
+betaAccess/<uid> holds only active and campusId; the owner can read their own
+status. Clients cannot approve accounts or enumerate this collection. Keep the
+private tester roster, emails and approval notes outside these readable records.
+Membership records are not automatically deleted by account closure; the
+independent lifecycle marker still denies the closed UID. Re-creating a login
+with the same email creates a different UID and does not inherit admission.
 
 On closure: the private profile/saved items are removed in resumable batches;
 the login is deleted after database cleanup. Public profile identity is reduced

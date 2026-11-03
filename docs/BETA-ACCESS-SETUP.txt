@@ -1,0 +1,124 @@
+QuadMart — Emory beta access setup
+Prepared November 2, 2026
+
+Scope confirmed by owner: 5–10 Emory students, fresh beta test data in a
+separate free Firebase project.
+Status: local validation passed; no cloud policy or member approval
+has been written, no existing data reset, and no students invited.
+See BETA-ACCESS-TEST-RESULTS.txt: 220 automated tests, 100 backend checkpoints and
+143 browser scenarios. This code remains a local candidate, not cloud activation.
+
+TARGET SETUP — NOVEMBER 2
+QuadMart Beta / quadmart-beta was created on the Spark no-cost plan, with Gemini
+and Google Analytics disabled. After the owner approved creation, its empty
+default Standard Firestore database was created in nam5 (United States) on
+November 2. The console confirms the database is ready and the published initial
+rules deny all client reads/writes. Paid scheduled backups remain disabled and
+the project remains on Spark. Email/Password Auth and QuadMart Beta Web are now registered. Passwords require
+at least 12 characters. A separate Hobby Vercel project, quadmart-beta, exists
+with Standard Protection enabled. Server identity, App Check, memberships and
+beta deployment remain pending. See BETA-CLOUD-CONNECTION.txt for current scope.
+
+WHAT THE GATE DOES
+When enabled, a verified Emory mailbox and an active, server-owned approval for
+that exact Firebase Auth UID are both required for marketplace access. Profile
+provisioning, ordinary API operations, protected photos and direct Firestore
+reads/deletes are covered. Contact/new trades also check the other participant's
+membership inside the operation transaction. A reviewer still has the existing
+scoped moderation-evidence photo access; it requires an admitted moderator.
+
+The browser observes the policy and its own membership. Revocation removes the
+private app view in an open session; API/rules checks do not rely on that UI or
+on an old token being refreshed. Retry after approval reruns account setup.
+Read failures/malformed enabled policy do not grant admission. Email verification,
+suspension, closure, campus boundaries and existing request budgets still apply.
+Recently authenticated account-closure operations remain available at the API
+boundary even if beta membership has been revoked.
+
+This restricts marketplace admission, not Firebase Auth account creation. Someone
+can still attempt signup/verification and receive the invitation-only screen;
+Auth App Check/abuse controls remain necessary. The gate does not prove current
+enrollment, send invitations, grant moderator roles or change Vercel protection.
+
+SERVER-OWNED DOCUMENT CONTRACT
+betaSettings/access:
+  { "mode": "invite-only", "campusId": "emory.edu" }
+betaAccess/<verified-testers-auth-uid>:
+  { "active": true, "campusId": "emory.edu" }
+
+Only the owner/operator may write these through approved administration. The web
+client has get access to the policy and its own status, and no list/write access.
+Do not put emails, private notes, invitation codes or credentials in these docs.
+Set active=false to revoke; do not delete the global policy to suspend a beta.
+Keep reviewer/moderator role decisions separate from ordinary beta admission.
+
+IMPORTANT DEFAULT
+An absent betaSettings/access preserves protected development behavior only.
+The beta client/server and generated firestore.beta.rules now deny missing
+policy; firebase.beta.json selects those generated rules. These changes are
+locally tested but not deployed. Absence is NOT an acceptable beta configuration. Before exposing the
+beta hostname, confirm the policy exists, has the exact contract and denies an
+uninvited verified user at both HTTP and direct Firestore boundaries. A present
+but unknown/incomplete policy denies access. Configuration read failures deny
+requests; they are never treated as an absent document.
+
+ACTIVATION ORDER — TARGET PROJECT CHOSEN, SERVICES STILL PENDING
+1. Finish quadmart-beta service setup and choose its hostname/private roster. Preserve existing
+   development data. Provision only the approved free services/configuration;
+   irreversible upgrades/terms or new credential grants need their own approval.
+   The local candidate pins the independent beta project, web app, Vercel
+   project and Preview federation identity. Provision that exact identity;
+   do not reuse or widen the existing development identity.
+2. Establish the backup/recovery configuration for the actual target, including
+   source/rules capture and membership records. The current pinned maintenance
+   runtime serves development and has not been altered for this code change.
+3. Deploy the matching security rules and indexes before code that subscribes to
+   betaSettings/betaAccess. Older rules deny those status reads. Do not publish
+   this client against the old rules and mistake the resulting denial for a bug.
+4. Write and verify the exact global policy while the site remains protected.
+   Never populate it from a query parameter, profile flag or client request.
+5. A tester creates/verifies their own university login with their own password.
+   The owner privately checks the Firebase UID, verified Emory email and agreed
+   eligibility/roster. Approve that UID; the tester selects Retry account setup.
+   A recreated Auth account requires a new approval. Do not fabricate verification
+   or disclose a roster entry to another tester. Use synthetic operator fixtures
+   for acceptance before granting any real tester access.
+6. Verify admitted/uninvited/unverified/wrong-campus cases, self-approval denial,
+   API + direct database + photo rejection, live revocation and restored approval.
+   Exercise two approved accounts through listing/message/sale/review. Record
+   exact target/build and the rule/index hashes and CI evidence.
+7. Complete the real mailbox/phone/reset/team gates, then record go/no-go and
+   authorize invitations. Keep the public signup copy consistent with the actual
+   access plan. This local code preparation does not complete cloud activation.
+
+TARGET BINDINGS TO REVIEW BEFORE CLOUD ACTIVATION
+- Browser Firebase config and server FIREBASE_ADMIN_PROJECT_ID must both name
+  quadmart-beta. Keep project selection fixed by deployment configuration;
+  never accept a caller-supplied project or use development as a fallback.
+- The local Vercel Preview/server/federation guards now require beta's own
+  identity and Vercel project. Create the reviewed identity restricted to the beta
+  project, service account and Vercel project/environment. Do not broaden the
+  existing development identity or reuse its credential as a beta shortcut.
+- Choose the exact beta hostname before registering its Auth authorized domains
+  and App Check site key. Verify direct Firebase signup rejection under the new
+  controls, in addition to the site's API firewall. No terms/upgrade or security
+  access change for beta has been approved by the development-only approvals.
+- Photos require their own restricted Cloudinary access to
+  quadmart/quadmart-beta. The development folder permission does not authorize
+  this prefix. Test upload, cross-user delivery denial and cleanup in this scope.
+- Beta recovery needs its own reviewed source allowlist, configuration, pinned
+  runtime, target receipt and offsite-data approval. Existing backup/photo schema
+  guards accept development/demo only. The development schedules and runtime
+  remain unchanged; their successful receipts do not cover the beta project.
+- The beta candidate now denies missing or deleted policy at client, server
+  and generated-rules boundaries, with regression tests. Deploy only through
+  firebase.beta.json; its predeploy check rejects stale generated rules. The
+  shared development rules preserve their existing protected compatibility mode.
+
+LOCAL CHECKS
+npm run test:beta
+npm run test:rules
+npm run test:integration
+
+The tests use disposable demo-quadmart emulators and synthetic accounts only.
+No cloud password, production data, invitation list or real email is needed.

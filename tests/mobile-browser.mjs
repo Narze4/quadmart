@@ -30,7 +30,13 @@ async function login(page,email){
   assert(await input.isDisabled(),'Login is disabled before hydration');
   assert(await page.getByRole('button',{name:'Log In',exact:true}).isDisabled());
  }finally{release();}
- await page.waitForLoadState('load');await page.unroute(scripts);
+ // WebKit can leave the document load event pending after the form is already
+ // hydrated. Assert the actual ready controls, preserving the cold-load checks
+ // above, instead of waiting for unrelated document resources to finish.
+ await page.locator('input[type=email]:enabled').waitFor({timeout:30000});
+ await page.locator('button[type=submit]:enabled').waitFor({timeout:30000});
+ assert(await page.getByRole('button',{name:'Log In',exact:true}).isEnabled());
+ await page.unroute(scripts);
  await page.locator('input[type=email]').fill(email);
  await page.locator('input[type=password]').fill(password);
  await page.getByRole('button',{name:'Log In',exact:true}).click();

@@ -1,0 +1,100 @@
+QuadMart beta cloud connection — November 2, 2026
+
+STATUS: beta cloud configuration is saved; deployment and hosted acceptance
+are blocked on Vercel CLI sign-in renewal. No invitations are authorized.
+This file contains public resource identifiers, not credentials.
+
+CREATED AND VERIFIED IN THE CONSOLE
+Firebase project: quadmart-beta, number 851588712518, Spark no-cost plan.
+Firestore: default Standard database, nam5. Tested beta rules deployed and
+byte-for-byte verified; all 21 indexes match the manifest and are READY.
+Only betaSettings/access exists: invite-only, campusId emory.edu. No memberships.
+Web app: QuadMart Beta Web, 1:851588712518:web:8f0c91bc4d004b5d8b6247.
+Authentication: Email/Password enabled; passwordless email links remain off.
+Password policy: Require enforcement, minimum 12, maximum 4096 characters.
+Identity Platform upgrade completed with owner approval; improved email privacy
+enabled. Billing API confirms no linked billing account and billingEnabled=false.
+App Check: score-based reCAPTCHA Enterprise provider registered, 1-hour TTL.
+Site key is restricted to quadmart-beta-preview.vercel.app; no localhost or
+wildcard domain. Auth domains: that hostname plus the two Firebase beta domains.
+App Check enforcement remains pending a successful hosted token test.
+Vercel: narze4s-projects / quadmart-beta, Hobby.
+Vercel project ID: prj_CV5KIH2rwT2Rs67MOrFpzyNL1mwS.
+Deployment protection: Standard Protection, Require Log In enabled.
+No beta deployment, Git connection, cloud service-account key, or tester account.
+Fourteen configuration values saved only in Preview; none are server secrets.
+System environment variables enabled; OIDC issuer mode is Team.
+Reserved quadmart-beta-preview.vercel.app. It currently has no deployment and
+is attached to the new beta project's default Production domain slot. Assign
+it to the actual Preview deployment after deploying; never deploy this app as
+Production. The original generated project-wseoq.vercel.app redirects to it.
+
+PREPARED APPLICATION CHANGES
+The beta browser, server and build must agree on the beta Firebase project,
+registered web app, Vercel project ID, Preview environment and independent
+federated identity. Configurations that mix beta and development are rejected.
+Hosted beta requires App Check configuration. Local emulators do not attest.
+The beta client, server and generated rules deny missing admission policy.
+Development retains its existing optional-policy behavior.
+firebase.beta.json selects firestore.beta.rules and the shared index manifest.
+The predeploy check rejects a project other than quadmart-beta and generated
+rules that no longer match their source. Local validation: see
+BETA-CONNECTION-TEST-RESULTS.txt (231 tests, 100 backend checks, 143 browser cases).
+Generate after editing shared rules: node scripts/beta-rules.mjs
+Check without changing files: node scripts/beta-rules.mjs --check
+
+ACCESS GRANTED AND READ BACK
+Keyless workload identity is active; no user-managed service-account keys exist.
+Google service account:
+  quadmart-beta-preview@quadmart-beta.iam.gserviceaccount.com
+Pool/provider:
+  projects/851588712518/locations/global/workloadIdentityPools/quadmart-beta-preview/providers/vercel
+OIDC issuer: https://oidc.vercel.com/narze4s-projects
+Allowed audience: https://vercel.com/narze4s-projects
+Mapping: google.subject = assertion.sub
+Provider condition (all must match):
+  assertion.project_id == 'prj_CV5KIH2rwT2Rs67MOrFpzyNL1mwS' &&
+  assertion.sub == 'owner:narze4s-projects:project:quadmart-beta:environment:preview'
+Only that exact subject receives roles/iam.workloadIdentityUser on this service
+account. No wildcard, other Vercel project, Development or Production subject.
+Service-account project roles: roles/datastore.user and roles/firebaseauth.viewer
+on quadmart-beta only. Firestore writes are required by marketplace server
+operations; Auth read access supports revoked/disabled account validation.
+The app identity cannot administer IAM, change Auth settings or publish rules.
+No existing development identity or Cloudinary permission is widened.
+The exact provider condition, project roles and sole impersonation binding were
+read back. Real token exchange and wrong-subject rejection await deployment;
+configuration inspection alone does not establish those runtime results.
+
+NEXT CLOUD STEPS
+1. Finish Vercel CLI sign-in renewal with the account holder. The old session
+   expired; the official CLI removed its expired login. Device authorization
+   showed a disabled Allow Access button, and the bounded login attempt expired.
+   Do not reuse an expired code, automate MFA, or create a broad replacement key.
+   Automatic approval review rejected starting a new GitHub integration because
+   that repository scope was not explicitly approved; no connection was made.
+   Use the existing CLI route, or obtain specific integration approval if needed.
+2. Deploy the tested beta candidate to the separate Preview, keeping deployment
+   protection enabled. Verify the actual project/environment and alias the
+   reserved hostname to that Preview. Check all saved values after CLI renewal.
+   QUADMART_ENABLE_UPLOADS=false until independent beta photo access is ready.
+   Do not push the candidate onto the existing development auto-deploy branch
+   before that project's rules are separately coordinated.
+3. Exercise keyless server access and reject wrong project/environment tokens.
+4. Enforce App Check only after a valid beta token succeeds. Test direct Firebase
+   signup/read rejection without attestation and valid browser/session renewal.
+5. Run hosted approved/uninvited/unverified/wrong-campus and two-account trade
+   acceptance. Mark it pending until actual cloud results exist.
+
+REMAINING INVITATION GATES
+The hosted signup/verification/session tests, restricted beta photos, beta
+backup/restore, physical-phone checks, hosted password reset and team moderation
+rehearsal remain separate gates. Existing development tests/backups do not
+prove those beta services. A saved development-test password was accidentally
+included in tool output during setup; its owner must change it privately.
+Do not copy or reuse that credential for beta.
+
+References:
+https://vercel.com/docs/oidc/gcp
+https://vercel.com/docs/oidc/reference
+https://firebase.google.com/docs/app-check/web/recaptcha-enterprise-provider

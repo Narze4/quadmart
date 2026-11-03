@@ -1,0 +1,82 @@
+QuadMart — invitation access validation
+November 2, 2026 (America/New_York)
+
+STATUS
+Local candidate only. Not published to GitHub/Vercel and not deployed as rules
+to a cloud database. The new quadmart-beta project has an empty default Standard
+Firestore database in nam5 on Spark, created November 2 after owner approval.
+Its initial published rules deny all client access; the candidate marketplace
+rules have not been deployed. No testers were invited.
+
+ENVIRONMENT
+Node 22.20.0, Java 21, production Webpack build with Firebase emulators enabled.
+Disposable demo-quadmart Firestore/Auth on loopback 8080/9099 and Next on 3100.
+Restore tests use separate demo-quadmart-restore emulators on 8180/9199.
+Only synthetic accounts and local verification/reset endpoints were used.
+
+AUTOMATED RESULTS
+The candidate's 218 unit/emulator tests passed; the separate two restore tests
+also passed (220 total, zero failures). This includes 40 Firestore rules tests
+and eight invitation backend tests. ESLint and the emulator Webpack build pass.
+The updated workflow parses successfully, retains immutable action pins and
+includes test:beta. The rebuilt candidate passed 100 backend checkpoints and all
+131 existing browser scenarios. The new invitation suite then passed all 12
+scenarios on that same build after test-selector/navigation corrections: 143
+browser scenarios total, zero unexpected page errors. Eleven exact WebKit
+navigation cancellations were classified separately (seven session, four beta).
+
+These are component results from split local runs, not a green hosted CI run or
+a claim that an earlier aggregate command succeeded after its test failure.
+The final standalone invitation run exited zero, without a timeout. No app code
+changed after the rebuilt baseline regression; only its new test was corrected.
+Private logs: quadmart-beta-regression.log (218 tests), quadmart-beta-restore.log
+(two tests), quadmart-beta-recovery-integration.log (100 backend + 131 existing
+browser scenarios), quadmart-beta-logout-navigation.log (12 beta scenarios).
+
+ACCESS SCENARIOS
+- Uninvited verified Emory account cannot provision a marketplace profile,
+  publish, read/query protected Firestore data, delete a listing or use photos.
+- Membership and global policy writes are server-owned. Clients cannot approve
+  themselves, list other memberships or change the admission policy.
+- Approved synthetic seller/buyer complete listing, messaging, saving, sale
+  and both reviews. Revocation prevents new messages/trades with that party.
+- Verification, campus, suspension and closure remain enforced. Admission never
+  overrides those checks; recent-auth closure remains available at the API.
+- Malformed policy/membership denies access; provider failures return safe
+  errors. The absent-policy development default remains explicitly separate
+  from the required beta target configuration (see BETA-ACCESS-SETUP.txt).
+- Browser approval/retry, live revocation, restored access, invalid policy,
+  reload and switching accounts are exercised in Chromium and WebKit.
+
+ISSUES FOUND AND CORRECTED
+1. A permission-denied Firestore listener cannot recover without resubscribing.
+   Code review found that restoring membership did not restart saved items if
+   that listener had failed. It now resubscribes when admission changes.
+   The regression visits Saved via
+   in-app navigation after reapproval, without reloading or clicking Retry.
+2. The new account-switch test navigated before asynchronous sign-out completed.
+   It now waits for the app's own login redirect and enabled form first.
+3. WebKit's cold-hydration test waited for the document load event after releasing
+   JavaScript. It now waits for enabled inputs/submit within the same 30 seconds;
+   pre-hydration disabled controls and actual successful login remain asserted.
+4. WebKit can report cancelled loopback Firestore long polls during navigation.
+   Only the existing exact diagnostic during a tracked navigation is counted
+   separately. All other page errors, including outside navigation, still fail.
+5. The new saved-item assertion initially looked for a heading, but the existing
+   empty state is a paragraph. It now checks that exact visible text and records
+   safe failure state; the application was not changed to satisfy the selector.
+
+PUBLISHED BASELINE — DIFFERENT FROM THIS LOCAL CANDIDATE
+CI run 80: https://github.com/Narze4/quadmart/actions/runs/41484930203
+Remote commit 2a6f5ad9b50578bee733600532c22afed8905a29 passed 207 automated tests,
+100 backend checkpoints and 131 browser scenarios with zero unexpected browser
+errors. It includes the Actions upgrades and operating documents, not this
+invitation feature. Draft PR: https://github.com/Narze4/quadmart/pull/1
+
+RELEASE LIMITS
+No hosted beta validation, real signup email, password reset, physical-phone
+camera/keyboard/resume acceptance or human moderation rehearsal is claimed.
+The new target still needs its fixed credential/photo scopes, required-policy
+default, matching rules/indexes, Auth/App Check/firewall, deployment and its own
+backup/restore validation. The existing development recovery runtime is intact.
+Keep student invitations pending. BETA-TEST-CHECKLIST.txt is the go/no-go list.

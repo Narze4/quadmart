@@ -1,0 +1,76 @@
+QuadMart — beta connection candidate validation
+November 2, 2026 (America/New_York)
+
+RESULT
+Local candidate passed 231 distinct unit/emulator tests, 100 backend checks and
+143 Chromium/WebKit browser scenarios. Zero unexpected page errors. Eleven
+exact WebKit navigation cancellations were classified separately (six session,
+five beta), using the existing narrow navigation-only classifier.
+ESLint, generated-rule consistency, git diff whitespace check and the final
+Next.js production Webpack emulator build all passed.
+
+EVIDENCE AND SCOPE
+Disposable demo-quadmart Auth/Firestore on loopback 9099/8080; Next on 3100.
+The separate restore tests used demo-quadmart-restore on 9199/8180. Synthetic
+accounts only; no real email, cloud account, production or development data
+was used by these tests. Node 22.20.0 and Java 21.
+
+The aggregate unit/emulator run passed 228 tests, plus two isolated restore
+tests. After that run, the final deployment preflight test was added and the
+14-test beta suite passed, including all 13 previously covered beta tests and
+the new target-rejection test: 231 distinct tests total. The final Vercel project
+ID binding was independently rechecked in all seven credential/config tests.
+Those extra runs overlap earlier tests and are not added again to the total.
+
+The production emulator build completed before the full 100-check backend and
+143-scenario browser run. After the last deployment-only preflight/config change,
+lint and the build were repeated successfully; no browser-flow code changed.
+This is component validation, not a claim that a new hosted CI run passed.
+
+Browser suites: marketplace pagination 21; account collections 15; mobile 28;
+signup 10; authentication/session 18; resume 13; password reset 14; keyboard 12;
+beta admission/revocation/reapproval 12.
+
+Private local logs (outside Git):
+/private/tmp/quadmart-beta-bootstrap/regression.log
+/private/tmp/quadmart-beta-bootstrap/restore.log
+/private/tmp/quadmart-beta-bootstrap/integration.log
+/private/tmp/quadmart-beta-bootstrap/deploy-preflight-tests.log
+/private/tmp/quadmart-beta-bootstrap/final-build-lint.log
+
+NEW ISOLATION COVERAGE
+- A beta build/server accepts only quadmart-beta, its registered web app,
+  exact independent provider/service account, Preview and Vercel project ID.
+- Copying development configuration into the beta Vercel project is rejected.
+- Missing/disabled beta App Check or any cloud emulator setting is rejected.
+- Missing, deleted or malformed beta admission policy denies client, server
+  and generated-rule access, even when an active membership document exists.
+- Approved Emory users retain listing/message/save/sale/review behavior;
+  wrong-campus, unverified, revoked and self-approval attempts are denied.
+- Beta rules predeploy refuses missing, development and production project IDs
+  and rejects generated output that differs from the shared source.
+
+CLOUD STATUS AND LIMITS
+Email/Password Auth, enforced 12-character password minimum and QuadMart Beta
+Web are configured in quadmart-beta on Spark. The separate quadmart-beta Vercel
+project is on Hobby with Standard Protection enabled and no deployments.
+Owner approved the beta Identity Platform/App Check setup and restricted server
+identity. The upgrade, provider registration, exact Preview identity grant and
+14 Preview-only environment values are now saved. Billing remains unlinked.
+The deployed beta rules match the local file exactly; all 21 index definitions
+match and are READY. The only database record is the invite-only Emory policy;
+there are zero beta Auth accounts and no tester memberships.
+Unauthenticated listing and admission-policy reads both returned HTTP 403.
+The real saved configuration passed the deployment guard; five mismatched
+project/environment/App Check configurations were rejected. The beta service
+account has exactly datastore.user and firebaseauth.viewer, with no user-managed
+keys. This is configuration verification, not live federated-token acceptance.
+Vercel CLI renewal is blocked on interactive sign-in. App Check enforcement,
+hostname-to-Preview assignment, deployment and hosted acceptance remain pending.
+The connection is not live or ready for student invitations.
+
+Hosted beta signup/verification, direct Firebase App Check rejection, session
+renewal, two-account trading, restricted photos, backup/restore, real-phone
+checks and the deferred hosted password reset remain pending. Synthetic local
+password-reset/restore success does not complete those hosted acceptance gates.
+See BETA-CLOUD-CONNECTION.txt and BETA-TEST-CHECKLIST.txt for next actions.

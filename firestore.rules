@@ -14,10 +14,20 @@ service cloud.firestore {
     }
     function student() {
       return signedIn() && request.auth.token.email_verified == true && campus() != ''
+        && betaAllowed()
         && (!exists(/databases/$(database)/documents/accountLifecycle/$(request.auth.uid))
           || get(/databases/$(database)/documents/accountLifecycle/$(request.auth.uid)).data.closed != true)
         && (!exists(/databases/$(database)/documents/moderationAccounts/$(request.auth.uid))
           || get(/databases/$(database)/documents/moderationAccounts/$(request.auth.uid)).data.suspended != true);
+    }
+    function betaPolicyRequired() { return false; } // Replaced only in generated beta rules.
+    function betaAllowed() {
+      return (!betaPolicyRequired() && !exists(/databases/$(database)/documents/betaSettings/access))
+        || (get(/databases/$(database)/documents/betaSettings/access).data.mode == 'invite-only'
+          && get(/databases/$(database)/documents/betaSettings/access).data.campusId == 'emory.edu'
+          && campus() == 'emory.edu'
+          && get(/databases/$(database)/documents/betaAccess/$(request.auth.uid)).data.active == true
+          && get(/databases/$(database)/documents/betaAccess/$(request.auth.uid)).data.campusId == 'emory.edu');
     }
     // Client cursors must stay bounded even when callers bypass the UI.
     function bounded(maximum) {
@@ -88,6 +98,16 @@ service cloud.firestore {
       allow list, write: if false;
     }
     match /accountDeletions/{uid} { allow read, write: if false; }
+    // Only non-sensitive admission state belongs here. Clients can observe the
+    // policy and their own status, but cannot enumerate or approve members.
+    match /betaSettings/{id} {
+      allow get: if signedIn() && id == 'access';
+      allow list, write: if false;
+    }
+    match /betaAccess/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
     match /moderationAccounts/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;
       allow list, write: if false;

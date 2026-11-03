@@ -23,12 +23,36 @@ DONE / EVIDENCE
   zero failures, manual-review items, stale jobs or remaining jobs. This closes
   the scheduled-cycle check, not the separate operational-coverage decision.
 - Listing badges say university email verified, not proof of student enrollment.
+- CI run 80 on 2a6f5ad9b50578bee733600532c22afed8905a29 passed with the
+  updated pinned Actions: 207 automated tests, 100 backend checkpoints and
+  131 browser scenarios, with zero unexpected browser errors. This published
+  result precedes the local invitation gate; see its separate test report.
+- Owner confirmed 5–10 Emory students, fresh test data, and a separate free
+  Firebase project. QuadMart Beta (quadmart-beta) has a default Standard Firestore
+  database in nam5 on Spark, created November 2 with owner approval. Tested beta
+  rules are now deployed; all 21 indexes are READY. The only database record is
+  the invite-only Emory policy. Email/Password Auth requires 12-character
+  passwords; Identity Platform, restricted App Check registration and keyless
+  Preview identity are configured. Fourteen settings are saved only in the
+  protected Hobby beta project's Preview environment. Billing is unlinked.
+  Deployment awaits Vercel CLI sign-in renewal. App Check enforcement, hosted
+  acceptance and beta recovery remain pending; see BETA-CLOUD-CONNECTION.txt.
+  No student accounts or invitations were created.
+- Local invitation candidate passed 220 automated tests, 100 backend checkpoints
+  and 143 browser scenarios with zero unexpected page errors. This is separate
+  from published CI run 80 and has not been deployed. It covers API/rules/photo
+  admission, live revocation/reapproval and saved-item listener recovery.
+- The newer beta-connection candidate passed 231 distinct unit/emulator tests,
+  100 backend checks and 143 browser cases, with zero unexpected page errors.
+  BETA-CONNECTION-TEST-RESULTS.txt records the exact split runs and limitations.
+  This supersedes the earlier local candidate count, not the published CI run.
 
 BEFORE THE FIRST STUDENT INVITATIONS — IN ORDER
 
-[ ] 1. Choose the beta scope and eligibility. Owner: founding team.
-    Name the initial campus, exact test site, dates and small invited group
-    (a suggested first group is 5–10 volunteers). Define current students versus
+[ ] 1. Finalize the beta scope and eligibility. Owner: founding team.
+    Confirmed November 2: 5–10 Emory students, fresh test data, quadmart-beta.
+    Still name the
+    exact test site and dates. Define current students versus
     alumni/staff and how eligibility will be checked again. Decide whether beta
     data will be retained or reset and tell testers. University-mailbox access
     does not itself prove current enrollment. No invitations have been sent.
@@ -68,15 +92,16 @@ BEFORE THE FIRST STUDENT INVITATIONS — IN ORDER
     have not been invented or treated as approved by engineering.
 
 [ ] 7. Configure and rehearse the exact beta destination. Owner: engineering + team.
-    Choose a separate beta environment or explicitly review the intended target.
+    Complete the separate quadmart-beta environment; preserve development data.
     Apply/retest Auth redirect domains, App Check, API firewall and access rules
     for its actual hostname; current coverage is the protected development
     preview. Test the invitation/access path without disabling protection on
     existing development data. Verify rules/indexes and environment isolation.
     Review Firestore App Check monitoring before any enforcement decision.
-    If reusing production data, reconcile/migrate legacy profiles, photos, chats,
-    transactions and reviews in isolation first. A UI deployment alone is not
-    a migration. Review rollback and cloud restore/cutover in an approved target.
+    The owner chose fresh data; no production/development migration or wipe is
+    authorized. Verify an uninvited verified Emory user is denied by the server,
+    direct Firestore rules and protected photos, and cannot approve themselves.
+    Review rollback and cloud restore/cutover in an approved target.
 
 [ ] 8. Confirm operational coverage. Owner: named operator + backup.
     Scheduled-cycle verification is complete (see DONE above). Check backup age,
@@ -112,3 +137,5 @@ Related reports:
 - KEYBOARD-TEST-RESULTS.txt — Chromium/WebKit keyboard and verification regressions
 - BETA-OPERATIONS-PLAN.txt — proposed team decisions, triage and rehearsal
 - DATA-HANDLING-REVIEW.txt — implemented data lifecycle for policy review
+- BETA-ACCESS-SETUP.txt — prepared Emory access gate and activation sequence
+- BETA-ACCESS-TEST-RESULTS.txt — local invitation checks, separate from hosted CI

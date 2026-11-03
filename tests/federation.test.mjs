@@ -4,6 +4,7 @@ import { federationOptions, federatedServices } from '../lib/server/federation.m
 import { FieldValue } from 'firebase-admin/firestore';
 const env = {
   VERCEL_ENV: 'preview', FIREBASE_ADMIN_PROJECT_ID: 'quadmart-development',
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'quadmart-development', QUADMART_CREDENTIAL_MODE: 'vercel-oidc',
   GCP_WORKLOAD_IDENTITY_PROVIDER: 'projects/377519547132/locations/global/workloadIdentityPools/quadmart-preview/providers/vercel',
   GCP_SERVICE_ACCOUNT_EMAIL: 'quadmart-preview@quadmart-development.iam.gserviceaccount.com',
 };

@@ -1,28 +1,35 @@
 QuadMart — beta operating plan for team review
 Prepared November 2, 2026 (America/New_York)
 
-Status: proposed plan, not permission to invite students or change cloud access.
-Engineering can prepare the release; the founding team must fill the decisions
-below. Use BETA-TEST-CHECKLIST.txt as the release gate list.
+Status: scope confirmed; operating decisions and invitation release still pending.
+The owner chose 5–10 Emory students with fresh test data in a separate free
+Firebase project on November 2. QuadMart Beta (quadmart-beta) was created on
+Spark with Analytics and Gemini disabled. Its empty default Standard Firestore
+database was created in nam5 with locked initial rules and no paid backups after
+owner approval. The remaining service/access setup is still pending. The
+founding team must fill the remaining decisions below. Use BETA-TEST-CHECKLIST.txt
+as the release gate list. Choosing fresh data does not authorize deleting the
+existing development accounts, listings or backups.
 
 DECISIONS TO FILL TOGETHER
 
-1. Scope: proposed 5–10 Emory students with fresh test data. Not yet confirmed.
-   Campus/group: __________  Start/end dates: __________
+1. Scope: confirmed 5–10 Emory students with fresh test data.
+   Campus/group: Emory, 5–10 students. Start/end dates: __________
    Eligibility: current students / other explicitly agreed group: __________
    How checked, by whom, and when checked again: __________
    Minimum age and how handled: __________
    University mailbox access is the implemented check, not proof of enrollment.
 
-2. Destination: exact hostname __________  Firebase project __________
+2. Destination: exact hostname __________  Firebase project quadmart-beta
    Data retained after test or reset: __________  Notice to testers: __________
    Access method and owner: __________
    The existing protected Preview is for development. A shared link is not an
-   invitation allowlist; the app currently recognizes seven university domains.
+   invitation allowlist; the ordinary development mode recognizes seven domains.
    Do not share an owner's Vercel login or remove protection to admit testers.
-   First choose the destination, then implement and test its access boundary,
+   Complete the new destination, then implement and test its access boundary,
    including direct Firebase reads/API requests and uninvited verified users.
    A client-side school dropdown or hidden signup button cannot enforce access.
+   BETA-ACCESS-SETUP.txt describes the locally prepared Emory membership gate.
 
 3. People: primary support/moderator __________  backup __________
    Coverage hours/timezone __________  review cadence __________
